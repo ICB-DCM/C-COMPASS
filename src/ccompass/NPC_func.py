@@ -10,11 +10,6 @@ def pre_process():
     return
 
 
-# -----------------------------------------------------------------------------
-## Local functions:
-# -----------------------------------------------------------------------------
-
-
 def create_condition_dataset(
     data_init, tables_init, conditions, idents
 ):  # creates dictionary containing data sorted by condition

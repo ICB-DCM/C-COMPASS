@@ -1,4 +1,4 @@
-##### CLASS MANAGER
+"""Class manager."""
 
 import FreeSimpleGUI as sg
 import numpy as np

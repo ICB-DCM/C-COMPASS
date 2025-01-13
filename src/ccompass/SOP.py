@@ -1,4 +1,5 @@
-##### SINGLE ORGANELLE PREDICTION
+"""Single organelle prediction."""
+
 import pandas as pd
 from sklearn import svm
 from sklearn.metrics import (
@@ -8,10 +9,8 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix,
 )
-
 import matplotlib.pyplot as plt
 import copy
-
 
 clf = svm.SVC(kernel="rbf", probability=True)
 

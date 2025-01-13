@@ -1,9 +1,10 @@
+"""Normalized profile creation"""
+
 import copy
 import numpy as np
 import pandas as pd
 import FreeSimpleGUI as sg
 from tkinter import messagebox, simpledialog
-
 from .NPC_func import (
     create_dataset,
     pre_scaling,
@@ -23,9 +24,6 @@ from .NPC_func import (
 )
 
 from datetime import datetime
-# -----------------------------------------------------------------------------
-## Local functions:
-# -----------------------------------------------------------------------------
 
 
 def create_data(path):  # creates initial dataset with corresponding data table

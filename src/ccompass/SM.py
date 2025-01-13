@@ -1,5 +1,4 @@
-## SHOW MARKERS
-
+"""Show markers."""
 
 import FreeSimpleGUI as sg
 import pandas as pd

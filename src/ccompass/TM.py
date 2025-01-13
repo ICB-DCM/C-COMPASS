@@ -1,4 +1,4 @@
-##### TEST MARKER
+"""Test marker"""
 
 import FreeSimpleGUI as sg
 import pandas as pd
