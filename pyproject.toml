@@ -19,7 +19,7 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "seaborn",
-    "PySimpleGUI==4.60.5.0",
+    "FreeSimpleGUI",
 ]
 requires-python = ">=3.10"
 

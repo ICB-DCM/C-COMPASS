@@ -1,6 +1,6 @@
 ##### PREPARAMETERS
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 from . import PPMS_actions as action
 import copy
 

@@ -3,7 +3,7 @@
 import copy
 import numpy as np
 import pandas as pd
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 from tkinter import messagebox
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr

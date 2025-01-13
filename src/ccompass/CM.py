@@ -1,6 +1,6 @@
 ##### CLASS MANAGER
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
 

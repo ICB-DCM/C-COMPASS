@@ -1,7 +1,7 @@
 ## SHOW MARKERS
 
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
