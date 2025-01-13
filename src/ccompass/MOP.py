@@ -19,7 +19,7 @@ import tensorflow as tf
 from tensorflow import keras
 import keras_tuner as kt
 import keras.backend as K
-from .CCMPS import get_data_directory
+from ._utils import get_data_directory
 # from tensorflow.keras.models import Model
 
 
