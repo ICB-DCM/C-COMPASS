@@ -97,7 +97,7 @@ jobs:
     - name: Cache pip
       uses: actions/cache@v4
       with:
-        path: ~/.cache/pip
+        path: ~/Library/Caches/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-pip-
