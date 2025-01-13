@@ -1,15 +1,16 @@
 """Result plots"""
 
+import os
+from io import BytesIO
+
 import FreeSimpleGUI as sg
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import linkage, leaves_list
-from io import BytesIO
 from PIL import Image
-import matplotlib.colors as mcolors
-import os
-import numpy as np
+from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
 
 

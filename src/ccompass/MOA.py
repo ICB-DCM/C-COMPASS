@@ -1,9 +1,9 @@
 """Multiple organelle analysis."""
 
-import pandas as pd
 import numpy as np
-from scipy.stats import ttest_ind
+import pandas as pd
 from scipy import stats
+from scipy.stats import ttest_ind
 
 
 def most_frequent_or_nan(row):

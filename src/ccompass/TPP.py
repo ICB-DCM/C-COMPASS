@@ -2,10 +2,11 @@
 
 import copy
 import math
+from tkinter import messagebox
+
+import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
-import FreeSimpleGUI as sg
-from tkinter import messagebox
 from scipy.stats import pearsonr
 
 

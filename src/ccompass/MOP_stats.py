@@ -3,8 +3,7 @@
 import numpy as np
 import pandas as pd
 from scipy import stats
-from scipy.stats import f
-from scipy.stats import ttest_ind
+from scipy.stats import f, ttest_ind
 
 
 def reduce_to_single_column(row):

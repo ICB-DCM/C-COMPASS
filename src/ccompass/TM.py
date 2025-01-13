@@ -1,11 +1,12 @@
 """Test marker"""
 
-import FreeSimpleGUI as sg
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
+
+import FreeSimpleGUI as sg
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 def draw_figure(canvas, figure):

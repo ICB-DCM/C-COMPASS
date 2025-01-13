@@ -1,24 +1,27 @@
 """Multiple organelle prediction."""
 
+import copy
+import random
+from datetime import datetime
+
+import keras.backend as K
+import keras_tuner as kt
 import numpy as np
 import pandas as pd
-import random
-import copy
-from datetime import datetime
+import tensorflow as tf
 from scipy import stats
 from sklearn import svm
 from sklearn.metrics import (
     accuracy_score,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
-    confusion_matrix,
 )
-import tensorflow as tf
 from tensorflow import keras
-import keras_tuner as kt
-import keras.backend as K
+
 from ._utils import get_data_directory
+
 # from tensorflow.keras.models import Model
 
 

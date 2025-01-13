@@ -1,16 +1,17 @@
 """Single organelle prediction."""
 
+import copy
+
+import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn import svm
 from sklearn.metrics import (
     accuracy_score,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
-    confusion_matrix,
 )
-import matplotlib.pyplot as plt
-import copy
 
 clf = svm.SVC(kernel="rbf", probability=True)
 

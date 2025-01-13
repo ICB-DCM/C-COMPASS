@@ -1,22 +1,16 @@
 """C-COMPASS main window."""
 
-from . import CCMPS_actions as action
-from . import PPMS
-from . import FDP
-from . import TPP
-from . import CM
-from . import TM
-from . import MOP
-from . import MOA
-from . import SM
-from . import RP
 import copy
+import os
 import pickle
+from pathlib import Path
 from tkinter import messagebox
+
 import FreeSimpleGUI as sg
 import pandas as pd
-import os
-from pathlib import Path
+
+from . import CM, FDP, MOA, MOP, PPMS, RP, SM, TM, TPP
+from . import CCMPS_actions as action
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
