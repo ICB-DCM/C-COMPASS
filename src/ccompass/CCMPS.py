@@ -1042,7 +1042,7 @@ def main():
         ],
     ]
 
-    main_window = sg.Window("CellCOMPASS", layout_CCMPS, size=(1260, 720))
+    main_window = sg.Window("C-COMPASS", layout_CCMPS, size=(1260, 720))
 
     # The event loop
     while True:
