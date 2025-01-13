@@ -24,6 +24,6 @@ Input Data
 Additional Notes
 ----------------
 
-A) All input files must be **tab-delimited** (.tsv or .txt).  
-B) If using an export file from **Perseus**, ensure that the file does not contain a second-layer header.  
+A) All input files must be **tab-delimited** (.tsv or .txt).
+B) If using an export file from **Perseus**, ensure that the file does not contain a second-layer header.
 C) Input datasets (for both fractionation and total proteome) can be stored in the same file or split across different files. If they are split, ensure that the **identifiers** are consistent.
