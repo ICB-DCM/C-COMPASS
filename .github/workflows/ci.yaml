@@ -70,7 +70,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e .[dev]
+
+    - name: Build documentation
+      run: |
+        tox -e docs
 
     - name: Launch C-COMPASS
       # Ensure that we can open the GUI
