@@ -1,7 +1,7 @@
 ##### PREPARAMETERS
 
 import PySimpleGUI as sg
-import PPMS_actions as action
+from . import PPMS_actions as action
 import copy
 
 def fract_default ():
@@ -83,9 +83,9 @@ def NN_default ():
 
 def PPMS_exec_fract (params_old):
     combination_both = action.set_combinations(params_old)
-    
+
     sg.theme('DarkTeal11')
-    
+
     layout_class = [[sg.Checkbox('pre-scaling', key = '--class_scale1--', disabled = False, enable_events = True, default = params_old['class']['scale1'][0]),
                      sg.Combo(['minmax', 'area'], key = '--class_scale1_how--', size = (10,1), disabled = not params_old['class']['scale1'][0], enable_events = False, readonly = True, default_value = params_old['class']['scale1'][1])
                     ],
@@ -108,7 +108,7 @@ def PPMS_exec_fract (params_old):
                      sg.Combo(['minmax', 'area'], key = '--vis_scale2_how--', size = (10,1), disabled = not params_old['vis']['scale2'][0], enable_events = False, readonly = True, default_value = params_old['vis']['scale2'][1])],
                     [sg.Checkbox('remove baseline profiles (zeroes)', key = '--vis_zeros--', disabled = False, enable_events = False, default = params_old['class']['zeros'])],
                     ]
-    
+
     layout_PPMS = [
                 [sg.TabGroup([[sg.Tab(' - Classification - ', layout_class), sg.Tab(' - Visualization - ', layout_vis)]],
                 tab_location = 'top', tab_background_color = 'grey', size = (450,225)),
@@ -129,17 +129,17 @@ def PPMS_exec_fract (params_old):
                     [sg.Button('Cancel', size = (10,1), key = '--cancel--', button_color = 'darkred')]]
                     ,size = (100,250))]
                 ]
-    
+
     window_PPMS = sg.Window('Parameters for Pre-Processing', layout_PPMS, size = (800,250))
-    
+
     while True:
         event_PPMS, values_PPMS = window_PPMS.read()
-        
+
         if event_PPMS == '--class_scale1--':
             window_PPMS['--class_scale1_how--'].Update(disabled = not values_PPMS['--class_scale1--'])
         if event_PPMS == '--vis_scale1--':
             window_PPMS['--vis_scale1_how--'].Update(disabled = not values_PPMS['--vis_scale1--'])
-        
+
         if event_PPMS == '--class_median--':
             window_PPMS['--class_median--'].Update(value = True)
             window_PPMS['--class_concat--'].Update(value = False)
@@ -167,17 +167,17 @@ def PPMS_exec_fract (params_old):
             window_PPMS['--vis_concat--'].Update(value = False)
             window_PPMS['--vis_separate--'].Update(value = True)
             window_PPMS['--glob_outcorr--'].Update(disabled = True, value = False)
-        
+
         if event_PPMS == '--class_scale2--':
             window_PPMS['--class_scale2_how--'].Update(disabled = not values_PPMS['--class_scale2--'])
         if event_PPMS == '--vis_scale2--':
             window_PPMS['--vis_scale2_how--'].Update(disabled = not values_PPMS['--vis_scale2--'])
-        
+
         if event_PPMS == '--glob_missing--':
             window_PPMS['--glob_minval--'].Update(disabled = not values_PPMS['--glob_missing--'])
         if event_PPMS == '--glob_minrep--':
             window_PPMS['--glob_mincount--'].Update(disabled = not values_PPMS['--glob_minrep--'])
-        
+
         if event_PPMS == '--accept--':
             params = action.accept(values_PPMS)
             window_PPMS.close()
@@ -198,27 +198,27 @@ def PPMS_exec_fract (params_old):
 
 def PPMS_exec_marker (params_old):
     sg.theme('DarkTeal11')
-    
+
     if params_old['how'] == 'exclude':
         how_exclude = True
         how_majority = False
     elif params_old['how'] == 'majority':
         how_exclude = False
         how_majority = True
-    
+
     if params_old['what'] == 'unite':
         what_unite = True
         what_intersect = False
     if params_old['what'] == 'intersect':
         what_unite = False
         what_intersect = True
-    
-    
-    
+
+
+
     marker_params = copy.deepcopy(params_old)
-    
-    
-    
+
+
+
     layout_PMM = [
         [sg.Text('discrepancies:\t'),
          sg.Checkbox('exclude\t', key = '--PMM_exclude--', default = how_exclude, enable_events = True),
@@ -229,12 +229,12 @@ def PPMS_exec_marker (params_old):
         [sg.Button('OK', key = '--PMM_accept--', disabled = False, enable_events = True, button_color = 'dark green'),
          sg.Button('Cancel', key = '--PMM_cancel--', disabled = False, enable_events = True, button_color = 'black')]
         ]
-    
+
     window_PMM = sg.Window('Marker Parameters', layout_PMM, size = (400,100))
-    
+
     while True:
         event_PMM, values_PMM = window_PMM.read()
-        
+
         if event_PMM == '--PMM_exclude--':
             marker_params['how'] = 'esclude'
             window_PMM['--PMM_exclude--'].Update(value = True)
@@ -251,7 +251,7 @@ def PPMS_exec_marker (params_old):
             marker_params['what'] = 'intersect'
             window_PMM['--PMM_unite--'].Update(value = False)
             window_PMM['--PMM_intersect--'].Update(value = True)
-                
+
         if event_PMM == sg.WIN_CLOSED or event_PMM == '--PMM_cancel--':
             params = copy.deepcopy(params_old)
             window_PMM.close()
@@ -259,7 +259,7 @@ def PPMS_exec_marker (params_old):
         if event_PMM == '--PMM_accept--':
             params = copy.deepcopy(marker_params)
             window_PMM.close()
-        
+
     #window_PMM.close()
     return params
 
@@ -271,7 +271,7 @@ def PPMS_exec_marker (params_old):
 def PPMS_exec_TP (params_old):
     sg.theme('DarkTeal11')
     tp_params = copy.deepcopy(params_old)
-    
+
     if params_old['imputation'] == 'normal':
         is_normal = True
     else:
@@ -280,7 +280,7 @@ def PPMS_exec_TP (params_old):
         is_constant = True
     else:
         is_constant = False
-    
+
     layout_TPPM = [
         [sg.Text('found in at least'),
          sg.Spin(values=(list(range(1,10))), size = (10,2), key = '--tp_mincount--', disabled = False, enable_events = False, readonly = True, initial_value = params_old['minrep'], text_color = 'black')],
@@ -290,13 +290,13 @@ def PPMS_exec_TP (params_old):
         [sg.Button('Accept', button_color = 'dark green', key = '--TPPM_accept--', enable_events = True, disabled = False),
         sg.Button('Cancel', key = '--TPPM_cancel--', disabled = False, enable_events = True, button_color = 'black')]
         ]
-    
+
     window_TPPM = sg.Window('TP Parameters', layout_TPPM, size = (500,100))
-    
+
     while True:
         event_TPPM, values_TPPM = window_TPPM.read()
-        
-        
+
+
         if event_TPPM == '--normal--':
             tp_params['imputation'] = 'normal'
             window_TPPM['--normal--'].Update(value = True)
@@ -305,18 +305,18 @@ def PPMS_exec_TP (params_old):
             tp_params['imputation'] = 'constant'
             window_TPPM['--constant--'].Update(value = True)
             window_TPPM['--normal--'].Update(value = False)
-        
-        
+
+
         if event_TPPM == sg.WIN_CLOSED or event_TPPM == '--TPPM_cancel--':
             params = copy.deepcopy(params_old)
             window_TPPM.close()
             break
-        
+
         if event_TPPM == '--TPPM_accept--':
             params = copy.deepcopy(tp_params)
             window_TPPM.close()
             break
-        
+
     return params
 
 
@@ -325,10 +325,10 @@ def PPMS_exec_TP (params_old):
 
 
 def PPMS_exec_NN (params_old):
-    
+
     sg.theme('DarkTeal11')
     NN_params = copy.deepcopy(params_old)
-    
+
     if 'adam' in params_old['optimizers']:
         isadam = True
     else:
@@ -345,97 +345,97 @@ def PPMS_exec_NN (params_old):
         loss_default = 'mean squared error'
     elif params_old['class_loss'] == 'binary_crossentropy':
         loss_default = 'binary cross-entropy'
-    
-    
+
+
     layout_NNP = [
         [sg.Checkbox('upsampling\t\t', default = params_old['upsampling'], key = '--upsampling--', disabled = False, enable_events = True),
          sg.Combo(['noised', 'average', 'noisedaverage'], default_value = params_old['upsampling_method'], key = '--upsampling_method--', size = (23,1), disabled = not params_old['upsampling'], enable_events = True, readonly = True)],
         [sg.Text('\t\t\t\tnoise:\t'),
          sg.Spin(list(range(0,6,1)), initial_value = params_old['upsampling_noise'], size = (10,1), key = '--noise--', disabled = not params_old['upsampling'], enable_events = True, readonly = True, text_color = 'black'),
          sg.Text('* std')],
-        
+
         [sg.Checkbox('SVM-filter', default = params_old['svm_filter'], key = '--svm_filter--', disabled = False, enable_events = True)],
-        
+
         [sg.Text('dividing-step for profile mixing:\t'),
          sg.Spin(['-',2,4,5,10], initial_value = params_old['mixed_part'], size = (15,1), key = '--mixstep--', disabled = False, enable_events = True, readonly = True, text_color = 'black')],
-        
+
         [sg.HSep()],
-        
+
         [sg.Text('NN optimization method:\t\t'),
          sg.Combo(['long', 'short'], default_value = params_old['NN_optimization'], size = (25,1), key = '--optimization_method--', disabled = False, enable_events = True, readonly = True)],
-        
+
         [sg.Text('dense layer activation:\t\t'),
          sg.Combo(['relu', 'leakyrelu'], default_value = params_old['NN_activation'], size = (25,1), key = '--dense_activation--', disabled = False, enable_events = True, readonly = True)],
-        
+
         [sg.Text('output activation:\t\t\t'),
          sg.Combo(['linear', 'sigmoid', 'softmax'], default_value = params_old['class_activation'], size = (25,1), key = '--out_activation--', disabled = False, enable_events = True, readonly = True)],
-        
+
         [sg.Text('loss function:\t\t\t'),
          sg.Combo(['mean squared error', 'binary cross-entropy'], default_value = loss_default, size = (25,1), key = '--loss--', disabled = False, enable_events = True, readonly = True)],
-        
+
         [sg.Text('optimizers:\t\t\t'),
          sg.Checkbox('adam', default = isadam, key = '--adam--', disabled = False, enable_events = True),
          sg.Checkbox('rmsprop', default = isrms, key = '--rmsprop--', disabled = False, enable_events = True),
          sg.Checkbox('sgd', default = issgd, key = '--sgd--', disabled = False, enable_events = True)],
-        
+
         [sg.Text('max. training epochs:\t\t\t'),
          sg.Spin(list(range(10,110,10)), initial_value = params_old['NN_epochs'], size = (15,1), key = '--epochs--', disabled = False, enable_events = True, readonly = True, text_color = 'black')],
-        
+
         [sg.Text('tuning runs:\t\t\t'),
          sg.Spin(list(range(1,11,1)), initial_value = params_old['rounds'], size = (15,1), key = '--rounds--', disabled = False, enable_events = True, readonly = True, text_color = 'black')],
-        
+
         [sg.Text('ensemble runs:\t\t\t'),
          sg.Spin(list(range(5,55,5)), initial_value = params_old['subrounds'], size = (15,1), key = '--subrounds--', disabled = False, enable_events = True, readonly = True, text_color = 'black')],
-        
+
         [sg.HSep()],
-        
+
         [sg.Text('TP filter cut-off:\t\t\t'),
          sg.Spin(list(range(0,100,1)), initial_value = params_old['reliability'], size = (15,1), key = '--filter_threshold--', disabled = False, enable_events = True, readonly = True, text_color = 'black')],
-        
+
         [sg.HSep()],
-        
+
         [sg.Button('Accept', key = '--NNP_accept--', disabled = False, enable_events = True, button_color = 'dark green'),
          sg.Button('Cancel', key = '--NNP_cancel--', disabled = False, enable_events = True, button_color = 'black')]
-        
+
         ]
-    
+
     window_NNP = sg.Window('NN Parameters', layout_NNP, size = (470,420))
-    
+
     while True:
         event_NNP, values_NNP = window_NNP.read()
-        
+
         if event_NNP == '--upsampling--':
             NN_params['upsampling'] = values_NNP['--upsampling--']
             window_NNP['--upsampling_method--'].Update(disabled = not values_NNP['--upsampling--'])
             window_NNP['--noise--'].Update(disabled = not values_NNP['--upsampling--'])
-        
+
         if event_NNP == '--upsampling_method--':
             NN_params['upsampling_method'] = values_NNP['--upsampling_method--']
-        
+
         if event_NNP == '--noise--':
             NN_params['upsampling_noise'] = values_NNP['--noise--']
-        
+
         if event_NNP == '--svm_filter--':
             NN_params['svm_filter'] = values_NNP['--svm_filter--']
-        
+
         if event_NNP == '--mixstep--':
             NN_params['mixed_part'] = values_NNP['--mixstep--']
-        
+
         if event_NNP == '--optimization_method--':
             NN_params['NN_optimization'] = values_NNP['--optimization_method--']
-        
+
         if event_NNP == '--dense_activation--':
             NN_params['NN_activation'] = values_NNP['--dense_activation--']
-        
+
         if event_NNP == '--out_activation--':
             NN_params['class_activation'] = values_NNP['--out_activation--']
-        
+
         if event_NNP == '--loss--':
             if values_NNP['--loss--'] == 'mean squared error':
                 NN_params['class_loss'] = 'mean_squared_error'
             elif values_NNP['--loss--'] == 'binary cross-entropy':
                 NN_params['class_loss'] = 'binary_crossentropy'
-        
+
         if event_NNP == '--adam--':
             if values_NNP['--adam--'] == True:
                 NN_params['optimizers'].append('adam')
@@ -451,31 +451,31 @@ def PPMS_exec_NN (params_old):
                 NN_params['optimizers'].append('sgd')
             elif values_NNP['--sgd--'] == False:
                 NN_params['optimizers'].remove('sgd')
-        
+
         if event_NNP == '--epochs--':
             NN_params['NN_epochs'] = values_NNP['--epochs--']
-        
+
         if event_NNP == '--rounds--':
             NN_params['rounds'] = values_NNP['--rounds--']
-        
+
         if event_NNP == '--subrounds--':
             NN_params['subrounds'] = values_NNP['--subrounds--']
-        
+
         if event_NNP == '--filter_threshold--':
             NN_params['reliability'] = values_NNP['--filter_threshold--']
-        
-        
-        
+
+
+
         if event_NNP == sg.WIN_CLOSED or event_NNP == '--NNP_cancel--':
             params = copy.deepcopy(params_old)
             window_NNP.close()
             break
-        
+
         if event_NNP == '--NNP_accept--':
             params = copy.deepcopy(NN_params)
             window_NNP.close()
             break
-    
+
     return params
 
 
