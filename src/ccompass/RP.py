@@ -1,5 +1,5 @@
 ### RESULT PLOTS
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ def RP_gradient_heatmap(fract_data):
     # Get the list of conditions from fract_data['vis']
     conditions = list(fract_data["vis"].keys())
 
-    # Define the PySimpleGUI layout
+    # Define the layout
     layout = [
         [sg.Text("Select Condition:")],
         [
@@ -118,7 +118,7 @@ def RP_gradient_heatmap(fract_data):
                 # Generate the heatmap with hierarchical clustering and condition name as the title
                 heatmap_image = plot_heatmap(df, selected_condition)
 
-                # Convert the heatmap image to PNG and update the PySimpleGUI window
+                # Convert the heatmap image to PNG and update the window
                 bio = BytesIO()
                 heatmap_image.save(bio, format="PNG")
                 window["-HEATMAP-"].update(data=bio.getvalue())
@@ -141,7 +141,7 @@ def RP_stats_heatmap(results):
     # Get the list of conditions from results
     conditions = list(results.keys())
 
-    # Define the PySimpleGUI layout
+    # Define the GUI layout
     layout = [
         [sg.Text("Select Condition:")],
         [
@@ -259,7 +259,7 @@ def RP_stats_heatmap(results):
                 # Generate the heatmap with hierarchical clustering and condition name as the title
                 heatmap_image = plot_heatmap(df, selected_condition)
 
-                # Convert the heatmap image to PNG and update the PySimpleGUI window
+                # Convert the heatmap image to PNG and update the window
                 bio = BytesIO()
                 heatmap_image.save(bio, format="PNG")
                 window["-HEATMAP-"].update(data=bio.getvalue())
@@ -280,7 +280,7 @@ def RP_stats_distribution(results):
     # Get the list of conditions from results
     conditions = list(results.keys())
 
-    # Define the PySimpleGUI layout
+    # Define the layout
     layout = [
         [sg.Text("Select Condition:")],
         [
@@ -381,7 +381,7 @@ def RP_stats_distribution(results):
                 # Generate the pie chart for the class distribution
                 pie_chart_image = plot_pie_chart(df, selected_condition)
 
-                # Convert the pie chart image to PNG and update the PySimpleGUI window
+                # Convert the pie chart image to PNG and update the window
                 bio = BytesIO()
                 pie_chart_image.save(bio, format="PNG")
                 window["-PIECHART-"].update(data=bio.getvalue())
@@ -402,7 +402,7 @@ def RP_global_heatmap(comparison):
     # Get the list of comparisons from the dictionary keys
     comparisons = list(comparison.keys())
 
-    # Define the PySimpleGUI layout
+    # Define the layout
     layout = [
         [sg.Text("Select Comparison:")],
         [
@@ -536,7 +536,7 @@ def RP_global_heatmap(comparison):
                 # Generate the heatmap with hierarchical clustering and comparison name as the title
                 heatmap_image = plot_heatmap(df_filtered_for_plot, selected_comparison)
 
-                # Convert the heatmap image to PNG and update the PySimpleGUI window
+                # Convert the heatmap image to PNG and update the window
                 bio = BytesIO()
                 heatmap_image.save(bio, format="PNG")
                 window["-HEATMAP-"].update(data=bio.getvalue())
@@ -557,7 +557,7 @@ def RP_global_distance(comparison):
     # Get the list of comparisons from the dictionary keys
     comparisons = list(comparison.keys())
 
-    # Define the PySimpleGUI layout
+    # Define the layout
     layout = [
         [sg.Text("Select Comparison:")],
         [
@@ -678,7 +678,7 @@ def RP_global_distance(comparison):
                 # Generate the scatter plot with the selected comparison name
                 scatter_image = plot_scatter(df, selected_comparison)
 
-                # Convert the scatter plot image to PNG and update the PySimpleGUI window
+                # Convert the scatter plot image to PNG and update the window
                 bio = BytesIO()
                 scatter_image.save(bio, format="PNG")
                 window["-SCATTERPLOT-"].update(data=bio.getvalue())
@@ -705,7 +705,7 @@ def RP_class_heatmap(results):
     # Find the intersection of classnames across all conditions
     common_classnames = list(set.intersection(*classnames_lists))
 
-    # Define the PySimpleGUI layout
+    # Define the layout
     layout = [
         [sg.Text("Select Classname:")],
         [
@@ -863,7 +863,7 @@ def RP_class_heatmap(results):
                 # Generate the heatmap for the selected classname, using condition names as column labels
                 heatmap_image = plot_heatmap(df_zscore, selected_classname, conditions)
 
-                # Convert the heatmap image to PNG and update the PySimpleGUI window
+                # Convert the heatmap image to PNG and update the window
                 if heatmap_image:
                     bio = BytesIO()
                     heatmap_image.save(bio, format="PNG")

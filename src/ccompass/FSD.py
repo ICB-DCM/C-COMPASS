@@ -1,6 +1,6 @@
 ##### FRACTIONATION SUMMARY DISPLAY
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 
 
 ## internal functions:

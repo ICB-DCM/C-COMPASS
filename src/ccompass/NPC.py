@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 import pandas as pd
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 from tkinter import messagebox, simpledialog
 
 from .NPC_func import (
