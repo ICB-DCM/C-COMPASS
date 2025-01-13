@@ -30,7 +30,7 @@ C-COMPASS is distributed as a portable application, meaning you do not need to i
 ## Usage
 
 ### Graphical User Interface (GUI)
-- The GUI will guide you through the process of loading and analyzing your proteomics dataset, including fractionation samples and Total Proteme samples.
+- The GUI will guide you through the process of loading and analyzing your proteomics dataset, including fractionation samples and Total Proteome samples.
 - Follow the on-screen instructions to perform the analysis and configure settings only if required
 - Standard parameters should fit for the majority of experiments. You **don't need to change the default settings!**
 
@@ -38,17 +38,17 @@ C-COMPASS is distributed as a portable application, meaning you do not need to i
 You can also run the software via the command line:
 > python CCMPS.py
 
-### Cumputation time (on a standard desktop computer)
-- Prepocessing of Gradient and TotalProteome Data takes only up to a few minutes.
+### Computation time (on a standard desktop computer)
+- Preprocessing of Gradient and TotalProteome Data takes only up to a few minutes.
 - Neural Network training for a dataset with three conditions and four replicates needs around 1-2h.
 - Calculation of static predictions (per condition) takes a few minutes.
-- Calculation of conditional comparisons (global comparison) takes up to 30 min. (for the above mentioned dataset)
-- Caluclation of class-centric statistics and comparison takes up to 10 min. (for the above mentioned dataset)
+- Calculation of conditional comparisons (global comparison) takes up to 30 min. (for the above-mentioned dataset)
+- Calculation of class-centric statistics and comparison takes up to 10 min. (for the above-mentioned dataset)
 
 ### Status:
 - The appearance of the GUI will be improved in the near future. Progress bars will be included, as well as some help sections.
 - Computation time will be optimized in the near future.
-- Principal analysis steps and caluclations will be kept as they are in version 1.0 unless changes are suggested by the reviewers.
+- Principal analysis steps and calculations will be kept as they are in version 1.0 unless changes are suggested by the reviewers.
 
 ### Contributing
 Contributions to C-COMPASS are welcome! To contribute:
@@ -65,9 +65,9 @@ C-COMPASS is licensed under the BSD 3-Clause License.
 - **Long Path Issues on Windows**: If your system encounters long path errors, you can activate them in your registry under 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem' by setting the value for **LongPathsEnabled* from 0 to 1.
 
 ### Contact
-For any questions, contact danniel.haas@helmholtz-munich.de
+For any questions, contact daniel.haas@helmholtz-munich.de
 
 ### Pre-Publication Information
-The software documenation to C-COMPASS is accessable under
+The software documentation to C-COMPASS is accessible under
 **/docs/build/html/index.html**
-and will be publically available by the official release of C-COMPASS.
+and will be publicly available by the official release of C-COMPASS.
