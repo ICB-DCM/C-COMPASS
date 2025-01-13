@@ -47,16 +47,18 @@ def main():
 
     fract_indata, fract_identifiers = action.reset_infract()
     tp_indata, tp_identifiers = action.reset_intp()
-    tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = action.reset_tp()
+    tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
+        action.reset_tp()
+    )
 
     fract_preparams = PPMS.fract_default()
     tp_preparams = PPMS.tp_default()
 
     marker_sets = marker_conv = fract_full = fract_full_up = fract_marker = (
         fract_marker_vis
-    ) = fract_marker_up = fract_mixed_up = fract_test = svm_marker = svm_test = (
-        svm_metrics
-    ) = learning_xyz = results = comparison = {}
+    ) = fract_marker_up = fract_mixed_up = fract_test = svm_marker = (
+        svm_test
+    ) = svm_metrics = learning_xyz = results = comparison = {}
     marker_params = {"how": "exclude", "what": "unite"}
     marker_list = pd.DataFrame
     NN_params = PPMS.NN_default()
@@ -446,7 +448,10 @@ def main():
                         sg.TabGroup(
                             [
                                 [
-                                    sg.Tab(" - Fractionation - ", layout_fractionation),
+                                    sg.Tab(
+                                        " - Fractionation - ",
+                                        layout_fractionation,
+                                    ),
                                     sg.Tab(
                                         " - TotalProteomes - ",
                                         layout_TP,
@@ -507,14 +512,18 @@ def main():
                                     sg.Text("Prot. Fractionation:"),
                                     sg.Push(),
                                     sg.Text(
-                                        "none", key="-status_fract-", text_color="black"
+                                        "none",
+                                        key="-status_fract-",
+                                        text_color="black",
                                     ),
                                 ],  # or: 'ready'
                                 [
                                     sg.Text("Total Proteome:"),
                                     sg.Push(),
                                     sg.Text(
-                                        "none", key="-status_tp-", text_color="black"
+                                        "none",
+                                        key="-status_tp-",
+                                        text_color="black",
                                     ),
                                 ],  # or: 'ready'
                                 [
@@ -565,12 +574,14 @@ def main():
                                 [sg.VPush()],
                                 [
                                     sg.Button(
-                                        "Import/Edit Fractionation...", size=(39, 1)
+                                        "Import/Edit Fractionation...",
+                                        size=(39, 1),
                                     )
                                 ],
                                 [
                                     sg.Button(
-                                        "Import/Edit Total Lysate...", size=(39, 1)
+                                        "Import/Edit Total Lysate...",
+                                        size=(39, 1),
                                     )
                                 ],
                             ],
@@ -1048,11 +1059,16 @@ def main():
         if event_CCMPS == "-fractionation_remove-":
             if values_CCMPS["-fractionation_path-"]:
                 action.fract_rem(
-                    values_CCMPS, window_CCMPS, fract_paths, fract_tables, fract_data
+                    values_CCMPS,
+                    window_CCMPS,
+                    fract_paths,
+                    fract_tables,
+                    fract_data,
                 )
         if event_CCMPS == "-fractionation_path-":
             action.fract_refreshtable(
-                window_CCMPS, fract_tables[values_CCMPS["-fractionation_path-"]]
+                window_CCMPS,
+                fract_tables[values_CCMPS["-fractionation_path-"]],
             )
         if event_CCMPS == "-fractionation_edit_remove-":
             if values_CCMPS["-fractionation_table-"]:
@@ -1120,14 +1136,16 @@ def main():
                 status["marker_matched"] = False
                 # window_CCMPS['-classification_SVM-'].Update(disabled = True)
 
-                svm_marker = svm_test = svm_metrics = learning_xyz = results = (
-                    comparison
-                ) = {}
+                svm_marker = svm_test = svm_metrics = learning_xyz = (
+                    results
+                ) = comparison = {}
                 status["marker_matched"] = status["marker_matched"] = status[
                     "training"
                 ] = status["proteome_prediction"] = status[
                     "lipidome_prediction"
-                ] = status["comparison_global"] = status["comparison_class"] = False
+                ] = status["comparison_global"] = status[
+                    "comparison_class"
+                ] = False
 
             else:
                 pass
@@ -1179,9 +1197,13 @@ def main():
             )
         if event_CCMPS == "-tp_remove-":
             if values_CCMPS["-tp_path-"]:
-                action.tp_rem(values_CCMPS, window_CCMPS, tp_paths, tp_tables, tp_data)
+                action.tp_rem(
+                    values_CCMPS, window_CCMPS, tp_paths, tp_tables, tp_data
+                )
         if event_CCMPS == "-tp_path-":
-            action.tp_refreshtable(window_CCMPS, tp_tables[values_CCMPS["-tp_path-"]])
+            action.tp_refreshtable(
+                window_CCMPS, tp_tables[values_CCMPS["-tp_path-"]]
+            )
         if event_CCMPS == "-tp_edit_remove-":
             if values_CCMPS["-tp_table-"]:
                 action.tp_defrem(values_CCMPS, window_CCMPS, tp_tables)
@@ -1200,7 +1222,11 @@ def main():
         if event_CCMPS == "-tp_edit_identifier-":
             if values_CCMPS["-tp_table-"]:
                 tp_identifiers = action.tp_defident(
-                    values_CCMPS, window_CCMPS, tp_tables, tp_pos, tp_identifiers
+                    values_CCMPS,
+                    window_CCMPS,
+                    tp_tables,
+                    tp_pos,
+                    tp_identifiers,
                 )
         if event_CCMPS == "-tp_parameters-":
             tp_preparams = PPMS.PPMS_exec_TP(tp_preparams)
@@ -1239,7 +1265,9 @@ def main():
                     status["tp_data"] = True
                     # action.tp_buttons(window_CCMPS, True)
             else:
-                messagebox.showerror("No dataset!", "Please import a TP dataset.")
+                messagebox.showerror(
+                    "No dataset!", "Please import a TP dataset."
+                )
         if event_CCMPS == "-tp_export-":
             action.tp_export(tp_data, tp_info)
 
@@ -1253,7 +1281,7 @@ def main():
         if event_CCMPS == "-marker_remove-":
             try:
                 action.marker_remove(window_CCMPS, values_CCMPS, marker_sets)
-            except:
+            except Exception:
                 pass
             if marker_sets:
                 status["marker_file"] = True
@@ -1273,7 +1301,9 @@ def main():
             if action.check_markers(marker_sets):
                 marker_conv = CM.CM_exec(marker_sets, marker_conv)
             else:
-                messagebox.showerror("Error", "Please define key and class column.")
+                messagebox.showerror(
+                    "Error", "Please define key and class column."
+                )
 
         if event_CCMPS == "-marker_test-":
             if action.check_markers(marker_sets):
@@ -1287,12 +1317,14 @@ def main():
                         marker_list,
                         values_CCMPS["-marker_fractkey-"],
                     )
-                except:
+                except Exception:
                     messagebox.showerror(
                         "Error", "Something is wrong with your marker list."
                     )
             else:
-                messagebox.showerror("Error", "Please define key and class column.")
+                messagebox.showerror(
+                    "Error", "Please define key and class column."
+                )
         if event_CCMPS == "-marker_profiles-":
             if action.check_markers(marker_sets):
                 try:
@@ -1305,24 +1337,32 @@ def main():
                         marker_list,
                         values_CCMPS["-marker_fractkey-"],
                     )
-                except:
+                except Exception:
                     messagebox.showerror(
                         "Error", "Something is wrong with your marker list."
                     )
             else:
-                messagebox.showerror("Error", "Please define key and class column.")
+                messagebox.showerror(
+                    "Error", "Please define key and class column."
+                )
 
         if event_CCMPS == "-marker_accept-":
             if values_CCMPS["-marker_list-"] == []:
-                messagebox.showerror("Error", "Please import at least one Marker List!")
+                messagebox.showerror(
+                    "Error", "Please import at least one Marker List!"
+                )
             elif fract_data["class"] == []:
-                messagebox.showerror("Error", "Please import Fractionation Data first!")
+                messagebox.showerror(
+                    "Error", "Please import Fractionation Data first!"
+                )
             elif (
                 values_CCMPS["-marker_fractkey-"] == ""
                 or values_CCMPS["-marker_class-"] == ""
                 or values_CCMPS["-marker_key-"] == ""
             ):
-                messagebox.showerror("Error", "Please select key and class columns!")
+                messagebox.showerror(
+                    "Error", "Please select key and class columns!"
+                )
             else:
                 try:
                     # print('Starting try block')
@@ -1339,7 +1379,9 @@ def main():
                         )
                     )
                     # print('check2: marker profiles created')
-                    fract_full = MOP.create_fullprofiles(fract_marker, fract_test)
+                    fract_full = MOP.create_fullprofiles(
+                        fract_marker, fract_test
+                    )
                     status["marker_matched"] = True
                     # print('check3: full profiles created')
                     # action.enable_markersettings(window_CCMPS, False)
@@ -1353,7 +1395,9 @@ def main():
                     import traceback
 
                     traceback.print_exc()
-                    messagebox.showerror("Error", "Incompatible Fractionation Key!")
+                    messagebox.showerror(
+                        "Error", "Incompatible Fractionation Key!"
+                    )
 
         if event_CCMPS == "-marker_reset-":
             marker_list = pd.DataFrame()
@@ -1366,9 +1410,9 @@ def main():
             ) = {}
             status["marker_matched"] = status["training"] = status[
                 "proteome_prediction"
-            ] = status["lipidome_prediction"] = status["comparison_global"] = status[
-                "comparison_class"
-            ] = False
+            ] = status["lipidome_prediction"] = status[
+                "comparison_global"
+            ] = status["comparison_class"] = False
             # status['marker_matched'] = False
 
             # action.enable_markersettings(window_CCMPS, True)
@@ -1409,7 +1453,9 @@ def main():
             ) = {}
             status["training"] = status["proteome_prediction"] = status[
                 "lipidome_prediction"
-            ] = status["comparison_global"] = status["comparison_class"] = False
+            ] = status["comparison_global"] = status["comparison_class"] = (
+                False
+            )
 
         if event_CCMPS == "-statistic_predict-":
             results = MOA.stats_proteome(
@@ -1430,7 +1476,9 @@ def main():
 
         if event_CCMPS == "-statistic_import-":
             filename = sg.popup_get_file(
-                "Import Statistics", no_window=True, file_types=(("Pickle", "*.pkl"),)
+                "Import Statistics",
+                no_window=True,
+                file_types=(("Pickle", "*.pkl"),),
             )
             if filename:
                 with open(filename, "rb") as file:
@@ -1445,16 +1493,23 @@ def main():
                                 + " in your current session.",
                             )
                         else:
-                            results[condition] = copy.deepcopy(results_new[condition])
+                            results[condition] = copy.deepcopy(
+                                results_new[condition]
+                            )
                     status["proteome_prediction"] = status["training"] = True
-                except:
+                except Exception:
                     messagebox.showerror("Error", "Incompatible file type!")
 
         if event_CCMPS == "-statistic_report-":
             export_folder = sg.popup_get_folder("Statistics Report")
             if export_folder:
                 for condition in results:
-                    fname = export_folder + "/CCMPS_statistics_" + condition + ".xlsx"
+                    fname = (
+                        export_folder
+                        + "/CCMPS_statistics_"
+                        + condition
+                        + ".xlsx"
+                    )
                     selected_columns = [
                         col
                         for col in results[condition]["metrics"].columns
@@ -1508,7 +1563,10 @@ def main():
             if export_folder:
                 for condition in results:
                     fname = (
-                        export_folder + "/CCMPS_ClassComposition_" + condition + ".xlsx"
+                        export_folder
+                        + "/CCMPS_ClassComposition_"
+                        + condition
+                        + ".xlsx"
                     )
                     selected_columns = [
                         col
@@ -1518,7 +1576,8 @@ def main():
                     df_out = results[condition]["metrics"][selected_columns]
                     df_out.columns = [
                         col.replace(
-                            "nCPA_imp_", "nCPA_normalizedClasscentrigProteinAmount_"
+                            "nCPA_imp_",
+                            "nCPA_normalizedClasscentrigProteinAmount_",
                         )
                         if col.startswith("nCPA_")
                         else "TPA_TotalProteinAmount"
@@ -1543,7 +1602,9 @@ def main():
                     ]
                     df_out = comparison[comb]["metrics"][selected_columns]
                     df_out.columns = [
-                        col.replace("nCFC_", "nCFC_normalizedClasscentricFoldChange_")
+                        col.replace(
+                            "nCFC_", "nCFC_normalizedClasscentricFoldChange_"
+                        )
                         if col.startswith("nCFC_")
                         else col
                         for col in df_out.columns
@@ -1552,9 +1613,11 @@ def main():
 
         if event_CCMPS == "-statistic_reset-":
             results = comparison = {}
-            status["proteome_prediction"] = status["lipidome_prediction"] = status[
-                "comparison_global"
-            ] = status["comparison_class"] = False
+            status["proteome_prediction"] = status[
+                "lipidome_prediction"
+            ] = status["comparison_global"] = status["comparison_class"] = (
+                False
+            )
 
         if event_CCMPS == "-statistic_heatmap-":
             RP.RP_stats_heatmap(results)
@@ -1603,7 +1666,12 @@ def main():
             export_folder = sg.popup_get_folder("Export Statistics")
             if export_folder:
                 for condition in results:
-                    fname = export_folder + "/CCMPS_statistics_" + condition + ".tsv"
+                    fname = (
+                        export_folder
+                        + "/CCMPS_statistics_"
+                        + condition
+                        + ".tsv"
+                    )
                     df_out = pd.merge(
                         fract_data["vis"][condition + "_median"],
                         results[condition]["metrics"],
@@ -1619,7 +1687,9 @@ def main():
                             right_index=True,
                             how="left",
                         )
-                    df_out.to_csv(fname, sep="\t", index=True, index_label="Identifier")
+                    df_out.to_csv(
+                        fname, sep="\t", index=True, index_label="Identifier"
+                    )
                     # results[condition]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
 
         if event_CCMPS == "-export_comparison-":
@@ -1652,7 +1722,9 @@ def main():
                             right_index=True,
                             how="left",
                         )
-                    df_out.to_csv(fname, sep="\t", index=True, index_label="Identifier")
+                    df_out.to_csv(
+                        fname, sep="\t", index=True, index_label="Identifier"
+                    )
                     # comparison[comb]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
 
         # if event_CCMPS == '-export_statistics-':
@@ -1715,7 +1787,9 @@ def main():
             )
         if event_CCMPS == "Open...":
             filename = sg.popup_get_file(
-                "Open Session", no_window=True, file_types=(("Numpy", "*.npy"),)
+                "Open Session",
+                no_window=True,
+                file_types=(("Numpy", "*.npy"),),
             )
             if filename:
                 (
@@ -1762,14 +1836,17 @@ def main():
                 ) = action.session_open(window_CCMPS, values_CCMPS, filename)
                 # window_CCMPS['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
                 window_CCMPS["-marker_fractkey-"].Update(
-                    values=["[IDENTIFIER]"] + list(fract_info), value=marker_fractkey
+                    values=["[IDENTIFIER]"] + list(fract_info),
+                    value=marker_fractkey,
                 )
         if event_CCMPS == "New":
             sure = sg.popup_yes_no(
                 "Are you sure to close the session and start a new one?"
             )
             if sure == "Yes":
-                fract_paths, fract_tables, fract_data, fract_pos = action.resetinput()
+                fract_paths, fract_tables, fract_data, fract_pos = (
+                    action.resetinput()
+                )
                 action.fract_clearinput(window_CCMPS)
                 action.tp_clearinput(window_CCMPS)
                 fract_indata, fract_identifiers = action.reset_infract()
@@ -1789,9 +1866,11 @@ def main():
                 tp_preparams = PPMS.tp_default()
                 marker_sets = marker_conv = fract_full = fract_full_up = (
                     fract_marker
-                ) = fract_marker_vis = fract_marker_up = fract_mixed_up = fract_test = (
-                    svm_marker
-                ) = svm_test = svm_metrics = learning_xyz = results = comparison = {}
+                ) = fract_marker_vis = fract_marker_up = fract_mixed_up = (
+                    fract_test
+                ) = svm_marker = svm_test = svm_metrics = learning_xyz = (
+                    results
+                ) = comparison = {}
                 window_CCMPS["-marker_list-"].Update(values=[])
                 window_CCMPS["-marker_key-"].Update(values=[])
                 window_CCMPS["-marker_class-"].Update(values=[])

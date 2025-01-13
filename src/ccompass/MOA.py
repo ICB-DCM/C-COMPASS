@@ -25,19 +25,25 @@ def most_frequent_or_nan(row):
 def compare_lists(list1, list2):
     # Function to compare two lists and handle NaNs
     return sum(
-        abs(a - b) for a, b in zip(list1, list2) if not pd.isna(a) and not pd.isna(b)
+        abs(a - b)
+        for a, b in zip(list1, list2)
+        if not pd.isna(a) and not pd.isna(b)
     )
 
 
 def is_all_nan(list_):
     return (
-        all(np.isnan(x) for x in list_) if isinstance(list_, list) else np.isnan(list_)
+        all(np.isnan(x) for x in list_)
+        if isinstance(list_, list)
+        else np.isnan(list_)
     )
 
 
 def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
     cc_columns = [
-        col for col in df1.columns if col.startswith(prefix) and col in df2.columns
+        col
+        for col in df1.columns
+        if col.startswith(prefix) and col in df2.columns
     ]
     common_indices = df1.index.intersection(df2.index)
 
@@ -81,7 +87,9 @@ def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
 
                 # Calculating Cohen's d
                 diff = [
-                    value_1 - value_2 for value_1 in list_df1 for value_2 in list_df2
+                    value_1 - value_2
+                    for value_1 in list_df1
+                    for value_2 in list_df2
                 ]
                 mean_diff = np.mean(diff)
                 std_diff = np.std(diff, ddof=1)
@@ -116,7 +124,9 @@ def impute_data(df, colname, newcol):
 
     # Apply the imputation for 0 values
     df[newcol] = df[colname].apply(
-        lambda x: np.random.normal(mean_imp, sigma, 1)[0] if x == -np.inf else x
+        lambda x: np.random.normal(mean_imp, sigma, 1)[0]
+        if x == -np.inf
+        else x
     )
 
     return df
@@ -144,7 +154,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         combined_index = df.index
 
         for subcon in subcons:
-            combined_index = combined_index.union(fract_data["class"][subcon].index)
+            combined_index = combined_index.union(
+                fract_data["class"][subcon].index
+            )
 
         results[condition] = {}
         results[condition]["metrics"] = pd.DataFrame(index=combined_index)
@@ -170,11 +182,13 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
 
         for subcon in subcons:
             marker_df = learning_xyz[subcon]["W_train_df"][
-                ~learning_xyz[subcon]["W_train_df"].index.duplicated(keep="first")
+                ~learning_xyz[subcon]["W_train_df"].index.duplicated(
+                    keep="first"
+                )
             ]
-            results[condition]["metrics"]["marker"] = results[condition]["metrics"][
-                "marker"
-            ].fillna(marker_df)
+            results[condition]["metrics"]["marker"] = results[condition][
+                "metrics"
+            ]["marker"].fillna(marker_df)
 
         ## add SVM results:
         results[condition]["SVM"] = {}
@@ -196,7 +210,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
             for roundn in learning_xyz[subcon]["w_full_prob_df"]:
                 learning_xyz[subcon]["w_full_combined"] = pd.merge(
                     learning_xyz[subcon]["w_full_combined"],
-                    learning_xyz[subcon]["w_full_prob_df"][roundn]["SVM_winner"],
+                    learning_xyz[subcon]["w_full_prob_df"][roundn][
+                        "SVM_winner"
+                    ],
                     left_index=True,
                     right_index=True,
                     how="left",
@@ -209,7 +225,8 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                     )
                 ]
                 learning_xyz[subcon]["w_full_combined"].rename(
-                    columns={"SVM_winner": roundn + "_SVM_winner"}, inplace=True
+                    columns={"SVM_winner": roundn + "_SVM_winner"},
+                    inplace=True,
                 )
                 learning_xyz[subcon]["w_full_prob_combined"] = pd.merge(
                     learning_xyz[subcon]["w_full_prob_combined"],
@@ -218,12 +235,12 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                     right_index=True,
                     how="left",
                 )
-                learning_xyz[subcon]["w_full_prob_combined"] = learning_xyz[subcon][
-                    "w_full_prob_combined"
-                ].loc[
-                    ~learning_xyz[subcon]["w_full_prob_combined"].index.duplicated(
-                        keep="first"
-                    )
+                learning_xyz[subcon]["w_full_prob_combined"] = learning_xyz[
+                    subcon
+                ]["w_full_prob_combined"].loc[
+                    ~learning_xyz[subcon][
+                        "w_full_prob_combined"
+                    ].index.duplicated(keep="first")
                 ]
                 learning_xyz[subcon]["w_full_prob_combined"].rename(
                     columns={"SVM_prob": roundn + "_SVM_prob"}, inplace=True
@@ -233,11 +250,13 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                 lambda row: row.nunique() == 1, axis=1
             )
             learning_xyz[subcon]["w_full_combined"]["SVM_winner"] = np.where(
-                SVM_equal, learning_xyz[subcon]["w_full_combined"].iloc[:, 0], np.nan
+                SVM_equal,
+                learning_xyz[subcon]["w_full_combined"].iloc[:, 0],
+                np.nan,
             )
-            learning_xyz[subcon]["w_full_prob_combined"]["SVM_prob"] = learning_xyz[
-                subcon
-            ]["w_full_prob_combined"].mean(axis=1)
+            learning_xyz[subcon]["w_full_prob_combined"]["SVM_prob"] = (
+                learning_xyz[subcon]["w_full_prob_combined"].mean(axis=1)
+            )
 
             learning_xyz[subcon]["w_full_combined"] = pd.merge(
                 learning_xyz[subcon]["w_full_combined"],
@@ -249,10 +268,13 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
             learning_xyz[subcon]["w_full_combined"] = learning_xyz[subcon][
                 "w_full_combined"
             ].loc[
-                ~learning_xyz[subcon]["w_full_combined"].index.duplicated(keep="first")
+                ~learning_xyz[subcon]["w_full_combined"].index.duplicated(
+                    keep="first"
+                )
             ]
             learning_xyz[subcon]["w_full_combined"].loc[
-                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].isna(), "SVM_prob"
+                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].isna(),
+                "SVM_prob",
             ] = np.nan
 
             results[condition]["SVM"]["winner_combined"] = pd.merge(
@@ -262,9 +284,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                 right_index=True,
                 how="left",
             )
-            results[condition]["SVM"]["winner_combined"] = results[condition]["SVM"][
-                "winner_combined"
-            ].loc[
+            results[condition]["SVM"]["winner_combined"] = results[condition][
+                "SVM"
+            ]["winner_combined"].loc[
                 ~results[condition]["SVM"]["winner_combined"].index.duplicated(
                     keep="first"
                 )
@@ -276,9 +298,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                 right_index=True,
                 how="left",
             )
-            results[condition]["SVM"]["prob_combined"] = results[condition]["SVM"][
-                "prob_combined"
-            ].loc[
+            results[condition]["SVM"]["prob_combined"] = results[condition][
+                "SVM"
+            ]["prob_combined"].loc[
                 ~results[condition]["SVM"]["prob_combined"].index.duplicated(
                     keep="first"
                 )
@@ -293,7 +315,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         )
         SVM_major.name = "SVM_subwinner"
         results[condition]["metrics"]["SVM_winner"] = np.where(
-            SVM_equal, results[condition]["SVM"]["winner_combined"].iloc[:, 0], np.nan
+            SVM_equal,
+            results[condition]["SVM"]["winner_combined"].iloc[:, 0],
+            np.nan,
         )
         results[condition]["metrics"] = pd.merge(
             results[condition]["metrics"],
@@ -310,8 +334,12 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
 
         ## add CClist:
         for subcon in subcons:
-            stacked_arrays = np.stack(list(learning_xyz[subcon]["z_full"].values()))
-            learning_xyz[subcon]["z_full_mean"] = np.mean(stacked_arrays, axis=0)
+            stacked_arrays = np.stack(
+                list(learning_xyz[subcon]["z_full"].values())
+            )
+            learning_xyz[subcon]["z_full_mean"] = np.mean(
+                stacked_arrays, axis=0
+            )
             learning_xyz[subcon]["z_full_mean_df"] = pd.DataFrame(
                 learning_xyz[subcon]["z_full_mean"],
                 index=learning_xyz[subcon]["x_full_df"].index,
@@ -357,15 +385,19 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         ## add CC:
         for classname in classnames:
             # results[condition]['metrics']['CC_'+classname] = results[condition]['metrics']['CClist_'+classname].apply(lambda x: np.mean(x) if x else np.nan)
-            results[condition]["metrics"]["CC_" + classname] = results[condition][
-                "metrics"
-            ]["CClist_" + classname].apply(lambda x: np.nanmean(x) if x else np.nan)
+            results[condition]["metrics"]["CC_" + classname] = results[
+                condition
+            ]["metrics"]["CClist_" + classname].apply(
+                lambda x: np.nanmean(x) if x else np.nan
+            )
         cc_cols = [
             col
             for col in results[condition]["metrics"].columns
             if col.startswith("CC_")
         ]
-        cc_sums = results[condition]["metrics"][cc_cols].sum(axis=1, skipna=True)
+        cc_sums = results[condition]["metrics"][cc_cols].sum(
+            axis=1, skipna=True
+        )
         # cc_sums = results[condition]['metrics'][cc_cols].applymap(safe_sum)
         results[condition]["metrics"][cc_cols] = results[condition]["metrics"][
             cc_cols
@@ -381,7 +413,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         ]
         max_col = cc_columns.idxmax(axis=1)
         max_col = max_col.astype(str)
-        results[condition]["metrics"]["NN_winner"] = max_col.str.replace("CC_", "")
+        results[condition]["metrics"]["NN_winner"] = max_col.str.replace(
+            "CC_", ""
+        )
 
         # ---------------
         ### ## add CA:
@@ -407,24 +441,27 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
                 & (results[condition]["metrics"]["marker"].isna() == False)
             ][["CC_" + class_act]]
             thresh = np.percentile(
-                nonmarker_z["CC_" + class_act].tolist(), NN_params["reliability"]
+                nonmarker_z["CC_" + class_act].tolist(),
+                NN_params["reliability"],
             )
-            results[condition]["metrics"]["fCC_" + class_act] = results[condition][
-                "metrics"
-            ]["CC_" + class_act]
+            results[condition]["metrics"]["fCC_" + class_act] = results[
+                condition
+            ]["metrics"]["CC_" + class_act]
             results[condition]["metrics"].loc[
                 results[condition]["metrics"]["fCC_" + class_act] < thresh,
                 "fCC_" + class_act,
             ] = 0.0
 
         fcc_cols = [
-            col for col in results[condition]["metrics"] if col.startswith("fCC_")
+            col
+            for col in results[condition]["metrics"]
+            if col.startswith("fCC_")
         ]
         fcc_sums = results[condition]["metrics"][fcc_cols].sum(axis=1)
         # fcc_sums[fcc_sums == 0] = 1
-        results[condition]["metrics"][fcc_cols] = results[condition]["metrics"][
-            fcc_cols
-        ].div(fcc_sums, axis=0)
+        results[condition]["metrics"][fcc_cols] = results[condition][
+            "metrics"
+        ][fcc_cols].div(fcc_sums, axis=0)
 
         ## add fNN_winner:
         fcc_columns = results[condition]["metrics"][
@@ -436,7 +473,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         ]
         fmax_col = fcc_columns.idxmax(axis=1)
         fmax_col = fmax_col.astype(str)
-        results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace("fCC_", "")
+        results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace(
+            "fCC_", ""
+        )
 
         # ---------------
         ## add nCClist:
@@ -492,7 +531,8 @@ def global_comparison(results):
     for comb in combinations:
         print(comb)
         classnames = list(
-            set(results[comb[0]]["classnames"]) & set(results[comb[1]]["classnames"])
+            set(results[comb[0]]["classnames"])
+            & set(results[comb[1]]["classnames"])
         )
         comparison[comb] = {}
 
@@ -530,7 +570,9 @@ def global_comparison(results):
             )
 
         rl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("RL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("RL_")
         ]
         comparison[comb]["metrics"]["RLS"] = (
             comparison[comb]["metrics"][rl_cols].abs().sum(axis=1)
@@ -550,14 +592,18 @@ def global_comparison(results):
                 - results[comb[0]]["metrics"]["fCC_" + classname]
             )
         frl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("fRL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("fRL_")
         ]
         comparison[comb]["metrics"]["fRLS"] = (
             comparison[comb]["metrics"][frl_cols].abs().sum(axis=1)
         )
 
-        test_df, common_indices, ncc_columns = perform_mann_whitney_t_tests_per_cell(
-            metrics_own, metrics_other, "CClist_"
+        test_df, common_indices, ncc_columns = (
+            perform_mann_whitney_t_tests_per_cell(
+                metrics_own, metrics_other, "CClist_"
+            )
         )
         for classname in classnames:
             test_df.rename(
@@ -588,14 +634,20 @@ def global_comparison(results):
         RLS_null = {}
         for ID in common_indices:
             cclists_own = [
-                metrics_own.loc[ID, "CClist_" + classname] for classname in classnames
+                metrics_own.loc[ID, "CClist_" + classname]
+                for classname in classnames
             ]
             cclists_other = [
-                metrics_other.loc[ID, "CClist_" + classname] for classname in classnames
+                metrics_other.loc[ID, "CClist_" + classname]
+                for classname in classnames
             ]
 
-            cclists_own_transposed = [list(values) for values in zip(*cclists_own)]
-            cclists_other_transposed = [list(values) for values in zip(*cclists_other)]
+            cclists_own_transposed = [
+                list(values) for values in zip(*cclists_own)
+            ]
+            cclists_other_transposed = [
+                list(values) for values in zip(*cclists_other)
+            ]
 
             RLS_results[ID] = []
             RLS_null[ID] = []
@@ -609,7 +661,8 @@ def global_comparison(results):
             for i in range(len(cclists_other_transposed)):
                 for j in range(i + 1, len(cclists_other_transposed)):
                     null_result = compare_lists(
-                        cclists_other_transposed[i], cclists_other_transposed[j]
+                        cclists_other_transposed[i],
+                        cclists_other_transposed[j],
                     )
                     RLS_null[ID].append(null_result)
 
@@ -634,7 +687,8 @@ def global_comparison(results):
                 if (
                     is_all_nan(comparison[comb]["RLS_results"].loc[index])
                     or is_all_nan(comparison[comb]["RLS_null"].loc[index])
-                    or len(set(comparison[comb]["RLS_results"].loc[index])) == 1
+                    or len(set(comparison[comb]["RLS_results"].loc[index]))
+                    == 1
                     or len(set(comparison[comb]["RLS_null"].loc[index])) == 1
                 ):
                     comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
@@ -644,7 +698,9 @@ def global_comparison(results):
                         comparison[comb]["RLS_null"].loc[index],
                         alternative="two-sided",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = p_value_u
+                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = (
+                        p_value_u
+                    )
             else:
                 comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
@@ -756,9 +812,9 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 (results[condition]["metrics"]["NN_winner"] == classname)
                 & (~results[condition]["metrics"]["TPA"].isnull())
             ]
-            results[condition]["metrics"].loc[results_class.index, "CA_relevant"] = (
-                "yes"
-            )
+            results[condition]["metrics"].loc[
+                results_class.index, "CA_relevant"
+            ] = "yes"
             results[condition]["class_abundance"][classname] = {}
             results[condition]["class_abundance"][classname]["CA"] = np.median(
                 results_class["TPA"]
@@ -770,9 +826,9 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
         print("adding CC...")
         ## add nCClist:
         for classname in classnames:
-            results[condition]["metrics"]["nCClist_" + classname] = results[condition][
-                "metrics"
-            ]["CClist_" + classname].apply(
+            results[condition]["metrics"]["nCClist_" + classname] = results[
+                condition
+            ]["metrics"]["CClist_" + classname].apply(
                 lambda lst: [
                     x * results[condition]["class_abundance"][classname]["CA"]
                     if not np.isnan(x)
@@ -790,13 +846,15 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
             )
         # normalize:
         nCC_cols = [
-            col for col in results[condition]["metrics"] if col.startswith("nCC_")
+            col
+            for col in results[condition]["metrics"]
+            if col.startswith("nCC_")
         ]
         nCC_sums = results[condition]["metrics"][nCC_cols].sum(axis=1)
         nCC_sums[nCC_sums == 0] = 1
-        results[condition]["metrics"][nCC_cols] = results[condition]["metrics"][
-            nCC_cols
-        ].div(nCC_sums, axis=0)
+        results[condition]["metrics"][nCC_cols] = results[condition][
+            "metrics"
+        ][nCC_cols].div(nCC_sums, axis=0)
 
         print("adding CPA...")
         ## add CPA
@@ -834,7 +892,9 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
 
         print("calculating nRL values...")
         nrl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("nRL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("nRL_")
         ]
         comparison[comb]["metrics"]["nRLS"] = (
             comparison[comb]["metrics"][nrl_cols].abs().sum(axis=1)
@@ -844,14 +904,17 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
         nRLS_null = {}
         for ID in common_indices:
             ncclists_own = [
-                metrics_own.loc[ID, "nCClist_" + classname] for classname in classnames
+                metrics_own.loc[ID, "nCClist_" + classname]
+                for classname in classnames
             ]
             ncclists_other = [
                 metrics_other.loc[ID, "nCClist_" + classname]
                 for classname in classnames
             ]
 
-            ncclists_own_transposed = [list(values) for values in zip(*ncclists_own)]
+            ncclists_own_transposed = [
+                list(values) for values in zip(*ncclists_own)
+            ]
             ncclists_other_transposed = [
                 list(values) for values in zip(*ncclists_other)
             ]
@@ -868,7 +931,8 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
             for i in range(len(ncclists_other_transposed)):
                 for j in range(i + 1, len(ncclists_other_transposed)):
                     null_result = compare_lists(
-                        ncclists_other_transposed[i], ncclists_other_transposed[j]
+                        ncclists_other_transposed[i],
+                        ncclists_other_transposed[j],
                     )
                     nRLS_null[ID].append(null_result)
 
@@ -893,7 +957,8 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 if (
                     is_all_nan(comparison[comb]["nRLS_results"].loc[index])
                     or is_all_nan(comparison[comb]["nRLS_null"].loc[index])
-                    or len(set(comparison[comb]["nRLS_results"].loc[index])) == 1
+                    or len(set(comparison[comb]["nRLS_results"].loc[index]))
+                    == 1
                     or len(set(comparison[comb]["nRLS_null"].loc[index])) == 1
                 ):
                     comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
@@ -903,7 +968,9 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                         comparison[comb]["nRLS_null"].loc[index],
                         alternative="two-sided",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = p_value_u
+                    comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = (
+                        p_value_u
+                    )
             else:
                 comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
@@ -955,7 +1022,9 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
 def class_reset(results, comparison):
     for condition in results:
         results[condition]["class_abundance"] = {}
-        results[condition]["metrics"].drop(["TPA", "CA_relevant"], axis=1, inplace=True)
+        results[condition]["metrics"].drop(
+            ["TPA", "CA_relevant"], axis=1, inplace=True
+        )
 
         classnames = results[condition]["classnames"]
         for classname in classnames:

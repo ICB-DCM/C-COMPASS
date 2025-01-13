@@ -257,7 +257,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                                         disabled=True,
                                         key="--min_count--",
                                     ),
-                                    sg.Text(" replicates", text_color="light grey"),
+                                    sg.Text(
+                                        " replicates", text_color="light grey"
+                                    ),
                                 ],
                                 [
                                     sg.Checkbox(
@@ -450,7 +452,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 border_width=2,
                 visible=False,
             ),
-            sg.Text("ready...", key="--status--", visible=False, font=("Arial", 8)),
+            sg.Text(
+                "ready...", key="--status--", visible=False, font=("Arial", 8)
+            ),
         ],
         [
             sg.InputText(
@@ -462,7 +466,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
         ],
     ]
 
-    window_NPC = sg.Window("Normalized Profile Creator", layout_NPC, size=(1200, 600))
+    window_NPC = sg.Window(
+        "Normalized Profile Creator", layout_NPC, size=(1200, 600)
+    )
 
     # -----------------------------------------------------------------------------
     ### RUN GUI:
@@ -487,7 +493,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
         if event_NPC == "--input_remove--":  # Remove Button
             if window_NPC["--input_box--"].get_indexes():
                 selected = window_NPC["--input_box--"].get_indexes()[0]
-                rempath = window_NPC["--input_box--"].get_list_values()[selected]
+                rempath = window_NPC["--input_box--"].get_list_values()[
+                    selected
+                ]
                 input_paths.remove(rempath)
                 window_NPC["--input_box--"].Update(values=input_paths)
 
@@ -548,7 +556,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
 
         if event_NPC == "--input_open--":  # open input information
             filename = sg.popup_get_file(
-                "Open Settings", no_window=True, file_types=(("Numpy", "*.npy"),)
+                "Open Settings",
+                no_window=True,
+                file_types=(("Numpy", "*.npy"),),
             )
             if filename:
                 file = np.load(filename, allow_pickle="TRUE").item()
@@ -626,7 +636,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 window_NPC[i].Update(disabled=True)
             window_NPC["--input_box--"].Update(values=[])
 
-        if event_NPC == "--definition_path--":  # Buttons for condition definition
+        if (
+            event_NPC == "--definition_path--"
+        ):  # Buttons for condition definition
             window_NPC["--definition_table--"].Update(
                 values=tables_all[values_NPC["--definition_path--"]]
             )
@@ -674,7 +686,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
             pos = values_NPC["--definition_table--"]
             if pos:
                 if len(pos) > 1:
-                    messagebox.showerror("Error", "Please set only one Identifier!")
+                    messagebox.showerror(
+                        "Error", "Please set only one Identifier!"
+                    )
                 elif len(pos) == 1:
                     path = values_NPC["--definition_path--"]
                     table = tables_all[path]
@@ -736,21 +750,27 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
             window_NPC["--separate--"].Update(value=False)
             window_NPC["--scale2_0--"].Update(disabled=False, value=True)
             window_NPC["--scale2_1--"].Update(disabled=False, value=False)
-            window_NPC["--correl_con_active--"].Update(disabled=False, value=True)
+            window_NPC["--correl_con_active--"].Update(
+                disabled=False, value=True
+            )
         if event_NPC == "--concat--":
             window_NPC["--concat--"].Update(value=True)
             window_NPC["--median--"].Update(value=False)
             window_NPC["--separate--"].Update(value=False)
             window_NPC["--scale2_0--"].Update(disabled=False, value=False)
             window_NPC["--scale2_1--"].Update(disabled=True, value=False)
-            window_NPC["--correl_con_active--"].Update(disabled=True, value=False)
+            window_NPC["--correl_con_active--"].Update(
+                disabled=True, value=False
+            )
         if event_NPC == "--separate--":
             window_NPC["--separate--"].Update(value=True)
             window_NPC["--median--"].Update(value=False)
             window_NPC["--concat--"].Update(value=False)
             window_NPC["--scale2_0--"].Update(disabled=False, value=False)
             window_NPC["--scale2_1--"].Update(disabled=False, value=False)
-            window_NPC["--correl_con_active--"].Update(disabled=True, value=False)
+            window_NPC["--correl_con_active--"].Update(
+                disabled=True, value=False
+            )
 
         if event_NPC == "--scale2_0--":
             if values_NPC["--scale2_0--"] == True:
@@ -761,35 +781,55 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
 
         if event_NPC == "--preset--":
             if values_NPC["--preset--"] == "for plots":
-                window_NPC["--scale1_condition--"].Update(value=False, disabled=False)
-                window_NPC["--scale1_replicate--"].Update(value=True, disabled=False)
+                window_NPC["--scale1_condition--"].Update(
+                    value=False, disabled=False
+                )
+                window_NPC["--scale1_replicate--"].Update(
+                    value=True, disabled=False
+                )
                 window_NPC["--min_active--"].Update(value=True)
                 window_NPC["--min_count--"].Update(value=3)
                 window_NPC["--missing_active--"].Update(value=True)
                 window_NPC["--missing_number--"].Update(value=1)
-                window_NPC["--correl_rep_active--"].Update(value=True, disabled=False)
+                window_NPC["--correl_rep_active--"].Update(
+                    value=True, disabled=False
+                )
                 window_NPC["--median--"].Update(value=True, disabled=False)
                 window_NPC["--concat--"].Update(value=False, disabled=False)
                 window_NPC["--separate--"].Update(value=False, disabled=False)
                 window_NPC["--scale2_0--"].Update(value=True, disabled=False)
                 window_NPC["--scale2_1--"].Update(value=False, disabled=False)
-                window_NPC["--zeros_active--"].Update(value=True, disabled=False)
-                window_NPC["--correl_con_active--"].Update(value=True, disabled=False)
+                window_NPC["--zeros_active--"].Update(
+                    value=True, disabled=False
+                )
+                window_NPC["--correl_con_active--"].Update(
+                    value=True, disabled=False
+                )
             if values_NPC["--preset--"] == "for prediction":
-                window_NPC["--scale1_condition--"].Update(value=False, disabled=True)
-                window_NPC["--scale1_replicate--"].Update(value=True, disabled=True)
+                window_NPC["--scale1_condition--"].Update(
+                    value=False, disabled=True
+                )
+                window_NPC["--scale1_replicate--"].Update(
+                    value=True, disabled=True
+                )
                 window_NPC["--min_active--"].Update(value=True)
                 window_NPC["--min_count--"].Update(value=3)
                 window_NPC["--missing_active--"].Update(value=True)
                 window_NPC["--missing_number--"].Update(value=1)
-                window_NPC["--correl_rep_active--"].Update(value=False, disabled=True)
+                window_NPC["--correl_rep_active--"].Update(
+                    value=False, disabled=True
+                )
                 window_NPC["--median--"].Update(value=False, disabled=True)
                 window_NPC["--concat--"].Update(value=True, disabled=True)
                 window_NPC["--separate--"].Update(value=False, disabled=True)
                 window_NPC["--scale2_0--"].Update(value=False, disabled=True)
                 window_NPC["--scale2_1--"].Update(value=False, disabled=True)
-                window_NPC["--zeros_active--"].Update(value=False, disabled=True)
-                window_NPC["--correl_con_active--"].Update(value=False, disabled=True)
+                window_NPC["--zeros_active--"].Update(
+                    value=False, disabled=True
+                )
+                window_NPC["--correl_con_active--"].Update(
+                    value=False, disabled=True
+                )
 
         if event_NPC == sg.WIN_CLOSED:
             data_con_out = data_con_in
@@ -800,19 +840,19 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
         if event_NPC == "--exit--":
             try:
                 data_con_out = data_con
-            except:
+            except Exception:
                 data_con_out = data_con_in
             try:
                 params_out = params
-            except:
+            except Exception:
                 params_out = params_in
             try:
                 stats_out = stats
-            except:
+            except Exception:
                 stats_out = stats_in
             try:
                 data_con_std_out = data_con_std
-            except:
+            except Exception:
                 data_con_std_out = data_con_std_in
             break
 
@@ -833,7 +873,12 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                     )
                 export_name = "AllConditions"
                 export_path = (
-                    export_folder + time + experiment + " " + export_name + ".txt"
+                    export_folder
+                    + time
+                    + experiment
+                    + " "
+                    + export_name
+                    + ".txt"
                 )
                 data_export.to_csv(
                     export_path,
@@ -895,7 +940,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # create dataset:
                 # ------------------------------------------------
                 state += 1
-                refresh_status(window_NPC, state, fullstate, "creating dataset...")
+                refresh_status(
+                    window_NPC, state, fullstate, "creating dataset..."
+                )
                 # ------------------------------------------------
                 data_con_abs, data_keep, params = create_dataset(
                     data_all, tables_all, identifier, conditions, values_NPC
@@ -922,7 +969,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "filtering by empty profiles..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "filtering by empty profiles...",
                 )
                 # ------------------------------------------------
                 data_con_fempty = filter_empty(data_con)
@@ -932,18 +982,26 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "filtering by missing values..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "filtering by missing values...",
                 )
                 # ------------------------------------------------
                 if values_NPC["--missing_active--"] == True:
-                    data_con_fmissing = filter_missing(data_con, stats, values_NPC)
+                    data_con_fmissing = filter_missing(
+                        data_con, stats, values_NPC
+                    )
                     data_con = copy.deepcopy(data_con_fmissing)
 
                 # filter by count over replicates:
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "filtering by replicate coverage..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "filtering by replicate coverage...",
                 )
                 # ------------------------------------------------
                 if values_NPC["--min_active--"] == True:
@@ -959,7 +1017,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "finding and listing fractions..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "finding and listing fractions...",
                 )
                 # ------------------------------------------------
                 fracts_con, fracts_count, fracts_corr = list_samples(data_con)
@@ -968,7 +1029,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "calculating inner correlations..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "calculating inner correlations...",
                 )
                 # ------------------------------------------------
                 icorr = calculate_icorr(data_con, fracts_corr, protlist_con)
@@ -977,7 +1041,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "removing worst correlations..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "removing worst correlations...",
                 )
                 # ------------------------------------------------
                 if values_NPC["--correl_rep_active--"] == True:
@@ -996,7 +1063,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                         "re-calculating inner correlations...",
                     )
                     # ------------------------------------------------
-                    icorr = calculate_icorr(data_con, fracts_corr, protlist_con)
+                    icorr = calculate_icorr(
+                        data_con, fracts_corr, protlist_con
+                    )
                 else:
                     state += 1
 
@@ -1008,7 +1077,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                     # ------------------------------------------------
                     state += 1
                     refresh_status(
-                        window_NPC, state, fullstate, "creating median profiles..."
+                        window_NPC,
+                        state,
+                        fullstate,
+                        "creating median profiles...",
                     )
                     # ------------------------------------------------
                     data_con_median, data_con_std = create_median(
@@ -1037,7 +1109,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                     # ------------------------------------------------
                     state += 1
                     refresh_status(
-                        window_NPC, state, fullstate, "creating separated profiles..."
+                        window_NPC,
+                        state,
+                        fullstate,
+                        "creating separated profiles...",
                     )
                     # ------------------------------------------------
                     data_con_sep = create_separate(data_con)
@@ -1046,7 +1121,9 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # scale data by area:
                 # ------------------------------------------------
                 state += 1
-                refresh_status(window_NPC, state, fullstate, "scaling profiles...")
+                refresh_status(
+                    window_NPC, state, fullstate, "scaling profiles..."
+                )
                 # ------------------------------------------------
                 if values_NPC["--scale2_1--"] == True:
                     data_con_area = scale_area(data_con)
@@ -1056,7 +1133,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "removing baseline profiles..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "removing baseline profiles...",
                 )
                 # ------------------------------------------------
                 if values_NPC["--zeros_active--"] == True:
@@ -1067,7 +1147,10 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
                 # ------------------------------------------------
                 state += 1
                 refresh_status(
-                    window_NPC, state, fullstate, "calculating outer correlations..."
+                    window_NPC,
+                    state,
+                    fullstate,
+                    "calculating outer correlations...",
                 )
                 # ------------------------------------------------
                 if values_NPC["--correl_con_active--"] == True:
@@ -1084,13 +1167,21 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
 
             else:
                 if not is_ident:
-                    messagebox.showerror("Error", "At least one Identifier is missing.")
+                    messagebox.showerror(
+                        "Error", "At least one Identifier is missing."
+                    )
                 elif not is_con:
-                    messagebox.showerror("Error", "At least one Condition is missing.")
+                    messagebox.showerror(
+                        "Error", "At least one Condition is missing."
+                    )
                 elif not is_rep:
-                    messagebox.showerror("Error", "At least one Replicate is missing.")
+                    messagebox.showerror(
+                        "Error", "At least one Replicate is missing."
+                    )
                 elif not is_fract:
-                    messagebox.showerror("Error", "At least one Fraction is missing.")
+                    messagebox.showerror(
+                        "Error", "At least one Fraction is missing."
+                    )
 
             stats["additional info"] = data_keep
             stats["InnerCorrelations"] = icorr

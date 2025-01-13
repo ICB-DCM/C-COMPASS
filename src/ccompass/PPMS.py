@@ -27,7 +27,11 @@ def fract_default():
             "zeros": True,
             "combination": "median",
         },
-        "global": {"missing": [True, "1"], "minrep": [True, "2"], "outcorr": False},
+        "global": {
+            "missing": [True, "1"],
+            "minrep": [True, "2"],
+            "outcorr": False,
+        },
     }
     return params_default
 
@@ -453,7 +457,10 @@ def PPMS_exec_marker(params_old):
         [
             sg.Text("selection:\t"),
             sg.Checkbox(
-                "unite\t", key="--PMM_unite--", default=what_unite, enable_events=True
+                "unite\t",
+                key="--PMM_unite--",
+                default=what_unite,
+                enable_events=True,
             ),
             sg.Checkbox(
                 "intersect",
@@ -745,7 +752,11 @@ def PPMS_exec_NN(params_old):
                 enable_events=True,
             ),
             sg.Checkbox(
-                "sgd", default=issgd, key="--sgd--", disabled=False, enable_events=True
+                "sgd",
+                default=issgd,
+                key="--sgd--",
+                disabled=False,
+                enable_events=True,
             ),
         ],
         [
@@ -830,10 +841,14 @@ def PPMS_exec_NN(params_old):
             window_NNP["--upsampling_method--"].Update(
                 disabled=not values_NNP["--upsampling--"]
             )
-            window_NNP["--noise--"].Update(disabled=not values_NNP["--upsampling--"])
+            window_NNP["--noise--"].Update(
+                disabled=not values_NNP["--upsampling--"]
+            )
 
         if event_NNP == "--upsampling_method--":
-            NN_params["upsampling_method"] = values_NNP["--upsampling_method--"]
+            NN_params["upsampling_method"] = values_NNP[
+                "--upsampling_method--"
+            ]
 
         if event_NNP == "--noise--":
             NN_params["upsampling_noise"] = values_NNP["--noise--"]
@@ -845,7 +860,9 @@ def PPMS_exec_NN(params_old):
             NN_params["mixed_part"] = values_NNP["--mixstep--"]
 
         if event_NNP == "--optimization_method--":
-            NN_params["NN_optimization"] = values_NNP["--optimization_method--"]
+            NN_params["NN_optimization"] = values_NNP[
+                "--optimization_method--"
+            ]
 
         if event_NNP == "--dense_activation--":
             NN_params["NN_activation"] = values_NNP["--dense_activation--"]

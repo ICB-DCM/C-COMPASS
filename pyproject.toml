@@ -28,3 +28,10 @@ ccompass = "ccompass.CCMPS:main"
 
 [project.optional-dependencies]
 dev = ["pre-commit>=3"]
+
+
+[tool.ruff]
+line-length = 79
+lint.ignore = [
+    "E712",  # Avoid equality comparisons to True/False
+]

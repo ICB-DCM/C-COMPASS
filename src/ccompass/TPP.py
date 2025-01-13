@@ -13,13 +13,17 @@ from scipy.stats import pearsonr
 # ------------------------------------------------------------------------------
 
 
-def create_dataset(tp_indata, tp_tables, tp_identifiers, tp_conditions, window):
+def create_dataset(
+    tp_indata, tp_tables, tp_identifiers, tp_conditions, window
+):
     tp_conditions.remove("[IDENTIFIER]")
     dataset = {}
     data = {}
     idents = []
     for path in tp_tables:
-        idents = list(set(idents + list(tp_indata[path][tp_identifiers[path]])))
+        idents = list(
+            set(idents + list(tp_indata[path][tp_identifiers[path]]))
+        )
     for condition in tp_conditions:
         data_new = pd.DataFrame(index=idents)
         for path in tp_tables:
@@ -31,29 +35,43 @@ def create_dataset(tp_indata, tp_tables, tp_identifiers, tp_conditions, window):
                 if sample[1] == condition:
                     samplename = sample[0]
                     data[samplename] = tp_indata[path][sample[0]]
-                    data.set_index(tp_indata[path][tp_identifiers[path]], inplace=True)
+                    data.set_index(
+                        tp_indata[path][tp_identifiers[path]], inplace=True
+                    )
                     data_new = pd.merge(
-                        data_new, data, right_index=True, left_index=True, how="outer"
+                        data_new,
+                        data,
+                        right_index=True,
+                        left_index=True,
+                        how="outer",
                     )
                     if condition == "[KEEP]":
                         if samplename + "_x" in data_new.columns:
                             for element in list(data_new.index):
-                                if pd.isnull(data_new[samplename + "_x"][element]):
-                                    data_new[samplename + "_x"][element] = data_new[
-                                        samplename + "_y"
-                                    ][element]
-                                if pd.isnull(data_new[samplename + "_y"][element]):
-                                    data_new[samplename + "_y"][element] = data_new[
-                                        samplename + "_y"
-                                    ][element]
+                                if pd.isnull(
+                                    data_new[samplename + "_x"][element]
+                                ):
+                                    data_new[samplename + "_x"][element] = (
+                                        data_new[samplename + "_y"][element]
+                                    )
+                                if pd.isnull(
+                                    data_new[samplename + "_y"][element]
+                                ):
+                                    data_new[samplename + "_y"][element] = (
+                                        data_new[samplename + "_y"][element]
+                                    )
                         data_new = data_new.T.drop_duplicates().T
                         data_new.rename(
-                            {samplename + "_x": samplename}, axis=1, inplace=True
+                            {samplename + "_x": samplename},
+                            axis=1,
+                            inplace=True,
                         )
                     else:
                         data_new = data_new.rename(
                             columns={
-                                samplename: str(sample[1]) + "_Rep." + str(replicate)
+                                samplename: str(sample[1])
+                                + "_Rep."
+                                + str(replicate)
                             }
                         )
                         replicate += 1
@@ -85,7 +103,9 @@ def calculate_correlations(data):
     tp_icorr = {}
     for condition in data:
         corrs = []
-        data[condition].dropna(thresh=len(data[condition].columns), inplace=True)
+        data[condition].dropna(
+            thresh=len(data[condition].columns), inplace=True
+        )
         for rep_own in data[condition].columns.tolist():
             for rep_other in data[condition].columns.tolist():
                 if not rep_own == rep_other:
@@ -142,7 +162,9 @@ def normalize_data(data, window):
             q3 = np.percentile(data[condition][replicate], 75)
 
             data[condition][replicate] = data[condition][replicate].apply(
-                lambda x: (x - q2) / (q3 - q2) if x - q2 >= 0 else (x - q2) / (q2 - q1)
+                lambda x: (x - q2) / (q3 - q2)
+                if x - q2 >= 0
+                else (x - q2) / (q2 - q1)
             )
     return data
 
@@ -174,7 +196,10 @@ def TPP_exec(
                 [
                     [
                         sg.ProgressBar(
-                            60, orientation="h", size=(38, 25), key="--progress--"
+                            60,
+                            orientation="h",
+                            size=(38, 25),
+                            key="--progress--",
                         )
                     ],
                     [
@@ -247,9 +272,13 @@ def TPP_exec(
                     is_con = False
 
             if not is_ident:
-                messagebox.showerror("Error", "At least one Identifier is missing.")
+                messagebox.showerror(
+                    "Error", "At least one Identifier is missing."
+                )
             if not is_con:
-                messagebox.showerror("Error", "At least one Condition is missing.")
+                messagebox.showerror(
+                    "Error", "At least one Condition is missing."
+                )
             else:
                 window_TPP["--start--"].Update(disabled=True)
                 window_TPP["--cancel--"].Update(disabled=True)
@@ -263,14 +292,20 @@ def TPP_exec(
                 event_TPP, values_TPP = window_TPP.read(timeout=50)
 
                 tp_data, tp_info, tp_conditions = create_dataset(
-                    tp_indata, tp_tables, tp_identifiers, conditions, window_TPP
+                    tp_indata,
+                    tp_tables,
+                    tp_identifiers,
+                    conditions,
+                    window_TPP,
                 )
                 tp_intermediate["[0] abs"] = copy.deepcopy(tp_data)
 
                 # ---------------------------------------------------------------------
                 print("filtering by missing values...")
                 progress = 10
-                window_TPP["--status1--"].Update(value="filtering by missing values...")
+                window_TPP["--status1--"].Update(
+                    value="filtering by missing values..."
+                )
                 window_TPP["--progress--"].Update(progress)
                 event_TPP, values_TPP = window_TPP.read(timeout=50)
 
@@ -290,17 +325,23 @@ def TPP_exec(
                 # ---------------------------------------------------------------------
                 print("imputing MissingValues...")
                 progress = 30
-                window_TPP["--status1--"].Update(value="imputing MissingValues...")
+                window_TPP["--status1--"].Update(
+                    value="imputing MissingValues..."
+                )
                 window_TPP["--progress--"].Update(progress)
                 event_TPP, values_TPP = window_TPP.read(timeout=50)
 
-                tp_data = impute_data(tp_data, window_TPP, tp_preparams["imputation"])
+                tp_data = impute_data(
+                    tp_data, window_TPP, tp_preparams["imputation"]
+                )
                 tp_intermediate["[3] imputed"] = copy.deepcopy(tp_data)
 
                 # ---------------------------------------------------------------------
                 print("calculating correlations...")
                 progress = 40
-                window_TPP["--status1--"].Update(value="calculating correlations...")
+                window_TPP["--status1--"].Update(
+                    value="calculating correlations..."
+                )
                 window_TPP["--progress--"].Update(progress)
                 event_TPP, values_TPP = window_TPP.read(timeout=50)
 

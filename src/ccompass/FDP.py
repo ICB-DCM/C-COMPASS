@@ -39,24 +39,36 @@ def create_dataset(
                 if sample[1] == condition:
                     samplename = sample[0]
                     data[samplename] = input_data[path][sample[0]]
-                    data.set_index(input_data[path][identifiers[path]], inplace=True)
+                    data.set_index(
+                        input_data[path][identifiers[path]], inplace=True
+                    )
                     data_new = pd.merge(
-                        data_new, data, right_index=True, left_index=True, how="outer"
+                        data_new,
+                        data,
+                        right_index=True,
+                        left_index=True,
+                        how="outer",
                     )
                     if condition == "[KEEP]":
                         if samplename + "_x" in data_new.columns:
                             for element in list(data_new.index):
-                                if pd.isnull(data_new[samplename + "_x"][element]):
-                                    data_new[samplename + "_x"][element] = data_new[
-                                        samplename + "_y"
-                                    ][element]
-                                if pd.isnull(data_new[samplename + "_y"][element]):
-                                    data_new[samplename + "_y"][element] = data_new[
-                                        samplename + "_x"
-                                    ][element]
+                                if pd.isnull(
+                                    data_new[samplename + "_x"][element]
+                                ):
+                                    data_new[samplename + "_x"][element] = (
+                                        data_new[samplename + "_y"][element]
+                                    )
+                                if pd.isnull(
+                                    data_new[samplename + "_y"][element]
+                                ):
+                                    data_new[samplename + "_y"][element] = (
+                                        data_new[samplename + "_x"][element]
+                                    )
                         data_new = data_new.T.drop_duplicates().T
                         data_new.rename(
-                            {samplename + "_x": samplename}, axis=1, inplace=True
+                            {samplename + "_x": samplename},
+                            axis=1,
+                            inplace=True,
                         )
                     else:
                         data_new = data_new.rename(
@@ -81,7 +93,10 @@ def create_dataset(
                 suffix = sample[sample.rfind("_") + 1 :]
                 if suffix == rep:
                     data = pd.merge(
-                        data, data_new[sample], left_index=True, right_index=True
+                        data,
+                        data_new[sample],
+                        left_index=True,
+                        right_index=True,
                     )
             repdata[rep] = data
         dataset[condition] = repdata
@@ -99,7 +114,9 @@ def pre_post_scaling(data, how, window_FDP, progress):
             for replicate in data[condition]:
                 progress = progress + stepsize
                 window_FDP["--progress--"].Update(progress)
-                window_FDP["--status2--"].Update(" ".join([condition, replicate]))
+                window_FDP["--status2--"].Update(
+                    " ".join([condition, replicate])
+                )
                 event, values = window_FDP.read(timeout=50)
                 scaler = MinMaxScaler()
                 data[condition][replicate] = pd.DataFrame(
@@ -112,7 +129,9 @@ def pre_post_scaling(data, how, window_FDP, progress):
             for replicate in data[condition]:
                 progress = progress + stepsize
                 window_FDP["--progress--"].Update(progress)
-                window_FDP["--status2--"].Update(" ".join([condition, replicate]))
+                window_FDP["--status2--"].Update(
+                    " ".join([condition, replicate])
+                )
                 event, values = window_FDP.read(timeout=50)
                 data[condition][replicate] = data[condition][replicate].div(
                     data[condition][replicate].sum(axis=1), axis=0
@@ -148,7 +167,9 @@ def filter_count(data, mincount, window_FDP, progress):
             event, values = window_FDP.read(timeout=50)
             for index in list(data[condition][replicate].index):
                 if index not in peplist:
-                    data[condition][replicate].drop(index, axis=0, inplace=True)
+                    data[condition][replicate].drop(
+                        index, axis=0, inplace=True
+                    )
         protlist_remaining[condition] = peplist
     return data, protlist_remaining, progress
 
@@ -220,7 +241,10 @@ def calculate_icorr(data, fracts_corr, protlist_con, window_FDP):
 
                     correls[rep] = np.nan
                     for ID in protlist_con[condition]:
-                        if ID in repdata_own.index and ID in repdata_other.index:
+                        if (
+                            ID in repdata_own.index
+                            and ID in repdata_other.index
+                        ):
                             profile_own = repdata_own.loc[ID].tolist()
                             profile_other = repdata_other.loc[ID].tolist()
                             # print(len(profile_own))
@@ -239,9 +263,9 @@ def calculate_icorr(data, fracts_corr, protlist_con, window_FDP):
         icorr[condition] = icorr_sub
         icorr[condition].fillna(0.0, inplace=True)
         icorr_mean[condition] = pd.DataFrame()
-        icorr_mean[condition]["InnerCorrelation_" + condition] = icorr[condition].mean(
-            axis=1
-        )
+        icorr_mean[condition]["InnerCorrelation_" + condition] = icorr[
+            condition
+        ].mean(axis=1)
     return icorr, icorr_mean
 
 
@@ -262,7 +286,9 @@ def filter_corr(data, protlist_con, mincount, icorr, window_FDP):
                 corr_IDs.append(ID)
         check_IDs[condition] = corr_IDs
     for condition in data:
-        window_FDP["--status1--"].Update(value="removing worst InnerCorrelations...")
+        window_FDP["--status1--"].Update(
+            value="removing worst InnerCorrelations..."
+        )
         window_FDP["--status2--"].Update(condition)
         event, values = window_FDP.read(timeout=100)
         correls = icorr[condition]
@@ -316,10 +342,12 @@ def combine_median_std(data, fracts_con, window_FDP, progress):
                             how="outer",
                         )
             cols = [col for col in fract_vals.columns]
-            fract_vals[condition + "_median_" + prefix] = fract_vals[cols].median(
+            fract_vals[condition + "_median_" + prefix] = fract_vals[
+                cols
+            ].median(axis=1)
+            fract_std[condition + "_std_" + prefix] = fract_std[cols].std(
                 axis=1
             )
-            fract_std[condition + "_std_" + prefix] = fract_std[cols].std(axis=1)
             con_vals = pd.merge(
                 con_vals,
                 fract_vals[condition + "_median_" + prefix],
@@ -422,7 +450,11 @@ def calculate_outcorr(data, protlist_remaining, comb, window_FDP, progress):
                         corr = pearsonr(profile_own, profile_other)
                         outcorr[col_new][ID] = corr[0]
         outer_corrs = pd.merge(
-            outer_corrs, outcorr, left_index=True, right_index=True, how="outer"
+            outer_corrs,
+            outcorr,
+            left_index=True,
+            right_index=True,
+            how="outer",
         )
     return outer_corrs, progress
 
@@ -432,7 +464,9 @@ def modify_structure(data_in):
     for way in data_in:
         for condition in data_in[way]:
             for mode in data_in[way][condition]:
-                data_out[way][condition + "_" + mode] = data_in[way][condition][mode]
+                data_out[way][condition + "_" + mode] = data_in[way][
+                    condition
+                ][mode]
                 # data_out[way][condition] = data_in[way][condition][mode]
     return data_out
 
@@ -460,7 +494,10 @@ def FDP_exec(
                 [
                     [
                         sg.ProgressBar(
-                            100, orientation="h", size=(38, 25), key="--progress--"
+                            100,
+                            orientation="h",
+                            size=(38, 25),
+                            key="--progress--",
                         )
                     ],
                     [
@@ -543,7 +580,9 @@ def FDP_exec(
                     is_rep = False
                 if "" in fractlist:
                     is_fract = False
-                if len(list(set(replist))) - 1 < int(preparams["global"]["minrep"][0]):
+                if len(list(set(replist))) - 1 < int(
+                    preparams["global"]["minrep"][0]
+                ):
                     fract_ok = False
 
             if not is_ident:
@@ -594,8 +633,12 @@ def FDP_exec(
                 )
                 data_ways["class"] = copy.deepcopy(dataset)
                 data_ways["vis"] = copy.deepcopy(dataset)
-                intermediate_data["[0] class_abs"] = copy.deepcopy(data_ways["class"])
-                intermediate_data["[0] vis_abs"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[0] class_abs"] = copy.deepcopy(
+                    data_ways["class"]
+                )
+                intermediate_data["[0] vis_abs"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("converting dataset...")
@@ -611,7 +654,9 @@ def FDP_exec(
                 intermediate_data["[1] class_nozeros1"] = copy.deepcopy(
                     data_ways["class"]
                 )
-                intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("pre-scaling...")
@@ -631,12 +676,16 @@ def FDP_exec(
                 intermediate_data["[2] class_prescaled"] = copy.deepcopy(
                     data_ways["class"]
                 )
-                intermediate_data["[2] vis_prescaled"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[2] vis_prescaled"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("filtering by missing fractions...")
                 progress = 30
-                window_FDP["--status1--"].Update(value="filtering by missing values...")
+                window_FDP["--status1--"].Update(
+                    value="filtering by missing values..."
+                )
                 window_FDP["--progress--"].Update(progress)
                 event, values = window_FDP.read(timeout=50)
 
@@ -651,7 +700,9 @@ def FDP_exec(
                 intermediate_data["[3] class_f_missing"] = copy.deepcopy(
                     data_ways["class"]
                 )
-                intermediate_data["[3] vis_f_missing"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[3] vis_f_missing"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("finding IDs...")
@@ -661,16 +712,20 @@ def FDP_exec(
                 event, values = window_FDP.read(timeout=50)
 
                 for way in data_ways:
-                    data_ways[way], proteins_remaining, progress = filter_count(
-                        data_ways[way],
-                        int(preparams["global"]["minrep"][1]),
-                        window_FDP,
-                        progress,
+                    data_ways[way], proteins_remaining, progress = (
+                        filter_count(
+                            data_ways[way],
+                            int(preparams["global"]["minrep"][1]),
+                            window_FDP,
+                            progress,
+                        )
                     )
                 intermediate_data["[4] class_f_count"] = copy.deepcopy(
                     data_ways["class"]
                 )
-                intermediate_data["[4] vis_f_count"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[4] vis_f_count"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("detecting samples...")
@@ -715,39 +770,43 @@ def FDP_exec(
                 event, values = window_FDP.read(timeout=50)
 
                 for way in data_ways:
-                    data_combined, std_ways[way], progress = combine_median_std(
-                        data_ways[way], fracts_con, window_FDP, progress
+                    data_combined, std_ways[way], progress = (
+                        combine_median_std(
+                            data_ways[way], fracts_con, window_FDP, progress
+                        )
                     )
                     if preparams[way]["combination"] == "median":
                         data_ways[way] = data_combined
                         if way == "class":
-                            intermediate_data["[6] class_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] class_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
                         elif way == "vis":
-                            intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] vis_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
 
                     elif preparams[way]["combination"] == "concat":
-                        data_ways[way] = combine_concat(data_ways[way], window_FDP)
+                        data_ways[way] = combine_concat(
+                            data_ways[way], window_FDP
+                        )
                         if way == "class":
-                            intermediate_data["[6] class_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] class_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
                         elif way == "vis":
-                            intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] vis_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
 
                     elif preparams[way]["combination"] == "separate":
                         if way == "class":
-                            intermediate_data["[6] class_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] class_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
                         elif way == "vis":
-                            intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                                data_ways[way]
+                            intermediate_data["[6] vis_combined"] = (
+                                copy.deepcopy(data_ways[way])
                             )
 
                 # ---------------------------------------------------------------------
@@ -775,7 +834,9 @@ def FDP_exec(
                 # ---------------------------------------------------------------------
                 print("removing zeros...")
                 progress = 80
-                window_FDP["--status1--"].Update(value="removing baseline profiles...")
+                window_FDP["--status1--"].Update(
+                    value="removing baseline profiles..."
+                )
                 window_FDP["--progress--"].Update(progress)
                 event, values = window_FDP.read(timeout=50)
 
@@ -787,7 +848,9 @@ def FDP_exec(
                 intermediate_data["[8] class_nozeros2"] = copy.deepcopy(
                     data_ways["class"]
                 )
-                intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
+                intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(
+                    data_ways["vis"]
+                )
 
                 # ---------------------------------------------------------------------
                 print("calculating outer correlations...")
@@ -825,4 +888,10 @@ def FDP_exec(
             event, values = window.read(timeout=50)
             print("done!")
             break
-    return data_ways, std_ways, intermediate_data, protein_info, conditions_trans
+    return (
+        data_ways,
+        std_ways,
+        intermediate_data,
+        protein_info,
+        conditions_trans,
+    )

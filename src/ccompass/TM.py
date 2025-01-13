@@ -43,7 +43,9 @@ def update_class_info(marker_list, classnames, data):
     class_info = []
     for classname in classnames:
         count = data[
-            data.index.isin(marker_list[marker_list["class"] == classname].index)
+            data.index.isin(
+                marker_list[marker_list["class"] == classname].index
+            )
         ].shape[0]
         class_info.append([classname, count])
     return class_info
@@ -79,14 +81,17 @@ def TM_exec(fract_data, fract_info, marker_list, key):
                     correlation_matrix[i, j] = 1.0
                 else:
                     correlation_matrix[i, j] = np.corrcoef(
-                        median_classprofiles[class1], median_classprofiles[class2]
+                        median_classprofiles[class1],
+                        median_classprofiles[class2],
                     )[0, 1]
 
         correlation_df = pd.DataFrame(
             correlation_matrix, index=classnames, columns=classnames
         )
         correlation_matrices[condition] = correlation_df
-        class_info_dict[condition] = update_class_info(marker_list, classnames, data)
+        class_info_dict[condition] = update_class_info(
+            marker_list, classnames, data
+        )
 
     sg.theme("DarkTeal11")
 
@@ -133,8 +138,12 @@ def TM_exec(fract_data, fract_info, marker_list, key):
             break
         elif event_TM == "-condition-":
             condition = values_TM["-condition-"]
-            fig = create_heatmap(correlation_matrices[condition], title=condition)
-            figure_agg = update_figure(window_TM["-CANVAS-"].TKCanvas, figure_agg, fig)
+            fig = create_heatmap(
+                correlation_matrices[condition], title=condition
+            )
+            figure_agg = update_figure(
+                window_TM["-CANVAS-"].TKCanvas, figure_agg, fig
+            )
             window_TM["-CLASSINFO-"].update(values=class_info_dict[condition])
         elif event_TM == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
@@ -142,7 +151,9 @@ def TM_exec(fract_data, fract_info, marker_list, key):
                 for cond, df in correlation_matrices.items():
                     # Save the plot
                     fig = create_heatmap(df, title=cond)
-                    fig.savefig(os.path.join(folder_path, f"{cond}.pdf"), format="pdf")
+                    fig.savefig(
+                        os.path.join(folder_path, f"{cond}.pdf"), format="pdf"
+                    )
                     plt.close(fig)
 
                 # Save all data to an Excel file
