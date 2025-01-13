@@ -35,6 +35,9 @@ line-length = 79
 lint.ignore = [
     "E712",  # Avoid equality comparisons to True/False
 ]
+lint.extend-select = [
+    "I",
+]
 
 [tool.tox]
 requires = ["tox>=4.19"]

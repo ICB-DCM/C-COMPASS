@@ -1,29 +1,30 @@
 """Normalized profile creation"""
 
 import copy
+from datetime import datetime
+from tkinter import messagebox, simpledialog
+
+import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
-import FreeSimpleGUI as sg
-from tkinter import messagebox, simpledialog
+
 from .NPC_func import (
-    create_dataset,
-    pre_scaling,
-    filter_missing,
-    filter_empty,
-    filter_count,
-    list_samples,
     calculate_icorr,
-    remove_worst,
-    implement_icorr,
-    create_median,
-    create_concat,
-    create_separate,
-    remove_zeros,
     calculate_ocorr,
+    create_concat,
+    create_dataset,
+    create_median,
+    create_separate,
+    filter_count,
+    filter_empty,
+    filter_missing,
+    implement_icorr,
+    list_samples,
+    pre_scaling,
+    remove_worst,
+    remove_zeros,
     scale_area,
 )
-
-from datetime import datetime
 
 
 def create_data(path):  # creates initial dataset with corresponding data table

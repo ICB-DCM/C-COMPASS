@@ -1,10 +1,11 @@
 """Show markers."""
 
-import FreeSimpleGUI as sg
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
+
+import FreeSimpleGUI as sg
+import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 def draw_figure(canvas, figure):

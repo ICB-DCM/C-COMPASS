@@ -1,13 +1,14 @@
 """Fractionation data processing."""
 
 import copy
+from collections import Counter
+from tkinter import messagebox
+
+import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
-import FreeSimpleGUI as sg
-from tkinter import messagebox
-from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr
-from collections import Counter
+from sklearn.preprocessing import MinMaxScaler
 
 
 def create_dataset(

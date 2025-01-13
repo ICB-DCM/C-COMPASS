@@ -1,12 +1,13 @@
 """Actions related to the main window."""
 
+import copy
+import random
+from datetime import datetime
+from tkinter import messagebox, simpledialog
+
 import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
-from tkinter import messagebox, simpledialog
-from datetime import datetime
-import random
-import copy
 
 
 def fract_refreshtable(window, table):
