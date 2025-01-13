@@ -115,3 +115,31 @@ jobs:
         echo $! > ccompass_pid.txt
         sleep 10
         kill $(cat ccompass_pid.txt)
+
+  test_docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache tox
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/tox
+        key: ${{ runner.os }}-tox-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-tox-
+
+    - name: Install dependencies
+      run: |
+        pip install tox
+
+    - name: Build documentation
+      run: |
+        tox -e doc
