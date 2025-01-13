@@ -16,6 +16,7 @@ from tkinter import messagebox
 import FreeSimpleGUI as sg
 import pandas as pd
 import os
+from pathlib import Path
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
@@ -1512,11 +1513,8 @@ def main():
             export_folder = sg.popup_get_folder("Statistics Report")
             if export_folder:
                 for condition in results:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_statistics_"
-                        + condition
-                        + ".xlsx"
+                    fname = Path(
+                        export_folder, f"CCMPS_statistics_{condition}.xlsx"
                     )
                     selected_columns = [
                         col
@@ -1538,13 +1536,9 @@ def main():
             export_folder = sg.popup_get_folder("Global Changes Report")
             if export_folder:
                 for comb in comparison:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_comparison_"
-                        + comb[0]
-                        + "_"
-                        + comb[1]
-                        + ".xlsx"
+                    fname = Path(
+                        export_folder,
+                        f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
                     )
                     selected_columns = [
                         col
@@ -1570,11 +1564,9 @@ def main():
             export_folder = sg.popup_get_folder("Class-centric Changes Report")
             if export_folder:
                 for condition in results:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_ClassComposition_"
-                        + condition
-                        + ".xlsx"
+                    fname = Path(
+                        export_folder,
+                        f"CCMPS_ClassComposition_{condition}.xlsx",
                     )
                     selected_columns = [
                         col
@@ -1595,13 +1587,9 @@ def main():
                     ]
                     df_out.to_excel(fname, index=True)
                 for comb in comparison:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_ClassComparison_"
-                        + comb[0]
-                        + "_"
-                        + comb[1]
-                        + ".xlsx"
+                    fname = Path(
+                        export_folder,
+                        f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
                     )
                     selected_columns = [
                         col
@@ -1674,11 +1662,8 @@ def main():
             export_folder = sg.popup_get_folder("Export Statistics")
             if export_folder:
                 for condition in results:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_statistics_"
-                        + condition
-                        + ".tsv"
+                    fname = Path(
+                        export_folder, f"CCMPS_statistics_{condition}.tsv"
                     )
                     df_out = pd.merge(
                         fract_data["vis"][condition + "_median"],
@@ -1704,13 +1689,9 @@ def main():
             export_folder = sg.popup_get_folder("Export Statistics")
             if export_folder:
                 for comb in comparison:
-                    fname = (
-                        export_folder
-                        + "/CCMPS_comparison_"
-                        + comb[0]
-                        + "_"
-                        + comb[1]
-                        + ".tsv"
+                    fname = Path(
+                        export_folder,
+                        f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
                     )
                     df_out = pd.DataFrame(
                         index=comparison[comb]["intersection_data"].index
