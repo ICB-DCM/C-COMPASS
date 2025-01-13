@@ -3,12 +3,12 @@ VI. License
 
 **Note**
 
-WinPython components are distributed as they were received from 
-their copyright holder, under their own copyright and/or license, 
+WinPython components are distributed as they were received from
+their copyright holder, under their own copyright and/or license,
 and without any linking with each other.
 
-WinPython software collection (i.e., the collection of software, 
-libraries, and documents) is licensed under the terms of the 
+WinPython software collection (i.e., the collection of software,
+libraries, and documents) is licensed under the terms of the
 following license agreement.
 
 **WinPython License Agreement (MIT License)**
@@ -39,7 +39,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 **C-COMPASS (BSD 3-Clause License)**
 
-Copyright (c) 2024, Daniel T. Haas, Helmholtz Diabetes Center, Helmholtz Munich  
+Copyright (c) 2024, Daniel T. Haas, Helmholtz Diabetes Center, Helmholtz Munich
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

@@ -1,17 +1,17 @@
 III. Usage Guide
 ================
 
-1. Graphical User Interface (GUI)  
+1. Graphical User Interface (GUI)
 -------------------------------------
-   
+
    a. C-COMPASS allows you to save and load your sessions via the main toolbar.
-   
+
    b. A session can be saved as a NumPy (.npy) file, which includes all datasets, marker lists, settings, analyses, trainings, and statistics. These will be fully restored upon loading.
 
-2. Pre-Training  
+2. Pre-Training
 -------------------
 
-   a. **Data Import**  
+   a. **Data Import**
 
       i. There are two tabs for data import: Fractionation and TotalProteome.
 
@@ -59,7 +59,7 @@ III. Usage Guide
 
       iv. Confirm your marker selection by clicking "Match!."
 
-3. Training  
+3. Training
 ---------------
 
    a. Start the training process by clicking "Train C-COMPASS."
@@ -72,7 +72,7 @@ III. Usage Guide
 
    e. **Note**: Future versions will optimize training time while maintaining calculation accuracy.
 
-4. Post-Training  
+4. Post-Training
 --------------------
 
    a. **Statistics**
@@ -97,7 +97,7 @@ III. Usage Guide
 
       ii. **CFC (Class-centric Fold-Change)**: The fold change of proteins across conditions within a compartment, based on CPA values. Only proteins with valid fractionation and total proteome data for both conditions will have CFC values.
 
-5. Spatial Lipidomics  
+5. Spatial Lipidomics
 -------------------------
 
    a. C-COMPASS has been used for spatial lipidomics analysis, though no dedicated feature currently exists for multi-omics analysis.

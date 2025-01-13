@@ -7,44 +7,40 @@ from datetime import datetime
 from scipy import stats
 
 from sklearn import svm
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+)
 
 import tensorflow as tf
 from tensorflow import keras
 import keras_tuner as kt
 import keras.backend as K
 
-#from tensorflow.keras.models import Model
-
+# from tensorflow.keras.models import Model
 
 
 import os
 
 # Get the user's AppData directory
-appdata_directory = os.getenv('APPDATA')
+appdata_directory = os.getenv("APPDATA")
 
 # Define the path to the 'Classifier_Models' folder within AppData
-classifier_directory = os.path.join(appdata_directory, 'CCOMPASS_Models')
+classifier_directory = os.path.join(appdata_directory, "CCOMPASS_Models")
 
 # Create the folder if it does not exist
 if not os.path.exists(classifier_directory):
     os.makedirs(classifier_directory)
 
 
-
-
-
-
-
-
-
-
-
 optimizer_classes = {
-        'adam' : tf.keras.optimizers.Adam,
-        'rmsprop' : tf.keras.optimizers.RMSprop,
-        'sgd' : tf.keras.optimizers.SGD
-        }
+    "adam": tf.keras.optimizers.Adam,
+    "rmsprop": tf.keras.optimizers.RMSprop,
+    "sgd": tf.keras.optimizers.SGD,
+}
 
 
 ## 'upsampling_method' : ['noised', 'average', 'noisedaverage']
@@ -90,141 +86,206 @@ optimizer_classes = {
 #     return NN_params
 
 
-
-
-def upsampling (NN_params, stds, fract_full, fract_full_up, fract_marker, fract_marker_up, condition):
+def upsampling(
+    NN_params, stds, fract_full, fract_full_up, fract_marker, fract_marker_up, condition
+):
     fract_full_up[condition] = fract_full[condition]
     fract_marker_up[condition] = fract_marker[condition]
 
-    if NN_params['upsampling_method'] == 'none':
+    if NN_params["upsampling_method"] == "none":
         pass
     else:
-        print(condition + ':')
+        print(condition + ":")
         class_sizes = {}
-        for classname in list(set(fract_marker[condition]['class'])):
-            class_sizes[classname] = list(fract_marker[condition]['class']).count(classname)
+        for classname in list(set(fract_marker[condition]["class"])):
+            class_sizes[classname] = list(fract_marker[condition]["class"]).count(
+                classname
+            )
         class_maxsize = max(class_sizes.values())
         k = 1
-        for classname in list(set(fract_marker[condition]['class'])):
+        for classname in list(set(fract_marker[condition]["class"])):
             print(classname)
-            data_class_temp = fract_marker[condition].loc[fract_marker[condition]['class'] == classname]
-            data_class = data_class_temp.drop(columns = ['class'])
+            data_class_temp = fract_marker[condition].loc[
+                fract_marker[condition]["class"] == classname
+            ]
+            data_class = data_class_temp.drop(columns=["class"])
             class_difference = abs(class_maxsize - class_sizes[classname])
-            
+
             if class_sizes[classname] > class_maxsize:
-                ID_rnd = random.sample(list(data_class.index), class_difference -1)
-                fract_marker_up[condition].drop(ID_rnd, inplace = True)
+                ID_rnd = random.sample(list(data_class.index), class_difference - 1)
+                fract_marker_up[condition].drop(ID_rnd, inplace=True)
             if class_sizes[classname] < class_maxsize:
-                class_up = pd.DataFrame(columns = data_class.columns)
-                
-                class_std = data_class.std(axis = 0).to_frame().transpose()
+                class_up = pd.DataFrame(columns=data_class.columns)
+
+                class_std = data_class.std(axis=0).to_frame().transpose()
                 class_std_flat = class_std.values.flatten()
-                
+
                 for i in range(class_difference):
-                    if NN_params['upsampling_method'] == 'noised':
+                    if NN_params["upsampling_method"] == "noised":
                         ID_rnd = random.choice(list(data_class.index))
-                        name_up = 'up_' + str(k) + '_' + ID_rnd
-                        k +=1
-                        
+                        name_up = "up_" + str(k) + "_" + ID_rnd
+                        k += 1
+
                         profile_rnd = data_class.loc[[ID_rnd]]
-                        profile_rnd = profile_rnd[~profile_rnd.index.duplicated(keep = 'first')]
+                        profile_rnd = profile_rnd[
+                            ~profile_rnd.index.duplicated(keep="first")
+                        ]
                         profile_rnd_flat = profile_rnd.values.flatten()
-                        
+
                         std_rnd = stds[condition].loc[[ID_rnd]]
-                        std_rnd = std_rnd[~std_rnd.index.duplicated(keep = 'first')]
+                        std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
                         std_rnd_flat = std_rnd.values.flatten()
-                        std_rnd_flat = np.tile(std_rnd_flat, int(profile_rnd_flat.size / std_rnd_flat.size))
-                        
-                        nv = np.random.normal(profile_rnd_flat, NN_params['upsampling_noise'] * std_rnd_flat, size = profile_rnd.shape)
+                        std_rnd_flat = np.tile(
+                            std_rnd_flat, int(profile_rnd_flat.size / std_rnd_flat.size)
+                        )
+
+                        nv = np.random.normal(
+                            profile_rnd_flat,
+                            NN_params["upsampling_noise"] * std_rnd_flat,
+                            size=profile_rnd.shape,
+                        )
                         nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-                        
-                        profile_up = pd.DataFrame(nv, columns = profile_rnd.columns)
-                        
-                    elif NN_params['upsampling_method'] == 'average':
+
+                        profile_up = pd.DataFrame(nv, columns=profile_rnd.columns)
+
+                    elif NN_params["upsampling_method"] == "average":
                         ID_rnd_1 = random.choice(list(data_class.index))
                         ID_rnd_2 = random.choice(list(data_class.index))
                         ID_rnd_3 = random.choice(list(data_class.index))
-                        name_up = 'up_' + str(k) + '_' + ID_rnd_1 + '_' + ID_rnd_2 + '_' + ID_rnd_3
-                        k +=1
-                        
+                        name_up = (
+                            "up_"
+                            + str(k)
+                            + "_"
+                            + ID_rnd_1
+                            + "_"
+                            + ID_rnd_2
+                            + "_"
+                            + ID_rnd_3
+                        )
+                        k += 1
+
                         profile_rnd_1 = data_class.loc[[ID_rnd_1]]
-                        profile_rnd_1 = profile_rnd_1[~profile_rnd_1.index.duplicated(keep = 'first')]
+                        profile_rnd_1 = profile_rnd_1[
+                            ~profile_rnd_1.index.duplicated(keep="first")
+                        ]
                         profile_rnd_2 = data_class.loc[[ID_rnd_2]]
-                        profile_rnd_2 = profile_rnd_2[~profile_rnd_2.index.duplicated(keep = 'first')]
+                        profile_rnd_2 = profile_rnd_2[
+                            ~profile_rnd_2.index.duplicated(keep="first")
+                        ]
                         profile_rnd_3 = data_class.loc[[ID_rnd_3]]
-                        profile_rnd_3 = profile_rnd_3[~profile_rnd_3.index.duplicated(keep = 'first')]
-                        
-                        profile_up = pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3]).median(axis = 0).to_frame().transpose()
-                        
-                    elif NN_params['upsampling_method'] == 'noisedaverage':
+                        profile_rnd_3 = profile_rnd_3[
+                            ~profile_rnd_3.index.duplicated(keep="first")
+                        ]
+
+                        profile_up = (
+                            pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3])
+                            .median(axis=0)
+                            .to_frame()
+                            .transpose()
+                        )
+
+                    elif NN_params["upsampling_method"] == "noisedaverage":
                         ID_rnd_1 = random.choice(list(data_class.index))
                         ID_rnd_2 = random.choice(list(data_class.index))
                         ID_rnd_3 = random.choice(list(data_class.index))
-                        name_up = 'up_' + str(k) + '_' + ID_rnd_1 + '_' + ID_rnd_2 + '_' + ID_rnd_3
-                        k +=1
-                        
+                        name_up = (
+                            "up_"
+                            + str(k)
+                            + "_"
+                            + ID_rnd_1
+                            + "_"
+                            + ID_rnd_2
+                            + "_"
+                            + ID_rnd_3
+                        )
+                        k += 1
+
                         profile_rnd_1 = data_class.loc[[ID_rnd_1]]
-                        profile_rnd_1 = profile_rnd_1[~profile_rnd_1.index.duplicated(keep = 'first')]
+                        profile_rnd_1 = profile_rnd_1[
+                            ~profile_rnd_1.index.duplicated(keep="first")
+                        ]
                         profile_rnd_2 = data_class.loc[[ID_rnd_2]]
-                        profile_rnd_2 = profile_rnd_2[~profile_rnd_2.index.duplicated(keep = 'first')]
+                        profile_rnd_2 = profile_rnd_2[
+                            ~profile_rnd_2.index.duplicated(keep="first")
+                        ]
                         profile_rnd_3 = data_class.loc[[ID_rnd_3]]
-                        profile_rnd_3 = profile_rnd_3[~profile_rnd_3.index.duplicated(keep = 'first')]
-                        
-                        profile_av = pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3]).median(axis = 0).to_frame().transpose()
+                        profile_rnd_3 = profile_rnd_3[
+                            ~profile_rnd_3.index.duplicated(keep="first")
+                        ]
+
+                        profile_av = (
+                            pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3])
+                            .median(axis=0)
+                            .to_frame()
+                            .transpose()
+                        )
                         profile_av_flat = profile_av.values.flatten()
-                        
-                        nv = np.random.normal(profile_av_flat, NN_params['upsampling_noise']* class_std_flat, size = profile_av.shape)
+
+                        nv = np.random.normal(
+                            profile_av_flat,
+                            NN_params["upsampling_noise"] * class_std_flat,
+                            size=profile_av.shape,
+                        )
                         nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-                        
-                        profile_up = pd.DataFrame(nv, columns = profile_av.columns)
-                    
+
+                        profile_up = pd.DataFrame(nv, columns=profile_av.columns)
+
                     profile_up.index = [name_up]
-                    profile_up['class'] = [classname]
-                    
-                    class_up = pd.concat([class_up, profile_up], axis = 0, ignore_index = False)
-                
-                
-                fract_marker_up[condition] = pd.concat([fract_marker_up[condition], class_up], axis = 0, ignore_index = False)
-                #print(len(class_up))
-                #print(len(fract_marker_up[condition]['class']))
-                #print(fract_marker_up[condition])
-                fract_full_up[condition] = pd.concat([fract_full_up[condition], class_up], axis = 0, ignore_index = False)
-        print('')
-    fract_marker_up[condition] = fract_marker_up[condition].sample(frac = 1)
-    fract_full_up[condition] = fract_full_up[condition].sample(frac = 1)
+                    profile_up["class"] = [classname]
+
+                    class_up = pd.concat(
+                        [class_up, profile_up], axis=0, ignore_index=False
+                    )
+
+                fract_marker_up[condition] = pd.concat(
+                    [fract_marker_up[condition], class_up], axis=0, ignore_index=False
+                )
+                # print(len(class_up))
+                # print(len(fract_marker_up[condition]['class']))
+                # print(fract_marker_up[condition])
+                fract_full_up[condition] = pd.concat(
+                    [fract_full_up[condition], class_up], axis=0, ignore_index=False
+                )
+        print("")
+    fract_marker_up[condition] = fract_marker_up[condition].sample(frac=1)
+    fract_full_up[condition] = fract_full_up[condition].sample(frac=1)
     return fract_marker_up, fract_full_up
 
 
-def create_fullprofiles (fract_marker, fract_test):
+def create_fullprofiles(fract_marker, fract_test):
     fract_full = {}
     for condition in fract_test:
-        fract_full[condition] = pd.concat([fract_test[condition], fract_marker[condition]])
+        fract_full[condition] = pd.concat(
+            [fract_test[condition], fract_marker[condition]]
+        )
     return fract_full
-        
+
 
 def sum1_normalization(x):
-    return x / (K.sum(x, axis = 1, keepdims = True) + K.epsilon())
+    return x / (K.sum(x, axis=1, keepdims=True) + K.epsilon())
 
 
-def combine_rounds (data):
+def combine_rounds(data):
     dfs = []
     for roundn in data:
         dfs.append(data[roundn])
-    
+
     concatenated_df = pd.concat(dfs, axis=0)
-    
+
     mean_df = concatenated_df.groupby(level=0).mean()
     std_df = concatenated_df.groupby(level=0).std()
-    
+
     count_non_na = concatenated_df.groupby(level=0).apply(lambda x: x.notna().sum())
-    
-    count_df = pd.DataFrame(index = mean_df.index)
-    count_df['count'] = count_non_na.max(axis=1)
-    
+
+    count_df = pd.DataFrame(index=mean_df.index)
+    count_df["count"] = count_non_na.max(axis=1)
+
     return mean_df, std_df, count_df
 
 
-def pairwise_t_test(conditions_values, conditions_std, conditions_count, rounds, alpha = 0.05):
+def pairwise_t_test(
+    conditions_values, conditions_std, conditions_count, rounds, alpha=0.05
+):
     significant_changes = []
     num_conditions = len(conditions_values)
 
@@ -233,257 +294,411 @@ def pairwise_t_test(conditions_values, conditions_std, conditions_count, rounds,
             values_df1, values_df2 = conditions_values[i], conditions_values[j]
             std_df1, std_df2 = conditions_std[i], conditions_std[j]
             count_df1, count_df2 = conditions_count[i], conditions_count[j]
-            
+
             common_indices = values_df1.index.intersection(values_df2.index)
 
             for idx in common_indices:
                 for col in values_df1.columns:
                     mean1, std1 = values_df1.at[idx, col], std_df1.at[idx, col]
                     mean2, std2 = values_df2.at[idx, col], std_df2.at[idx, col]
-                    n1, n2 = count_df1.at[idx, 'count']/rounds, count_df2.at[idx, 'count']/rounds
-                    
-                    t_stat, p_value = stats.ttest_ind_from_stats(mean1, std1, n1, mean2, std2, n2)
-                    
-                    
+                    n1, n2 = (
+                        count_df1.at[idx, "count"] / rounds,
+                        count_df2.at[idx, "count"] / rounds,
+                    )
+
+                    t_stat, p_value = stats.ttest_ind_from_stats(
+                        mean1, std1, n1, mean2, std2, n2
+                    )
+
                     if p_value < alpha:
                         magnitude_of_change = mean1 - mean2
-                        significant_changes.append((idx, col, 'Condition {} vs {}'.format(i+1, j+1), t_stat, p_value, magnitude_of_change))
+                        significant_changes.append(
+                            (
+                                idx,
+                                col,
+                                "Condition {} vs {}".format(i + 1, j + 1),
+                                t_stat,
+                                p_value,
+                                magnitude_of_change,
+                            )
+                        )
 
-    return pd.DataFrame(significant_changes, columns=['Index', 'Class', 'Comparison', 'T-Stat', 'P-Value', 'MagnitudeOfChange'])
-
-
+    return pd.DataFrame(
+        significant_changes,
+        columns=[
+            "Index",
+            "Class",
+            "Comparison",
+            "T-Stat",
+            "P-Value",
+            "MagnitudeOfChange",
+        ],
+    )
 
 
 # ----------------------------------------------------------------------------
 
-def MOP_exec (fract_conditions, fract_full, fract_marker_old, fract_test, fract_std, fract_info, key, NN_params):
-    
+
+def MOP_exec(
+    fract_conditions,
+    fract_full,
+    fract_marker_old,
+    fract_test,
+    fract_std,
+    fract_info,
+    key,
+    NN_params,
+):
     class FNN_classifier(kt.HyperModel):
-            def __init__(self, fixed_hp = None, set_shapes = None):
-                self.fixed_hp = fixed_hp
-                self.set_shapes = set_shapes
-                self.chosen_hp = {}
-            
-            def build(self, hp):
-                model = keras.Sequential()
-                #units_init = np.shape(y_train_mixed_up)[1]
-                model.add(tf.keras.Input(self.set_shapes[0],))
-                #model.add(tf.keras.Input(units_init,))
-                
-                if self.fixed_hp:
-                    optimizer_choice = self.fixed_hp['optimizer']
-                    learning_rate = self.fixed_hp['learning_rate']
-                    units = self.fixed_hp['units']
-                
-                else:
-                    optimizer_choice = hp.Choice('optimizer', NN_params['optimizers'])
-                    learning_rate = hp.Float('learning_rate', min_value = 1e-4, max_value = 1e-1, sampling = 'log')
-                    if NN_params['NN_optimization'] == 'short':
-                        units = hp.Int('units', min_value = int(min(self.set_shapes) + 0.4*(max(self.set_shapes) - min(self.set_shapes))),
-                                                  max_value = int(min(self.set_shapes) + 0.6*(max(self.set_shapes) - min(self.set_shapes))), step = 2)
-                    elif NN_params['NN_optimization'] == 'long':
-                        units = hp.Int('units', min_value = min(self.set_shapes), max_value = max(self.set_shapes), step = 2)
-                
-                if NN_params['NN_activation'] == 'relu':
-                    model.add(keras.layers.Dense(units, activation = 'relu'))
-                elif NN_params['NN_activation'] == 'leakyrelu':
-                    hp_alpha = hp.Float('alpha', min_value = 0.05, max_value = 0.3, step = 0.05)
-                    model.add(keras.layers.Dense(units))
-                    model.add(keras.layers.LeakyReLU(hp_alpha))
-                
-                model.add(keras.layers.Dense(self.set_shapes[1], activation = NN_params['class_activation']))
-                model.add(keras.layers.ReLU())
-                model.add(keras.layers.Lambda(sum1_normalization))
-                
-                optimizer = optimizer_classes[optimizer_choice](learning_rate = learning_rate)
-                model.compile(loss = NN_params['class_loss'], optimizer = optimizer, metrics = [tf.keras.metrics.MeanSquaredError(), tf.keras.metrics.MeanAbsoluteError()])
-                
-                if not self.fixed_hp:
-                    self.chosen_hp = {'optimizer': optimizer_choice, 'learning_rate': learning_rate, 'units': units}
-                
-                return model
-            
-            def get_chosen_hyperparameters(self):
-                return self.chosen_hp
-    
-    
-    conditions_std = [x for x in fract_conditions if x != '[KEEP]']
+        def __init__(self, fixed_hp=None, set_shapes=None):
+            self.fixed_hp = fixed_hp
+            self.set_shapes = set_shapes
+            self.chosen_hp = {}
+
+        def build(self, hp):
+            model = keras.Sequential()
+            # units_init = np.shape(y_train_mixed_up)[1]
+            model.add(
+                tf.keras.Input(
+                    self.set_shapes[0],
+                )
+            )
+            # model.add(tf.keras.Input(units_init,))
+
+            if self.fixed_hp:
+                optimizer_choice = self.fixed_hp["optimizer"]
+                learning_rate = self.fixed_hp["learning_rate"]
+                units = self.fixed_hp["units"]
+
+            else:
+                optimizer_choice = hp.Choice("optimizer", NN_params["optimizers"])
+                learning_rate = hp.Float(
+                    "learning_rate", min_value=1e-4, max_value=1e-1, sampling="log"
+                )
+                if NN_params["NN_optimization"] == "short":
+                    units = hp.Int(
+                        "units",
+                        min_value=int(
+                            min(self.set_shapes)
+                            + 0.4 * (max(self.set_shapes) - min(self.set_shapes))
+                        ),
+                        max_value=int(
+                            min(self.set_shapes)
+                            + 0.6 * (max(self.set_shapes) - min(self.set_shapes))
+                        ),
+                        step=2,
+                    )
+                elif NN_params["NN_optimization"] == "long":
+                    units = hp.Int(
+                        "units",
+                        min_value=min(self.set_shapes),
+                        max_value=max(self.set_shapes),
+                        step=2,
+                    )
+
+            if NN_params["NN_activation"] == "relu":
+                model.add(keras.layers.Dense(units, activation="relu"))
+            elif NN_params["NN_activation"] == "leakyrelu":
+                hp_alpha = hp.Float("alpha", min_value=0.05, max_value=0.3, step=0.05)
+                model.add(keras.layers.Dense(units))
+                model.add(keras.layers.LeakyReLU(hp_alpha))
+
+            model.add(
+                keras.layers.Dense(
+                    self.set_shapes[1], activation=NN_params["class_activation"]
+                )
+            )
+            model.add(keras.layers.ReLU())
+            model.add(keras.layers.Lambda(sum1_normalization))
+
+            optimizer = optimizer_classes[optimizer_choice](learning_rate=learning_rate)
+            model.compile(
+                loss=NN_params["class_loss"],
+                optimizer=optimizer,
+                metrics=[
+                    tf.keras.metrics.MeanSquaredError(),
+                    tf.keras.metrics.MeanAbsoluteError(),
+                ],
+            )
+
+            if not self.fixed_hp:
+                self.chosen_hp = {
+                    "optimizer": optimizer_choice,
+                    "learning_rate": learning_rate,
+                    "units": units,
+                }
+
+            return model
+
+        def get_chosen_hyperparameters(self):
+            return self.chosen_hp
+
+    conditions_std = [x for x in fract_conditions if x != "[KEEP]"]
     conditions = [x for x in fract_full]
-    
+
     stds = {}
-    if not key == '[IDENTIFIER]':
+    if not key == "[IDENTIFIER]":
         for condition in conditions_std:
-            stds[condition] = pd.merge(fract_std['class'][condition], fract_info[key], left_index = True, right_index = True, how = 'left').set_index(key)
-    
-    clf = svm.SVC(kernel = 'rbf', probability = True)
-    
-# -------------------------
-## UPSAMPLING START
+            stds[condition] = pd.merge(
+                fract_std["class"][condition],
+                fract_info[key],
+                left_index=True,
+                right_index=True,
+                how="left",
+            ).set_index(key)
+
+    clf = svm.SVC(kernel="rbf", probability=True)
+
+    # -------------------------
+    ## UPSAMPLING START
     learning_xyz = {}
     for condition in conditions:
         learning_xyz[condition] = {}
-        learning_xyz[condition]['W_full_up_df'] = {}
-        learning_xyz[condition]['W_full_up'] = {}
-        learning_xyz[condition]['W_train_up_df'] = {}
-        learning_xyz[condition]['W_train_up'] = {}
-        learning_xyz[condition]['w_full'] = {}
-        learning_xyz[condition]['w_full_prob'] = {}
-        learning_xyz[condition]['w_full_prob_df'] = {}
-        learning_xyz[condition]['w_train'] = {}
-        learning_xyz[condition]['w_train_prob'] = {}
-        learning_xyz[condition]['w_test'] = {}
-        learning_xyz[condition]['w_test_prob'] = {}
-        learning_xyz[condition]['x_full_up_df'] = {}
-        learning_xyz[condition]['x_full_up'] = {}
-        learning_xyz[condition]['x_train_up_df'] = {}
-        learning_xyz[condition]['x_train_up'] = {}
-        learning_xyz[condition]['Z_train_df'] = {}
-        learning_xyz[condition]['Z_train'] = {}
-        #learning_xyz[condition]['Z_train_up_df'] = {}
-        learning_xyz[condition]['Z_train_up'] = {}
-        #learning_xyz[condition]['V_full_up_df'] = {}
-        learning_xyz[condition]['V_full_up'] = {}
-        learning_xyz[condition]['x_train_mixed_up_df'] = {}
-        learning_xyz[condition]['x_train_mixed_up'] = {}
-        learning_xyz[condition]['Z_train_mixed_up_df'] = {}
-        learning_xyz[condition]['Z_train_mixed_up'] = {}
-        learning_xyz[condition]['AE_summary'] = {}
-        learning_xyz[condition]['AE_history'] = {}
-        #learning_xyz[condition]['v_full_df'] = {}
-        #learning_xyz[condition]['v_full'] = {}
-        #learning_xyz[condition]['v_full_up_df'] = {}
-        #learning_xyz[condition]['v_full_up'] = {}
-        learning_xyz[condition]['y_full_df'] = {}
-        learning_xyz[condition]['y_full'] = {}
-        #learning_xyz[condition]['y_full_up_df'] = {}
-        learning_xyz[condition]['y_full_up'] = {}
-        learning_xyz[condition]['y_train_df'] = {}
-        learning_xyz[condition]['y_train'] = {}
-        #learning_xyz[condition]['y_train_up_df'] = {}
-        learning_xyz[condition]['y_train_up'] = {}
-        #learning_xyz[condition]['y_train_mixed_up_df'] = {}
-        learning_xyz[condition]['y_train_mixed_up'] = {}
-        #learning_xyz[condition]['y_test_df'] = {}
-        learning_xyz[condition]['y_test'] = {}
-        learning_xyz[condition]['FNN_summary'] = {}
-        learning_xyz[condition]['FNN_history'] = {}
-        learning_xyz[condition]['z_full_df'] = {}
-        learning_xyz[condition]['z_full'] = {}
-        learning_xyz[condition]['z_train_df'] = {}
-        learning_xyz[condition]['z_train'] = {}
-        #learning_xyz[condition]['z_train_up_df'] = {}
-        #learning_xyz[condition]['z_train_up'] = {}
-        #learning_xyz[condition]['z_train_mixed_up_df'] = {}
-        #learning_xyz[condition]['z_train_mixed_up'] = {}
-        #learning_xyz[condition]['z_test_df'] = {}
-        #learning_xyz[condition]['z_test'] = {}
-    
-    
-    for R in range(1, NN_params['rounds'] + 1):
-        
-        #print('ROUND 0')
-        print('upsampling...')
-        #fract_full_up = copy.deepcopy(fract_full)
-        #fract_marker_up = copy.deepcopy(fract_marker_old)
-        
+        learning_xyz[condition]["W_full_up_df"] = {}
+        learning_xyz[condition]["W_full_up"] = {}
+        learning_xyz[condition]["W_train_up_df"] = {}
+        learning_xyz[condition]["W_train_up"] = {}
+        learning_xyz[condition]["w_full"] = {}
+        learning_xyz[condition]["w_full_prob"] = {}
+        learning_xyz[condition]["w_full_prob_df"] = {}
+        learning_xyz[condition]["w_train"] = {}
+        learning_xyz[condition]["w_train_prob"] = {}
+        learning_xyz[condition]["w_test"] = {}
+        learning_xyz[condition]["w_test_prob"] = {}
+        learning_xyz[condition]["x_full_up_df"] = {}
+        learning_xyz[condition]["x_full_up"] = {}
+        learning_xyz[condition]["x_train_up_df"] = {}
+        learning_xyz[condition]["x_train_up"] = {}
+        learning_xyz[condition]["Z_train_df"] = {}
+        learning_xyz[condition]["Z_train"] = {}
+        # learning_xyz[condition]['Z_train_up_df'] = {}
+        learning_xyz[condition]["Z_train_up"] = {}
+        # learning_xyz[condition]['V_full_up_df'] = {}
+        learning_xyz[condition]["V_full_up"] = {}
+        learning_xyz[condition]["x_train_mixed_up_df"] = {}
+        learning_xyz[condition]["x_train_mixed_up"] = {}
+        learning_xyz[condition]["Z_train_mixed_up_df"] = {}
+        learning_xyz[condition]["Z_train_mixed_up"] = {}
+        learning_xyz[condition]["AE_summary"] = {}
+        learning_xyz[condition]["AE_history"] = {}
+        # learning_xyz[condition]['v_full_df'] = {}
+        # learning_xyz[condition]['v_full'] = {}
+        # learning_xyz[condition]['v_full_up_df'] = {}
+        # learning_xyz[condition]['v_full_up'] = {}
+        learning_xyz[condition]["y_full_df"] = {}
+        learning_xyz[condition]["y_full"] = {}
+        # learning_xyz[condition]['y_full_up_df'] = {}
+        learning_xyz[condition]["y_full_up"] = {}
+        learning_xyz[condition]["y_train_df"] = {}
+        learning_xyz[condition]["y_train"] = {}
+        # learning_xyz[condition]['y_train_up_df'] = {}
+        learning_xyz[condition]["y_train_up"] = {}
+        # learning_xyz[condition]['y_train_mixed_up_df'] = {}
+        learning_xyz[condition]["y_train_mixed_up"] = {}
+        # learning_xyz[condition]['y_test_df'] = {}
+        learning_xyz[condition]["y_test"] = {}
+        learning_xyz[condition]["FNN_summary"] = {}
+        learning_xyz[condition]["FNN_history"] = {}
+        learning_xyz[condition]["z_full_df"] = {}
+        learning_xyz[condition]["z_full"] = {}
+        learning_xyz[condition]["z_train_df"] = {}
+        learning_xyz[condition]["z_train"] = {}
+        # learning_xyz[condition]['z_train_up_df'] = {}
+        # learning_xyz[condition]['z_train_up'] = {}
+        # learning_xyz[condition]['z_train_mixed_up_df'] = {}
+        # learning_xyz[condition]['z_train_mixed_up'] = {}
+        # learning_xyz[condition]['z_test_df'] = {}
+        # learning_xyz[condition]['z_test'] = {}
+
+    for R in range(1, NN_params["rounds"] + 1):
+        # print('ROUND 0')
+        print("upsampling...")
+        # fract_full_up = copy.deepcopy(fract_full)
+        # fract_marker_up = copy.deepcopy(fract_marker_old)
+
         fract_full_up = {}
         fract_marker_up = {}
-        
+
         fract_marker = copy.deepcopy(fract_marker_old)
-        
-        if NN_params['upsampling'] == True:
+
+        if NN_params["upsampling"] == True:
             for condition in conditions:
-                fract_marker_up, fract_full_up = upsampling(NN_params, stds, fract_full, fract_full_up, fract_marker, fract_marker_up, condition)
+                fract_marker_up, fract_full_up = upsampling(
+                    NN_params,
+                    stds,
+                    fract_full,
+                    fract_full_up,
+                    fract_marker,
+                    fract_marker_up,
+                    condition,
+                )
         else:
             fract_marker_up = copy.deepcopy(fract_marker)
             fract_full_up = copy.deepcopy(fract_full)
-            
-        print('upsampling done!')
-        print('')
-        
-        print('creating data...')
+
+        print("upsampling done!")
+        print("")
+
+        print("creating data...")
         for condition in conditions:
-            learning_xyz, classes = create_learninglist(learning_xyz, fract_full, fract_full_up, fract_marker, fract_marker_up, fract_test, condition, R, 0)
-        
-        print('data complete!')
-        print('')
-        
+            learning_xyz, classes = create_learninglist(
+                learning_xyz,
+                fract_full,
+                fract_full_up,
+                fract_marker,
+                fract_marker_up,
+                fract_test,
+                condition,
+                R,
+                0,
+            )
+
+        print("data complete!")
+        print("")
+
         svm_metrics = {}
         svm_marker = {}
         svm_test = {}
         for condition in conditions:
-            learning_xyz, svm_metrics, svm_marker, svm_test = single_prediction(learning_xyz, clf, svm_metrics, fract_marker, svm_marker, fract_test, svm_test, condition, R)
-        
-        if NN_params['svm_filter'] == True:
+            learning_xyz, svm_metrics, svm_marker, svm_test = single_prediction(
+                learning_xyz,
+                clf,
+                svm_metrics,
+                fract_marker,
+                svm_marker,
+                fract_test,
+                svm_test,
+                condition,
+                R,
+            )
+
+        if NN_params["svm_filter"] == True:
             fract_full_up = {}
             fract_marker_up = {}
             fract_marker_filtered = {}
             for condition in conditions:
-                rows_to_keep = svm_marker[condition]['class'] == svm_marker[condition]['svm_prediction']
+                rows_to_keep = (
+                    svm_marker[condition]["class"]
+                    == svm_marker[condition]["svm_prediction"]
+                )
                 fract_marker_filtered[condition] = fract_marker[condition][rows_to_keep]
-            #fract_full_up = copy.deepcopy(fract_full)
-            #fract_marker_up = copy.deepcopy(fract_marker_old)
-            #fract_marker = copy.deepcopy(fract_marker_old)
-                fract_marker_up, fract_full_up = upsampling(NN_params, stds, fract_full, fract_full_up, fract_marker_filtered, fract_marker_up, condition)
-        
-        
+                # fract_full_up = copy.deepcopy(fract_full)
+                # fract_marker_up = copy.deepcopy(fract_marker_old)
+                # fract_marker = copy.deepcopy(fract_marker_old)
+                fract_marker_up, fract_full_up = upsampling(
+                    NN_params,
+                    stds,
+                    fract_full,
+                    fract_full_up,
+                    fract_marker_filtered,
+                    fract_marker_up,
+                    condition,
+                )
+
         fract_unmixed_up = {}
         for condition in conditions:
-            #print()
-            unmixed_dummies = pd.get_dummies(fract_marker_up[condition]['class'])#[learning_xyz[condition]['classes']]
-            fract_unmixed_up[condition] = pd.concat([fract_marker_up[condition].drop('class', axis=1), unmixed_dummies], axis = 1)
-        
-        
-        
-        if NN_params['mixed_part'] == 'none':
+            # print()
+            unmixed_dummies = pd.get_dummies(
+                fract_marker_up[condition]["class"]
+            )  # [learning_xyz[condition]['classes']]
+            fract_unmixed_up[condition] = pd.concat(
+                [fract_marker_up[condition].drop("class", axis=1), unmixed_dummies],
+                axis=1,
+            )
+
+        if NN_params["mixed_part"] == "none":
             fract_mixed_up = copy.deepcopy(fract_unmixed_up)
             pass
         else:
             fract_mixed_up = {}
-            mix_steps = [i/(NN_params['mixed_part']) for i in range(1, (NN_params['mixed_part']))]
+            mix_steps = [
+                i / (NN_params["mixed_part"])
+                for i in range(1, (NN_params["mixed_part"]))
+            ]
             for condition in conditions:
-                fract_mixed_up = mix_profiles(mix_steps, NN_params, fract_marker_up, fract_unmixed_up, fract_mixed_up, condition)
+                fract_mixed_up = mix_profiles(
+                    mix_steps,
+                    NN_params,
+                    fract_marker_up,
+                    fract_unmixed_up,
+                    fract_mixed_up,
+                    condition,
+                )
         for condition in conditions:
-            learning_xyz[condition]['x_train_mixed_up_df']['ROUND_' + str(R)] = fract_mixed_up[condition].drop(columns = classes)
-            learning_xyz[condition]['x_train_mixed_up']['ROUND_' + str(R)] = learning_xyz[condition]['x_train_mixed_up_df']['ROUND_' + str(R)].to_numpy(dtype = float)
-            learning_xyz[condition]['Z_train_mixed_up_df']['ROUND_' + str(R)] = fract_mixed_up[condition][classes]
-            learning_xyz[condition]['Z_train_mixed_up']['ROUND_' + str(R)] = learning_xyz[condition]['Z_train_mixed_up_df']['ROUND_' + str(R)].to_numpy(dtype = float)
-        print('mixing done!')
-        print('')
-        
-        
-        
+            learning_xyz[condition]["x_train_mixed_up_df"]["ROUND_" + str(R)] = (
+                fract_mixed_up[condition].drop(columns=classes)
+            )
+            learning_xyz[condition]["x_train_mixed_up"]["ROUND_" + str(R)] = (
+                learning_xyz[condition]["x_train_mixed_up_df"][
+                    "ROUND_" + str(R)
+                ].to_numpy(dtype=float)
+            )
+            learning_xyz[condition]["Z_train_mixed_up_df"]["ROUND_" + str(R)] = (
+                fract_mixed_up[condition][classes]
+            )
+            learning_xyz[condition]["Z_train_mixed_up"]["ROUND_" + str(R)] = (
+                learning_xyz[condition]["Z_train_mixed_up_df"][
+                    "ROUND_" + str(R)
+                ].to_numpy(dtype=float)
+            )
+        print("mixing done!")
+        print("")
+
         for condition in conditions:
-            x_full = learning_xyz[condition]['x_full']
-            x_full_up = learning_xyz[condition]['x_full_up']['ROUND_' + str(R)]
-            x_train = learning_xyz[condition]['x_train']
-            x_train_up = learning_xyz[condition]['x_train_up']['ROUND_' + str(R)]
-            x_train_mixed_up = learning_xyz[condition]['x_train_mixed_up']['ROUND_' + str(R)]
-            x_test = learning_xyz[condition]['x_test']
-            
-            V_full_up = learning_xyz[condition]['x_full_up']['ROUND_' + str(R)]
-            learning_xyz[condition]['V_full_up']['ROUND_' + str(R)] = V_full_up
-            
-            if NN_params['AE'] == 'none':
+            x_full = learning_xyz[condition]["x_full"]
+            x_full_up = learning_xyz[condition]["x_full_up"]["ROUND_" + str(R)]
+            x_train = learning_xyz[condition]["x_train"]
+            x_train_up = learning_xyz[condition]["x_train_up"]["ROUND_" + str(R)]
+            x_train_mixed_up = learning_xyz[condition]["x_train_mixed_up"][
+                "ROUND_" + str(R)
+            ]
+            x_test = learning_xyz[condition]["x_test"]
+
+            V_full_up = learning_xyz[condition]["x_full_up"]["ROUND_" + str(R)]
+            learning_xyz[condition]["V_full_up"]["ROUND_" + str(R)] = V_full_up
+
+            if NN_params["AE"] == "none":
                 y_full = x_full
                 y_full_up = x_full_up
                 y_train = x_train
                 y_train_up = x_train_up
                 y_train_mixed_up = x_train_mixed_up
                 y_test = x_test
-                
-                learning_xyz = add_Y(learning_xyz, y_full, y_full_up, y_train, y_train_up, y_train_mixed_up, y_test, condition, R, 0)
-                for SR in range(1, NN_params['subrounds'] + 1):
-                    learning_xyz = add_Y(learning_xyz, y_full, y_full_up, y_train, y_train_up, y_train_mixed_up, y_test, condition, R, SR)
+
+                learning_xyz = add_Y(
+                    learning_xyz,
+                    y_full,
+                    y_full_up,
+                    y_train,
+                    y_train_up,
+                    y_train_mixed_up,
+                    y_test,
+                    condition,
+                    R,
+                    0,
+                )
+                for SR in range(1, NN_params["subrounds"] + 1):
+                    learning_xyz = add_Y(
+                        learning_xyz,
+                        y_full,
+                        y_full_up,
+                        y_train,
+                        y_train_up,
+                        y_train_mixed_up,
+                        y_test,
+                        condition,
+                        R,
+                        SR,
+                    )
             else:
                 # ADD AUTOENCODER HERE
                 pass
-        
-        
+
         for condition in conditions:
-            FNN_ens, learning_xyz = multi_predictions(FNN_classifier, learning_xyz, NN_params, condition, R)
-        
-        
+            FNN_ens, learning_xyz = multi_predictions(
+                FNN_classifier, learning_xyz, NN_params, condition, R
+            )
+
     # print('post-processing...')
     # for condition in conditions:
     #     print(condition)
@@ -491,7 +706,7 @@ def MOP_exec (fract_conditions, fract_full, fract_marker_old, fract_test, fract_
     #     learning_xyz[condition]['z_train_mean_df'], learning_xyz[condition]['z_train_std_df'], learning_xyz[condition]['n_train_df'] = combine_rounds(learning_xyz[condition]['z_train_df'])
     #     learning_xyz[condition]['z_train_mixed_up_mean_df'], learning_xyz[condition]['z_train_mixed_up_std_df'], learning_xyz[condition]['n_train_mixed_up_df'] = combine_rounds(learning_xyz[condition]['z_train_mixed_up_df'])
     #     learning_xyz[condition]['z_test_mean_df'], learning_xyz[condition]['z_test_std_df'], learning_xyz[condition]['n_test_df'] = combine_rounds(learning_xyz[condition]['z_test_df'])
-        
+
     #     learning_xyz[condition]['z_full_mean_filtered_df'] = learning_xyz[condition]['z_full_mean_df']
     #     learning_xyz[condition]['z_train_mean_filtered_df'] = learning_xyz[condition]['z_train_mean_df']
     #     learning_xyz[condition]['z_test_mean_filtered_df'] = learning_xyz[condition]['z_test_mean_df']
@@ -502,7 +717,7 @@ def MOP_exec (fract_conditions, fract_full, fract_marker_old, fract_test, fract_
     #         learning_xyz[condition]['z_full_mean_filtered_df'].loc[learning_xyz[condition]['z_full_mean_filtered_df'][class_act] < thresh, class_act] = 0.
     #         learning_xyz[condition]['z_train_mean_filtered_df'].loc[learning_xyz[condition]['z_train_mean_filtered_df'][class_act] < thresh, class_act] = 0.
     #         learning_xyz[condition]['z_test_mean_filtered_df'].loc[learning_xyz[condition]['z_test_mean_filtered_df'][class_act] < thresh, class_act] = 0.
-    
+
     # print('')
     # print('making statistics...')
     # prediction_train = []
@@ -519,328 +734,459 @@ def MOP_exec (fract_conditions, fract_full, fract_marker_old, fract_test, fract_
     #     std_test.append(learning_xyz[condition]['z_test_std_df'])
     #     count_train.append(learning_xyz[condition]['n_train_df'])
     #     count_test.append(learning_xyz[condition]['n_test_df'])
-    
+
     # print('testing significance...')
     # significant_train = pairwise_t_test(prediction_train, std_train, count_train, NN_params['rounds'])
     # significant_test = pairwise_t_test(prediction_test, std_test, count_test, NN_params['rounds'])
     # print('DONE!')
-    
+
     # now = datetime.now()
     # print(now.strftime("%Y%m%d%H%M%S"))
-    return learning_xyz, NN_params, fract_full_up, fract_marker_up, fract_mixed_up, fract_unmixed_up, svm_marker, svm_test, svm_metrics
-    
-        
-        
+    return (
+        learning_xyz,
+        NN_params,
+        fract_full_up,
+        fract_marker_up,
+        fract_mixed_up,
+        fract_unmixed_up,
+        svm_marker,
+        svm_test,
+        svm_metrics,
+    )
 
 
-def multi_predictions (FNN_classifier, learning_xyz, NN_params, condition, roundn):
-    y_full = learning_xyz[condition]['y_full']['ROUND_' + str(roundn) + '_' + str(0)]
-    y_train = learning_xyz[condition]['y_train']['ROUND_' + str(roundn) + '_' + str(0)]
-    y_train_up = learning_xyz[condition]['y_train_up']['ROUND_' + str(roundn) + '_' + str(0)]
-    y_train_mixed_up = learning_xyz[condition]['y_train_mixed_up']['ROUND_' + str(roundn) + '_' + str(0)]
-    y_test = learning_xyz[condition]['y_test']['ROUND_' + str(roundn) + '_' + str(0)]
-    
-    Z_train_mixed_up = learning_xyz[condition]['Z_train_mixed_up']['ROUND_' + str(roundn)]
+def multi_predictions(FNN_classifier, learning_xyz, NN_params, condition, roundn):
+    y_full = learning_xyz[condition]["y_full"]["ROUND_" + str(roundn) + "_" + str(0)]
+    y_train = learning_xyz[condition]["y_train"]["ROUND_" + str(roundn) + "_" + str(0)]
+    y_train_up = learning_xyz[condition]["y_train_up"][
+        "ROUND_" + str(roundn) + "_" + str(0)
+    ]
+    y_train_mixed_up = learning_xyz[condition]["y_train_mixed_up"][
+        "ROUND_" + str(roundn) + "_" + str(0)
+    ]
+    y_test = learning_xyz[condition]["y_test"]["ROUND_" + str(roundn) + "_" + str(0)]
+
+    Z_train_mixed_up = learning_xyz[condition]["Z_train_mixed_up"][
+        "ROUND_" + str(roundn)
+    ]
     set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
-    
+
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
     FNN_tuner = kt.Hyperband(
-        hypermodel = FNN_classifier(set_shapes = set_shapes),
-        hyperparameters = kt.HyperParameters(),
-        objective = 'val_mean_squared_error',
-        max_epochs = NN_params['NN_epochs'],
-        factor = 3,
-        directory = classifier_directory,
-        project_name = time + '_Classifier_' + condition + '_' + str(roundn))
-    
-    stop_early = tf.keras.callbacks.EarlyStopping(monitor = 'val_loss', patience = 5)
-    
-    FNN_tuner.search(y_train_mixed_up, Z_train_mixed_up, epochs = NN_params['NN_epochs'], validation_split = 0.2, callbacks = [stop_early])
-    
-    FNN_best = FNN_tuner.get_best_models(num_models = 1)[0]
-    best_hp = FNN_tuner.get_best_hyperparameters(num_trials = 1)[0].values
-    
+        hypermodel=FNN_classifier(set_shapes=set_shapes),
+        hyperparameters=kt.HyperParameters(),
+        objective="val_mean_squared_error",
+        max_epochs=NN_params["NN_epochs"],
+        factor=3,
+        directory=classifier_directory,
+        project_name=time + "_Classifier_" + condition + "_" + str(roundn),
+    )
+
+    stop_early = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
+
+    FNN_tuner.search(
+        y_train_mixed_up,
+        Z_train_mixed_up,
+        epochs=NN_params["NN_epochs"],
+        validation_split=0.2,
+        callbacks=[stop_early],
+    )
+
+    FNN_best = FNN_tuner.get_best_models(num_models=1)[0]
+    best_hp = FNN_tuner.get_best_hyperparameters(num_trials=1)[0].values
+
     FNN_ens = []
     FNN_ens.append(FNN_best)
-    #FNN_ens[0] = copy.deepcopy(FNN_best)
+    # FNN_ens[0] = copy.deepcopy(FNN_best)
     FNN_best.build(y_train_mixed_up.shape)
-    
+
     stringlist = []
-    FNN_best.summary(print_fn = lambda x: stringlist.append(x))
+    FNN_best.summary(print_fn=lambda x: stringlist.append(x))
     FNN_summary = "\n".join(stringlist)
-    
-    learning_xyz[condition]['FNN_summary']['ROUND_' + str(roundn)] = FNN_summary
-    
+
+    learning_xyz[condition]["FNN_summary"]["ROUND_" + str(roundn)] = FNN_summary
+
     z_full = FNN_best.predict(y_full)
     z_train = FNN_best.predict(y_train)
     z_train_up = FNN_best.predict(y_train_up)
     z_train_mixed_up = FNN_best.predict(y_train_mixed_up)
     z_test = FNN_best.predict(y_test)
-    
-    learning_xyz = add_Z(learning_xyz, z_full, z_train, z_train_up, z_train_mixed_up, z_test, condition, roundn, 0)
-    
-    for SR in range(1, NN_params['subrounds'] + 1):
-        
-        
-        #print(learning_xyz[condition]['y_full'])
-        y_full = learning_xyz[condition]['y_full']['ROUND_' + str(roundn) + '_' + str(SR)]
-        y_train = learning_xyz[condition]['y_train']['ROUND_' + str(roundn) + '_' + str(SR)]
-        y_train_up = learning_xyz[condition]['y_train_up']['ROUND_' + str(roundn) + '_' + str(SR)]
-        y_train_mixed_up = learning_xyz[condition]['y_train_mixed_up']['ROUND_' + str(roundn) + '_' + str(SR)]
-        y_test = learning_xyz[condition]['y_test']['ROUND_' + str(roundn) + '_' + str(SR)]
-        
-        fixed_model = FNN_classifier(fixed_hp = best_hp, set_shapes = set_shapes).build(None)
-        fixed_model.fit(y_train_mixed_up, Z_train_mixed_up, epochs = NN_params['NN_epochs'], validation_split = 0.2, callbacks = [stop_early])
+
+    learning_xyz = add_Z(
+        learning_xyz,
+        z_full,
+        z_train,
+        z_train_up,
+        z_train_mixed_up,
+        z_test,
+        condition,
+        roundn,
+        0,
+    )
+
+    for SR in range(1, NN_params["subrounds"] + 1):
+        # print(learning_xyz[condition]['y_full'])
+        y_full = learning_xyz[condition]["y_full"][
+            "ROUND_" + str(roundn) + "_" + str(SR)
+        ]
+        y_train = learning_xyz[condition]["y_train"][
+            "ROUND_" + str(roundn) + "_" + str(SR)
+        ]
+        y_train_up = learning_xyz[condition]["y_train_up"][
+            "ROUND_" + str(roundn) + "_" + str(SR)
+        ]
+        y_train_mixed_up = learning_xyz[condition]["y_train_mixed_up"][
+            "ROUND_" + str(roundn) + "_" + str(SR)
+        ]
+        y_test = learning_xyz[condition]["y_test"][
+            "ROUND_" + str(roundn) + "_" + str(SR)
+        ]
+
+        fixed_model = FNN_classifier(fixed_hp=best_hp, set_shapes=set_shapes).build(
+            None
+        )
+        fixed_model.fit(
+            y_train_mixed_up,
+            Z_train_mixed_up,
+            epochs=NN_params["NN_epochs"],
+            validation_split=0.2,
+            callbacks=[stop_early],
+        )
         FNN_ens.append(fixed_model)
-        
+
         z_full = fixed_model.predict(y_full)
         z_train = fixed_model.predict(y_train)
         z_train_up = fixed_model.predict(y_train_up)
         z_train_mixed_up = fixed_model.predict(y_train_mixed_up)
         z_test = fixed_model.predict(y_test)
-        
-        learning_xyz = add_Z(learning_xyz, z_full, z_train, z_train_up, Z_train_mixed_up, z_test, condition, roundn, SR)
-        
+
+        learning_xyz = add_Z(
+            learning_xyz,
+            z_full,
+            z_train,
+            z_train_up,
+            Z_train_mixed_up,
+            z_test,
+            condition,
+            roundn,
+            SR,
+        )
+
     return FNN_ens, learning_xyz
 
 
+def add_Z(
+    learning_xyz,
+    z_full,
+    z_train,
+    z_train_up,
+    z_train_mixed_up,
+    z_test,
+    condition,
+    roundn,
+    subroundn,
+):
+    learning_xyz[condition]["z_full_df"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = pd.DataFrame(
+        z_full,
+        index=learning_xyz[condition]["y_full_df"][
+            "ROUND_" + str(roundn) + "_" + str(subroundn)
+        ].index,
+        columns=learning_xyz[condition]["classes"],
+    )
+    learning_xyz[condition]["z_full"]["ROUND_" + str(roundn) + "_" + str(subroundn)] = (
+        z_full
+    )
 
-        
-            
-            
-            
-def add_Z (learning_xyz, z_full, z_train, z_train_up, z_train_mixed_up, z_test, condition, roundn, subroundn):
-    
-    learning_xyz[condition]['z_full_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_full,
-                                                                           index = learning_xyz[condition]['y_full_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
-                                                                           columns = learning_xyz[condition]['classes'])
-    learning_xyz[condition]['z_full']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_full
-    
-    learning_xyz[condition]['z_train_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_train,
-                                                                            index = learning_xyz[condition]['y_train_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
-                                                                            columns = learning_xyz[condition]['classes'])
-    learning_xyz[condition]['z_train']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_train
-    
+    learning_xyz[condition]["z_train_df"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = pd.DataFrame(
+        z_train,
+        index=learning_xyz[condition]["y_train_df"][
+            "ROUND_" + str(roundn) + "_" + str(subroundn)
+        ].index,
+        columns=learning_xyz[condition]["classes"],
+    )
+    learning_xyz[condition]["z_train"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = z_train
+
     # learning_xyz[condition]['z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_train_up,
     #                                                                            index = learning_xyz[condition]['y_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
     #                                                                            columns = learning_xyz[condition]['classes'])
     # learning_xyz[condition]['z_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_train_up
-    
+
     # learning_xyz[condition]['z_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_train_mixed_up,
     #                                                                                  index = learning_xyz[condition]['y_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
     #                                                                                  columns = learning_xyz[condition]['classes'])
     # learning_xyz[condition]['z_train_mixed_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_train_mixed_up
-    
+
     # learning_xyz[condition]['z_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_test,
     #                                                                        index = learning_xyz[condition]['y_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
     #                                                                        columns = learning_xyz[condition]['classes'])
     # learning_xyz[condition]['z_test']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_test
-    
+
     return learning_xyz
 
 
+def add_Y(
+    learning_xyz,
+    y_full,
+    y_full_up,
+    y_train,
+    y_train_up,
+    y_train_mixed_up,
+    y_test,
+    condition,
+    roundn,
+    subroundn,
+):
+    learning_xyz[condition]["y_full_df"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = pd.DataFrame(y_full, index=learning_xyz[condition]["x_full_df"].index)
+    learning_xyz[condition]["y_full"]["ROUND_" + str(roundn) + "_" + str(subroundn)] = (
+        y_full
+    )
 
-
-
-def add_Y (learning_xyz, y_full, y_full_up, y_train, y_train_up, y_train_mixed_up, y_test, condition, roundn, subroundn):
-    learning_xyz[condition]['y_full_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_full,
-                                                                            index = learning_xyz[condition]['x_full_df'].index)
-    learning_xyz[condition]['y_full']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_full
-    
     # learning_xyz[condition]['y_full_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_full_up,
     #                                                                           index = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)].index)
-    learning_xyz[condition]['y_full_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_full_up
-    
-    learning_xyz[condition]['y_train_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_train,
-                                                                            index = learning_xyz[condition]['x_train_df'].index)
-    learning_xyz[condition]['y_train']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_train
-    
+    learning_xyz[condition]["y_full_up"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = y_full_up
+
+    learning_xyz[condition]["y_train_df"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = pd.DataFrame(y_train, index=learning_xyz[condition]["x_train_df"].index)
+    learning_xyz[condition]["y_train"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = y_train
+
     # learning_xyz[condition]['y_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_train_up,
     #                                                                            index = learning_xyz[condition]['x_train_up_df']['ROUND_' + str(roundn)].index)
-    learning_xyz[condition]['y_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_train_up
-    
+    learning_xyz[condition]["y_train_up"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = y_train_up
+
     # learning_xyz[condition]['y_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_train_mixed_up,
     #                                                                                  index = learning_xyz[condition]['x_train_mixed_up_df']['ROUND_' + str(roundn)].index)
-    learning_xyz[condition]['y_train_mixed_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_train_mixed_up
-    
+    learning_xyz[condition]["y_train_mixed_up"][
+        "ROUND_" + str(roundn) + "_" + str(subroundn)
+    ] = y_train_mixed_up
+
     # learning_xyz[condition]['y_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_test,
     #                                                                        index = learning_xyz[condition]['x_test_df'].index)
-    learning_xyz[condition]['y_test']['ROUND_' + str(roundn) + '_' + str(subroundn)] = y_test
-    
+    learning_xyz[condition]["y_test"]["ROUND_" + str(roundn) + "_" + str(subroundn)] = (
+        y_test
+    )
+
     return learning_xyz
 
 
+def create_learninglist(
+    learning_xyz,
+    fract_full,
+    fract_full_up,
+    fract_marker,
+    fract_marker_up,
+    fract_test,
+    condition,
+    roundn,
+    subroundn,
+):
+    classes = list(set(fract_marker[condition]["class"]))
+    learning_xyz[condition]["classes"] = classes
 
+    learning_xyz[condition]["W_full_df"] = fract_full[condition]["class"]
+    learning_xyz[condition]["W_full"] = list(learning_xyz[condition]["W_full_df"])
+    learning_xyz[condition]["W_full_up_df"]["ROUND_" + str(roundn)] = fract_full_up[
+        condition
+    ]["class"]
+    learning_xyz[condition]["W_full_up"]["ROUND_" + str(roundn)] = list(
+        learning_xyz[condition]["W_full_up_df"]["ROUND_" + str(roundn)]
+    )
+    learning_xyz[condition]["W_train_df"] = fract_marker[condition]["class"]
+    learning_xyz[condition]["W_train"] = list(learning_xyz[condition]["W_train_df"])
+    learning_xyz[condition]["W_train_up_df"]["ROUND_" + str(roundn)] = fract_marker_up[
+        condition
+    ]["class"]
+    learning_xyz[condition]["W_train_up"]["ROUND_" + str(roundn)] = list(
+        learning_xyz[condition]["W_train_up_df"]["ROUND_" + str(roundn)]
+    )
 
+    learning_xyz[condition]["x_full_df"] = fract_full[condition].drop(columns=["class"])
+    learning_xyz[condition]["x_full"] = learning_xyz[condition]["x_full_df"].to_numpy(
+        dtype=float
+    )
+    learning_xyz[condition]["x_full_up_df"]["ROUND_" + str(roundn)] = fract_full_up[
+        condition
+    ].drop(columns=["class"])
+    learning_xyz[condition]["x_full_up"]["ROUND_" + str(roundn)] = learning_xyz[
+        condition
+    ]["x_full_up_df"]["ROUND_" + str(roundn)].to_numpy(dtype=float)
+    learning_xyz[condition]["x_train_df"] = fract_marker[condition].drop(
+        columns=["class"]
+    )
+    learning_xyz[condition]["x_train"] = learning_xyz[condition]["x_train_df"].to_numpy(
+        dtype=float
+    )
+    learning_xyz[condition]["x_train_up_df"]["ROUND_" + str(roundn)] = fract_marker_up[
+        condition
+    ].drop(columns=["class"])
+    learning_xyz[condition]["x_train_up"]["ROUND_" + str(roundn)] = learning_xyz[
+        condition
+    ]["x_train_up_df"]["ROUND_" + str(roundn)].to_numpy(dtype=float)
+    learning_xyz[condition]["x_test_df"] = fract_test[condition].drop(columns=["class"])
+    learning_xyz[condition]["x_test"] = learning_xyz[condition]["x_test_df"].to_numpy(
+        dtype=float
+    )
 
+    learning_xyz[condition]["Z_train_df"] = pd.get_dummies(
+        fract_marker[condition]["class"]
+    )[learning_xyz[condition]["classes"]]
+    learning_xyz[condition]["Z_train"] = learning_xyz[condition]["Z_train_df"].to_numpy(
+        dtype=float
+    )
+    # learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.get_dummies(fract_marker_up[condition]['class'])[learning_xyz[condition]['classes']]
+    # learning_xyz[condition]['Z_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].to_numpy(dtype = float)
 
-def create_learninglist (learning_xyz, fract_full, fract_full_up, fract_marker, fract_marker_up, fract_test, condition, roundn, subroundn):
-    classes = list(set(fract_marker[condition]['class']))
-    learning_xyz[condition]['classes'] = classes
-    
-    learning_xyz[condition]['W_full_df'] = fract_full[condition]['class']
-    learning_xyz[condition]['W_full'] = list(learning_xyz[condition]['W_full_df'])
-    learning_xyz[condition]['W_full_up_df']['ROUND_' + str(roundn)] = fract_full_up[condition]['class']
-    learning_xyz[condition]['W_full_up']['ROUND_' + str(roundn)] = list(learning_xyz[condition]['W_full_up_df']['ROUND_' + str(roundn)])
-    learning_xyz[condition]['W_train_df'] = fract_marker[condition]['class']
-    learning_xyz[condition]['W_train'] = list(learning_xyz[condition]['W_train_df'])
-    learning_xyz[condition]['W_train_up_df']['ROUND_' + str(roundn)] = fract_marker_up[condition]['class']
-    learning_xyz[condition]['W_train_up']['ROUND_' + str(roundn)] = list(learning_xyz[condition]['W_train_up_df']['ROUND_' + str(roundn)])
-    
-    learning_xyz[condition]['x_full_df'] = fract_full[condition].drop(columns = ['class'])
-    learning_xyz[condition]['x_full'] = learning_xyz[condition]['x_full_df'].to_numpy(dtype = float)
-    learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)] = fract_full_up[condition].drop(columns = ['class'])
-    learning_xyz[condition]['x_full_up']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)].to_numpy(dtype = float)
-    learning_xyz[condition]['x_train_df'] = fract_marker[condition].drop(columns = ['class'])
-    learning_xyz[condition]['x_train'] = learning_xyz[condition]['x_train_df'].to_numpy(dtype = float)
-    learning_xyz[condition]['x_train_up_df']['ROUND_' + str(roundn)] = fract_marker_up[condition].drop(columns = ['class'])
-    learning_xyz[condition]['x_train_up']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_train_up_df']['ROUND_' + str(roundn)].to_numpy(dtype = float)
-    learning_xyz[condition]['x_test_df'] = fract_test[condition].drop(columns = ['class'])
-    learning_xyz[condition]['x_test'] = learning_xyz[condition]['x_test_df'].to_numpy(dtype = float)
-    
-    learning_xyz[condition]['Z_train_df'] = pd.get_dummies(fract_marker[condition]['class'])[learning_xyz[condition]['classes']]
-    learning_xyz[condition]['Z_train'] = learning_xyz[condition]['Z_train_df'].to_numpy(dtype = float)
-    #learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.get_dummies(fract_marker_up[condition]['class'])[learning_xyz[condition]['classes']]
-    #learning_xyz[condition]['Z_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].to_numpy(dtype = float)
-    
-    #learning_xyz[condition]['V_full_up_df']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)]
-    learning_xyz[condition]['V_full_up']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_full_up']['ROUND_' + str(roundn)]
-    
+    # learning_xyz[condition]['V_full_up_df']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)]
+    learning_xyz[condition]["V_full_up"]["ROUND_" + str(roundn)] = learning_xyz[
+        condition
+    ]["x_full_up"]["ROUND_" + str(roundn)]
+
     return learning_xyz, classes
 
 
+def mix_profiles(
+    mix_steps, NN_params, fract_marker_up, fract_unmixed_up, fract_mixed_up, condition
+):
+    class_list = list(set(list(fract_marker_up[condition]["class"])))
+    combinations = [
+        (a, b) for idx, a in enumerate(class_list) for b in class_list[idx + 1 :]
+    ]
 
-
-
-
-def mix_profiles (mix_steps, NN_params, fract_marker_up, fract_unmixed_up, fract_mixed_up, condition):
-    class_list = list(set(list(fract_marker_up[condition]['class'])))
-    combinations = [(a,b) for idx, a in enumerate(class_list) for b in class_list[idx + 1:]]
-    
     fract_mixed_up[condition] = copy.deepcopy(fract_unmixed_up[condition])
-    #print(condition)
-    #print(fract_unmixed_up[condition])
-    #print(fract_mixed_up[condition])
-    
+    # print(condition)
+    # print(fract_unmixed_up[condition])
+    # print(fract_mixed_up[condition])
+
     cur = 1
-    #print(fract_marker_up[condition])
+    # print(fract_marker_up[condition])
     for comb in combinations:
-        profiles_own = fract_marker_up[condition].copy().loc[fract_marker_up[condition]['class'] == comb[0]].drop(columns = ['class'])
-        profiles_other = fract_marker_up[condition].copy().loc[fract_marker_up[condition]['class'] == comb[1]].drop(columns = ['class'])
-        
-        new_index = [f"{i}_{j}" for i, j in zip(profiles_own.index, profiles_other.index)]
+        profiles_own = (
+            fract_marker_up[condition]
+            .copy()
+            .loc[fract_marker_up[condition]["class"] == comb[0]]
+            .drop(columns=["class"])
+        )
+        profiles_other = (
+            fract_marker_up[condition]
+            .copy()
+            .loc[fract_marker_up[condition]["class"] == comb[1]]
+            .drop(columns=["class"])
+        )
+
+        new_index = [
+            f"{i}_{j}" for i, j in zip(profiles_own.index, profiles_other.index)
+        ]
         for part in mix_steps:
             new_index_part = [f"{i + cur}_{value}" for i, value in enumerate(new_index)]
             own_part = profiles_own.multiply(part)
             other_part = profiles_other.multiply((1 - part))
-            
+
             own_part.index = new_index_part
             other_part.index = new_index_part
-            
+
             profiles_mixed = own_part + other_part
             for classname in class_list:
                 if classname == comb[0]:
                     profiles_mixed[classname] = part
                 elif classname == comb[1]:
-                    profiles_mixed[classname] = (1 - part)
+                    profiles_mixed[classname] = 1 - part
                 else:
-                    profiles_mixed[classname] = 0.
-            profiles_mixed = profiles_mixed.sample(frac = NN_params['mixed_batch'])
-            fract_mixed_up[condition] = pd.concat([fract_mixed_up[condition], profiles_mixed]).sample(frac = 1)
+                    profiles_mixed[classname] = 0.0
+            profiles_mixed = profiles_mixed.sample(frac=NN_params["mixed_batch"])
+            fract_mixed_up[condition] = pd.concat(
+                [fract_mixed_up[condition], profiles_mixed]
+            ).sample(frac=1)
             cur += len(profiles_mixed)
     return fract_mixed_up
-    
-    
-    
-    
 
 
-
-
-
-
-def single_prediction (learning_xyz, clf, svm_metrics, fract_marker, svm_marker, fract_test, svm_test, condition, roundn):
+def single_prediction(
+    learning_xyz,
+    clf,
+    svm_metrics,
+    fract_marker,
+    svm_marker,
+    fract_test,
+    svm_test,
+    condition,
+    roundn,
+):
     print(condition)
-    x_full = learning_xyz[condition]['x_full']
-    x_train = learning_xyz[condition]['x_train']
-    x_train_up = learning_xyz[condition]['x_train_up']['ROUND_' + str(roundn)]
-    x_test = learning_xyz[condition]['x_test']
-    
-    W_train = learning_xyz[condition]['W_train']
-    W_train_up = learning_xyz[condition]['W_train_up']['ROUND_' + str(roundn)]
-    
+    x_full = learning_xyz[condition]["x_full"]
+    x_train = learning_xyz[condition]["x_train"]
+    x_train_up = learning_xyz[condition]["x_train_up"]["ROUND_" + str(roundn)]
+    x_test = learning_xyz[condition]["x_test"]
+
+    W_train = learning_xyz[condition]["W_train"]
+    W_train_up = learning_xyz[condition]["W_train_up"]["ROUND_" + str(roundn)]
+
     clf.fit(x_train_up, W_train_up)
-    
+
     w_full = clf.predict(x_full).tolist()
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
-    
+
     w_full_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_full))))
     w_train_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_train))))
     w_test_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_test))))
-    
-    confusion = pd.DataFrame(confusion_matrix(W_train, w_train, labels = list(clf.classes_)), index = clf.classes_, columns = clf.classes_)
+
+    confusion = pd.DataFrame(
+        confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
+        index=clf.classes_,
+        columns=clf.classes_,
+    )
     accuracy = accuracy_score(W_train, w_train)
-    precision = precision_score(W_train, w_train, average = 'macro')
-    recall = recall_score(W_train, w_train, average = 'macro')
-    f1 = f1_score(W_train, w_train, average = 'macro')
-    
+    precision = precision_score(W_train, w_train, average="macro")
+    recall = recall_score(W_train, w_train, average="macro")
+    f1 = f1_score(W_train, w_train, average="macro")
+
     svm_marker[condition] = copy.deepcopy(fract_marker[condition])
-    svm_marker[condition]['svm_prediction'] = w_train
-    svm_marker[condition]['svm_probability'] = w_train_prob
-    
+    svm_marker[condition]["svm_prediction"] = w_train
+    svm_marker[condition]["svm_probability"] = w_train_prob
+
     svm_test[condition] = copy.deepcopy(fract_test[condition])
-    svm_test[condition]['svm_prediction'] = w_test
-    svm_test[condition]['svm_probability'] = w_test_prob
-    
-    svm_metrics[condition] = {'confusion' : confusion,
-                              'accuracy' : accuracy,
-                              'precision' : precision,
-                              'recall' : recall,
-                              'f1' : f1}
-    
-    learning_xyz[condition]['w_full']['ROUND_' + str(roundn)] = w_full
-    learning_xyz[condition]['w_full_prob']['ROUND_' + str(roundn)] = w_full_prob
-    learning_xyz[condition]['w_full_prob_df']['ROUND_' + str(roundn)] = copy.deepcopy(learning_xyz[condition]['x_full_df'])
-    learning_xyz[condition]['w_full_prob_df']['ROUND_' + str(roundn)]['SVM_winner'] = w_full
-    learning_xyz[condition]['w_full_prob_df']['ROUND_' + str(roundn)]['SVM_prob'] = w_full_prob
-    
-    learning_xyz[condition]['w_train']['ROUND_' + str(roundn)] = w_train
+    svm_test[condition]["svm_prediction"] = w_test
+    svm_test[condition]["svm_probability"] = w_test_prob
+
+    svm_metrics[condition] = {
+        "confusion": confusion,
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+    }
+
+    learning_xyz[condition]["w_full"]["ROUND_" + str(roundn)] = w_full
+    learning_xyz[condition]["w_full_prob"]["ROUND_" + str(roundn)] = w_full_prob
+    learning_xyz[condition]["w_full_prob_df"]["ROUND_" + str(roundn)] = copy.deepcopy(
+        learning_xyz[condition]["x_full_df"]
+    )
+    learning_xyz[condition]["w_full_prob_df"]["ROUND_" + str(roundn)]["SVM_winner"] = (
+        w_full
+    )
+    learning_xyz[condition]["w_full_prob_df"]["ROUND_" + str(roundn)]["SVM_prob"] = (
+        w_full_prob
+    )
+
+    learning_xyz[condition]["w_train"]["ROUND_" + str(roundn)] = w_train
     # learning_xyz[condition]['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
-    
+
     # learning_xyz[condition]['w_test']['ROUND_' + str(roundn)] = w_test
     # learning_xyz[condition]['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
-    
+
     return learning_xyz, svm_metrics, svm_marker, svm_test
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
