@@ -34,7 +34,10 @@ def RP_gradient_heatmap(fract_data):
 
     # Create the window with a static size
     window = sg.Window(
-        "Hierarchical Clustering Heatmap", layout, size=(600, 550), finalize=True
+        "Hierarchical Clustering Heatmap",
+        layout,
+        size=(600, 550),
+        finalize=True,
     )
 
     # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
@@ -43,10 +46,14 @@ def RP_gradient_heatmap(fract_data):
     )
 
     # Function to plot heatmap and return as a PIL image
-    def plot_heatmap(dataframe, condition_name, save_as_pdf=False, folder_path=None):
+    def plot_heatmap(
+        dataframe, condition_name, save_as_pdf=False, folder_path=None
+    ):
         # Perform hierarchical clustering on the rows
         linkage_matrix = linkage(dataframe, method="ward")
-        clustered_rows = leaves_list(linkage_matrix)  # Order of rows after clustering
+        clustered_rows = leaves_list(
+            linkage_matrix
+        )  # Order of rows after clustering
 
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = dataframe.iloc[clustered_rows, :]
@@ -70,7 +77,9 @@ def RP_gradient_heatmap(fract_data):
 
         # If we need to save the plot as a PDF file
         if save_as_pdf and folder_path:
-            pdf_filename = os.path.join(folder_path, f"{condition_name}_heatmap.pdf")
+            pdf_filename = os.path.join(
+                folder_path, f"{condition_name}_heatmap.pdf"
+            )
             plt.savefig(pdf_filename, format="pdf")
 
         # Save the plot to a bytes buffer
@@ -159,7 +168,10 @@ def RP_stats_heatmap(results):
 
     # Create the window with a static size
     window = sg.Window(
-        "Hierarchical Clustering Heatmap", layout, size=(600, 550), finalize=True
+        "Hierarchical Clustering Heatmap",
+        layout,
+        size=(600, 550),
+        finalize=True,
     )
 
     # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
@@ -168,9 +180,13 @@ def RP_stats_heatmap(results):
     )
 
     # Function to plot heatmap and return as a PIL image
-    def plot_heatmap(dataframe, condition_name, save_as_pdf=False, folder_path=None):
+    def plot_heatmap(
+        dataframe, condition_name, save_as_pdf=False, folder_path=None
+    ):
         # Filter out the columns that start with 'fCC_'
-        fcc_columns = [col for col in dataframe.columns if col.startswith("fCC_")]
+        fcc_columns = [
+            col for col in dataframe.columns if col.startswith("fCC_")
+        ]
         df_fcc = dataframe[fcc_columns]
 
         # Drop rows with NaN values
@@ -181,7 +197,9 @@ def RP_stats_heatmap(results):
 
         # Perform hierarchical clustering on the rows
         linkage_matrix = linkage(df_fcc_cleaned, method="ward")
-        clustered_rows = leaves_list(linkage_matrix)  # Order of rows after clustering
+        clustered_rows = leaves_list(
+            linkage_matrix
+        )  # Order of rows after clustering
 
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = df_fcc_cleaned.iloc[clustered_rows, :]
@@ -208,7 +226,9 @@ def RP_stats_heatmap(results):
 
         # If we need to save the plot as a PDF file
         if save_as_pdf and folder_path:
-            pdf_filename = os.path.join(folder_path, f"{condition_name}_heatmap.pdf")
+            pdf_filename = os.path.join(
+                folder_path, f"{condition_name}_heatmap.pdf"
+            )
             plt.savefig(pdf_filename, format="pdf")
 
         # Save the plot to a bytes buffer
@@ -302,7 +322,9 @@ def RP_stats_distribution(results):
     )
 
     # Function to plot pie chart and return as a PIL image
-    def plot_pie_chart(dataframe, condition_name, save_as_pdf=False, folder_path=None):
+    def plot_pie_chart(
+        dataframe, condition_name, save_as_pdf=False, folder_path=None
+    ):
         # Get the 'fNN_winner' column
         fnn_winner = dataframe["fNN_winner"]
 
@@ -324,7 +346,9 @@ def RP_stats_distribution(results):
 
         # If we need to save the plot as a PDF file
         if save_as_pdf and folder_path:
-            pdf_filename = os.path.join(folder_path, f"{condition_name}_piechart.pdf")
+            pdf_filename = os.path.join(
+                folder_path, f"{condition_name}_piechart.pdf"
+            )
             plt.savefig(pdf_filename, format="pdf")
 
         # Save the plot to a bytes buffer for display in the GUI
@@ -337,7 +361,9 @@ def RP_stats_distribution(results):
     # Function to export pie charts and summary to Excel and PDFs
     def export_pie_charts(results, folder_path):
         # Create an Excel writer to save summary data
-        excel_filename = os.path.join(folder_path, "class_distribution_summary.xlsx")
+        excel_filename = os.path.join(
+            folder_path, "class_distribution_summary.xlsx"
+        )
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each condition and save the pie chart and class distribution
@@ -345,7 +371,9 @@ def RP_stats_distribution(results):
                 df = results[condition]["metrics"]
 
                 # Rename 'fNN_winner' column to 'main organelle' before exporting
-                df_export = df.rename(columns={"fNN_winner": "main compartment"})
+                df_export = df.rename(
+                    columns={"fNN_winner": "main compartment"}
+                )
 
                 # Get the class distribution for 'main organelle'
                 class_counts = df_export["main compartment"].value_counts()
@@ -434,16 +462,22 @@ def RP_global_heatmap(comparison):
         filtered_df = dataframe[dataframe["fRLS"] >= 1]
 
         # Filter out the columns that start with 'fRL_'
-        frl_columns = [col for col in filtered_df.columns if col.startswith("fRL_")]
+        frl_columns = [
+            col for col in filtered_df.columns if col.startswith("fRL_")
+        ]
         df_frl = filtered_df[frl_columns]
 
         # Rename columns from 'fRL_' to 'RL_'
-        df_frl_renamed = df_frl.rename(columns=lambda col: col.replace("fRL_", "RL_"))
+        df_frl_renamed = df_frl.rename(
+            columns=lambda col: col.replace("fRL_", "RL_")
+        )
 
         return df_frl_renamed
 
     # Function to plot heatmap and return as a PIL image
-    def plot_heatmap(dataframe, comparison_name, save_as_pdf=False, folder_path=None):
+    def plot_heatmap(
+        dataframe, comparison_name, save_as_pdf=False, folder_path=None
+    ):
         # Drop rows with NaN values
         df_cleaned = dataframe.dropna()
 
@@ -452,7 +486,9 @@ def RP_global_heatmap(comparison):
 
         # Perform hierarchical clustering on the rows
         linkage_matrix = linkage(df_cleaned, method="ward")
-        clustered_rows = leaves_list(linkage_matrix)  # Order of rows after clustering
+        clustered_rows = leaves_list(
+            linkage_matrix
+        )  # Order of rows after clustering
 
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = df_cleaned.iloc[clustered_rows, :]
@@ -479,7 +515,9 @@ def RP_global_heatmap(comparison):
 
         # If we need to save the plot as a PDF file
         if save_as_pdf and folder_path:
-            pdf_filename = os.path.join(folder_path, f"{comparison_name}_heatmap.pdf")
+            pdf_filename = os.path.join(
+                folder_path, f"{comparison_name}_heatmap.pdf"
+            )
             plt.savefig(pdf_filename, format="pdf")
 
         # Save the plot to a bytes buffer
@@ -492,7 +530,9 @@ def RP_global_heatmap(comparison):
     # Function to export filtered and renamed dataframes to Excel and heatmaps to PDFs
     def export_heatmaps(comparison, folder_path):
         # Create an Excel writer to save all filtered data into one file
-        excel_filename = os.path.join(folder_path, "filtered_comparison_data.xlsx")
+        excel_filename = os.path.join(
+            folder_path, "filtered_comparison_data.xlsx"
+        )
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each comparison and save the filtered and renamed DataFrame
@@ -534,7 +574,9 @@ def RP_global_heatmap(comparison):
                 df_filtered_for_plot = filter_and_prepare_data(df)
 
                 # Generate the heatmap with hierarchical clustering and comparison name as the title
-                heatmap_image = plot_heatmap(df_filtered_for_plot, selected_comparison)
+                heatmap_image = plot_heatmap(
+                    df_filtered_for_plot, selected_comparison
+                )
 
                 # Convert the heatmap image to PNG and update the window
                 bio = BytesIO()
@@ -584,11 +626,15 @@ def RP_global_distance(comparison):
     # Function to filter the data before plotting
     def filter_data(dataframe):
         # Filter out rows where DS is 0 and where fRLS < 1
-        filtered_df = dataframe[(dataframe["DS"] != 0) & (dataframe["fRLS"] >= 1)]
+        filtered_df = dataframe[
+            (dataframe["DS"] != 0) & (dataframe["fRLS"] >= 1)
+        ]
         return filtered_df
 
     # Function to create a scatter plot and return it as a PIL image
-    def plot_scatter(dataframe, comparison_name, save_as_pdf=False, folder_path=None):
+    def plot_scatter(
+        dataframe, comparison_name, save_as_pdf=False, folder_path=None
+    ):
         # Filter the data
         filtered_df = filter_data(dataframe)
 
@@ -606,7 +652,9 @@ def RP_global_distance(comparison):
         line_threshold = -np.log10(0.05)
 
         # Apply colors to points
-        colors = np.where(y_values > line_threshold, color_above_line, color_below_line)
+        colors = np.where(
+            y_values > line_threshold, color_above_line, color_below_line
+        )
 
         # Plot the scatter points with the assigned colors
         plt.scatter(x_values, y_values, c=colors, alpha=0.7)
@@ -637,7 +685,9 @@ def RP_global_distance(comparison):
     # Function to export scatter plot data and save to Excel and PDFs
     def export_scatter_data(comparison, folder_path):
         # Create an Excel writer to save all data into one file
-        excel_filename = os.path.join(folder_path, "comparison_scatter_data.xlsx")
+        excel_filename = os.path.join(
+            folder_path, "comparison_scatter_data.xlsx"
+        )
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each comparison and save the filtered DataFrame
@@ -648,7 +698,9 @@ def RP_global_distance(comparison):
                 df_filtered = filter_data(df)
 
                 # Write the filtered DataFrame to Excel
-                df_filtered[["DS", "P(t)_RLS"]].to_excel(writer, sheet_name=str(comp))
+                df_filtered[["DS", "P(t)_RLS"]].to_excel(
+                    writer, sheet_name=str(comp)
+                )
 
                 # Generate and save the scatter plot as a PDF
                 plot_scatter(
@@ -778,7 +830,9 @@ def RP_class_heatmap(results):
 
             # If we need to save the plot as a PDF file
             if save_as_pdf and folder_path:
-                pdf_filename = os.path.join(folder_path, f"{classname}_heatmap.pdf")
+                pdf_filename = os.path.join(
+                    folder_path, f"{classname}_heatmap.pdf"
+                )
                 plt.savefig(pdf_filename, format="pdf")
 
             # Save the plot to a bytes buffer
@@ -861,7 +915,9 @@ def RP_class_heatmap(results):
                 df_zscore = compute_rowwise_zscore(df_filtered)
 
                 # Generate the heatmap for the selected classname, using condition names as column labels
-                heatmap_image = plot_heatmap(df_zscore, selected_classname, conditions)
+                heatmap_image = plot_heatmap(
+                    df_zscore, selected_classname, conditions
+                )
 
                 # Convert the heatmap image to PNG and update the window
                 if heatmap_image:

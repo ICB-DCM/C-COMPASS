@@ -22,7 +22,9 @@ def create_condition_dataset(
     data = {}
     identifier = []
     for path in tables_init:
-        identifier = list(set(identifier + list(data_init[path][idents[path]])))
+        identifier = list(
+            set(identifier + list(data_init[path][idents[path]]))
+        )
     for condition in conditions:
         data_new = pd.DataFrame(index=identifier)
         for path in tables_init:
@@ -33,22 +35,32 @@ def create_condition_dataset(
                     data[samplename] = data_init[path][sample[0]]
                     data.set_index(data_init[path][idents[path]], inplace=True)
                     data_new = pd.merge(
-                        data_new, data, right_index=True, left_index=True, how="outer"
+                        data_new,
+                        data,
+                        right_index=True,
+                        left_index=True,
+                        how="outer",
                     )
                     if condition == "[KEEP]":
                         if samplename + "_x" in data_new.columns:
                             for element in list(data_new.index):
-                                if pd.isnull(data_new[samplename + "_x"][element]):
-                                    data_new[samplename + "_x"][element] = data_new[
-                                        samplename + "_y"
-                                    ][element]
-                                if pd.isnull(data_new[samplename + "_y"][element]):
-                                    data_new[samplename + "_y"][element] = data_new[
-                                        samplename + "_x"
-                                    ][element]
+                                if pd.isnull(
+                                    data_new[samplename + "_x"][element]
+                                ):
+                                    data_new[samplename + "_x"][element] = (
+                                        data_new[samplename + "_y"][element]
+                                    )
+                                if pd.isnull(
+                                    data_new[samplename + "_y"][element]
+                                ):
+                                    data_new[samplename + "_y"][element] = (
+                                        data_new[samplename + "_x"][element]
+                                    )
                         data_new = data_new.T.drop_duplicates().T
                         data_new.rename(
-                            {samplename + "_x": samplename}, axis=1, inplace=True
+                            {samplename + "_x": samplename},
+                            axis=1,
+                            inplace=True,
                         )
                     else:
                         data_new = data_new.rename(
@@ -112,7 +124,9 @@ def scale_data(dataset):  # scales a dataset from 0 to 1
     return dataset_scaled
 
 
-def create_repdata(condata):  # creates dictionary containing data sorted by replicate
+def create_repdata(
+    condata,
+):  # creates dictionary containing data sorted by replicate
     repdata = {}
     replist = []
     for sample in condata.columns:
@@ -131,7 +145,9 @@ def create_repdata(condata):  # creates dictionary containing data sorted by rep
     return repdata
 
 
-def removeElements(lst, k):  # removes elements from list with a count less than k
+def removeElements(
+    lst, k
+):  # removes elements from list with a count less than k
     counted = Counter(lst)
     return [el for el in lst if counted[el] >= k]
 
@@ -161,7 +177,11 @@ def calculate_innercorr(condata, fracts_corr, protlist_con, condition):
                         correls[rep][ID] = corr
         correls[replicate] = correls.mean(axis=1)
         icorr = pd.merge(
-            icorr, correls[replicate], left_index=True, right_index=True, how="outer"
+            icorr,
+            correls[replicate],
+            left_index=True,
+            right_index=True,
+            how="outer",
         )
     return icorr
 
@@ -228,12 +248,14 @@ def filter_missing(data_con, stats, values_NPC):
         for replicate in condata:
             repdata = condata[replicate]
             count_before = len(repdata)
-            repdata.dropna(thresh=values_NPC["--missing_number--"], inplace=True)
+            repdata.dropna(
+                thresh=values_NPC["--missing_number--"], inplace=True
+            )
             repdata.replace(np.nan, 0.0, inplace=True)
             count_after = len(repdata)
-            stats["filtered"]["by ValidValues"][condition + "_" + replicate] = (
-                count_after - count_before
-            )
+            stats["filtered"]["by ValidValues"][
+                condition + "_" + replicate
+            ] = count_after - count_before
             condata[replicate] = repdata
         data_con_missing[condition] = condata
         # data_con[condition] = condata
@@ -322,11 +344,15 @@ def calculate_icorr(data_con, fracts_corr, protlist_con):
 def remove_worst(data_con, protlist_con, mincount, stats, icorr):
     check_IDs = {}
     for condition in data_con:
-        corr_IDs = def_corr_IDs(data_con[condition], protlist_con, condition, mincount)
+        corr_IDs = def_corr_IDs(
+            data_con[condition], protlist_con, condition, mincount
+        )
         check_IDs[condition] = corr_IDs
     for condition in data_con:
         for replicate in data_con[condition]:
-            stats["filtered"]["by InnerCorrelation"][condition + "_" + replicate] = 0
+            stats["filtered"]["by InnerCorrelation"][
+                condition + "_" + replicate
+            ] = 0
     data_con_cleaned = {}
     for condition in data_con:
         # condata = copy.deepcopy(data_con[condition])
@@ -336,13 +362,15 @@ def remove_worst(data_con, protlist_con, mincount, stats, icorr):
             minrep = correls.idxmin(axis=1)[ID]
             try:
                 condata[minrep] = condata[minrep].drop(ID, axis=0)
-            except:
+            except Exception:
                 print("correls: ")
                 print(correls)
                 print("minrep: " + str(minrep))
                 print(correls.loc[[ID]])
                 print("ID: " + str(ID))
-            stats["filtered"]["by InnerCorrelation"][condition + "_" + minrep] -= 1
+            stats["filtered"]["by InnerCorrelation"][
+                condition + "_" + minrep
+            ] -= 1
         data_con_cleaned[condition] = condata
     return data_con_cleaned
 
@@ -352,7 +380,9 @@ def implement_icorr(data_keep, icorr):
         col_new = "InnerCorrelation_" + condition
         correls = pd.DataFrame()
         correls[col_new] = icorr[condition].mean(axis=1)
-        data_keep = pd.merge(data_keep, correls, left_index=True, right_index=True)
+        data_keep = pd.merge(
+            data_keep, correls, left_index=True, right_index=True
+        )
     return data_keep
 
 
@@ -387,10 +417,12 @@ def create_median(data_con, fracts_con, scale):
                             how="outer",
                         )
             cols = [col for col in fract_vals.columns]
-            fract_vals[condition + "_median_" + prefix] = fract_vals[cols].median(
+            fract_vals[condition + "_median_" + prefix] = fract_vals[
+                cols
+            ].median(axis=1)
+            fract_std[condition + "_std_" + prefix] = fract_std[cols].std(
                 axis=1
             )
-            fract_std[condition + "_std_" + prefix] = fract_std[cols].std(axis=1)
             con_vals = pd.merge(
                 con_vals,
                 fract_vals[condition + "_median_" + prefix],
@@ -432,7 +464,11 @@ def create_concat(data_con, scale):
                 )
                 renamedict[oldname] = newname
             con_vals = pd.merge(
-                con_vals, repdata, left_index=True, right_index=True, how="outer"
+                con_vals,
+                repdata,
+                left_index=True,
+                right_index=True,
+                how="outer",
             )
             con_vals.rename(renamedict, axis="columns", inplace=True)
         if scale:
@@ -465,9 +501,9 @@ def remove_zeros(data_con, stats, params):
         count_before = len(condata)
         condata = condata[~(condata == 0).all(axis=1)]
         count_after = len(condata)
-        stats["filtered"]["by baseline profiles"][condition + "_" + params["mode"]] = (
-            count_after - count_before
-        )
+        stats["filtered"]["by baseline profiles"][
+            condition + "_" + params["mode"]
+        ] = count_after - count_before
         data_con[condition] = condata
     return data_con
 

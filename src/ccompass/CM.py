@@ -68,7 +68,10 @@ def CM_exec(markers, marker_conv):
             ),
             sg.Column(
                 layout=[
-                    [sg.Text("initial annotations: "), sg.Text(str(len(marker_conv)))],
+                    [
+                        sg.Text("initial annotations: "),
+                        sg.Text(str(len(marker_conv))),
+                    ],
                     [
                         sg.Text("used annotations: "),
                         sg.Text(str(num_names), key="-num_anno-"),

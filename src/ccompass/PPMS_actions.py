@@ -47,7 +47,10 @@ def accept(values):
                 values["--class_scale1_how--"],
             ],
             "corrfilter": values["--class_corrfilter--"],
-            "scale2": [values["--class_scale2--"], values["--class_scale2_how--"]],
+            "scale2": [
+                values["--class_scale2--"],
+                values["--class_scale2_how--"],
+            ],
             "zeros": values["--class_zeros--"],
         },
         "vis": {

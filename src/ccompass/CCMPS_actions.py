@@ -70,9 +70,13 @@ def fract_buttons(window, status):
     for button in inactive:
         window[button].Update(disabled=not status)
     if status:
-        window["-fractionation_status-"].Update(value="done!", text_color="dark green")
+        window["-fractionation_status-"].Update(
+            value="done!", text_color="dark green"
+        )
     else:
-        window["-fractionation_status-"].Update(value="...ready!", text_color="white")
+        window["-fractionation_status-"].Update(
+            value="...ready!", text_color="white"
+        )
     return
 
 
@@ -171,7 +175,9 @@ def fract_add(
     )
     if filename:
         fract_paths.append(filename)
-        window["-fractionation_path-"].Update(values=fract_paths, value=filename)
+        window["-fractionation_path-"].Update(
+            values=fract_paths, value=filename
+        )
         data = pd.read_csv(filename, sep="\t", header=0)
         data = data.replace("NaN", np.nan)
         data = data.replace("Filtered", np.nan)
@@ -231,7 +237,13 @@ def fract_defkeep(values, window, fract_tables):
 
 def fract_defcon(values, window, fract_tables):
     values, fract_tables = fract_modifytable(
-        "Set Condition", "Condition Name:", values, fract_tables, 1, 0, "string"
+        "Set Condition",
+        "Condition Name:",
+        values,
+        fract_tables,
+        1,
+        0,
+        "string",
     )
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
@@ -241,7 +253,13 @@ def fract_defcon(values, window, fract_tables):
 
 def fract_defrep(values, window, fract_tables):
     values, fract_tables = fract_modifytable(
-        "Set Replicate", "Replicate Number:", values, fract_tables, 2, 0, "integer"
+        "Set Replicate",
+        "Replicate Number:",
+        values,
+        fract_tables,
+        2,
+        0,
+        "integer",
     )
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
@@ -251,7 +269,13 @@ def fract_defrep(values, window, fract_tables):
 
 def fract_deffract(values, window, fract_tables):
     values, fract_tables = fract_modifytable(
-        "Set Fractions", "FIRST Fraction Number:", values, fract_tables, 3, 1, "integer"
+        "Set Fractions",
+        "FIRST Fraction Number:",
+        values,
+        fract_tables,
+        3,
+        1,
+        "integer",
     )
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
@@ -381,7 +405,7 @@ def is_float(element):
     try:
         float(element)
         return True
-    except:
+    except (ValueError, TypeError):
         return False
 
 
@@ -392,7 +416,9 @@ def convert_to_float(x):
         return x
 
 
-def tp_add(values, window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
+def tp_add(
+    values, window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
+):
     filename = sg.popup_get_file(
         "Chose dataset",
         no_window=True,
@@ -508,7 +534,14 @@ def tp_export(tp_data, tp_info):
         export_full = pd.DataFrame()
         for condition in tp_data:
             path = (
-                export_folder + "/" + time + "_" + experiment + "_" + condition + ".txt"
+                export_folder
+                + "/"
+                + time
+                + "_"
+                + experiment
+                + "_"
+                + condition
+                + ".txt"
             )
             tp_data[condition].to_csv(
                 path,
@@ -533,9 +566,23 @@ def tp_export(tp_data, tp_info):
                 right_index=True,
                 how="left",
             )
-        path = export_folder + "/" + time + "_" + experiment + "_" + "combined" + ".txt"
+        path = (
+            export_folder
+            + "/"
+            + time
+            + "_"
+            + experiment
+            + "_"
+            + "combined"
+            + ".txt"
+        )
         export_full.to_csv(
-            path, header=True, index=True, index_label="Identifier", sep="\t", mode="a"
+            path,
+            header=True,
+            index=True,
+            index_label="Identifier",
+            sep="\t",
+            mode="a",
         )
     return
 
@@ -581,14 +628,18 @@ def refresh_markertable(window, values, marker_sets):
 def refresh_markercols(window, values, marker_sets):
     try:
         window["-marker_key-"].Update(
-            values=marker_sets[values["-marker_list-"][0]]["table"].columns.tolist(),
+            values=marker_sets[values["-marker_list-"][0]][
+                "table"
+            ].columns.tolist(),
             value=marker_sets[values["-marker_list-"][0]]["identifier_col"],
         )
         window["-marker_class-"].Update(
-            values=marker_sets[values["-marker_list-"][0]]["table"].columns.tolist(),
+            values=marker_sets[values["-marker_list-"][0]][
+                "table"
+            ].columns.tolist(),
             value=marker_sets[values["-marker_list-"][0]]["class_col"],
         )
-    except:
+    except Exception:
         window["-marker_key-"].Update(values=[], value="-")
         window["-marker_class-"].Update(values=[], value="-")
     return
@@ -598,7 +649,10 @@ def marker_add(window, values, marker_sets):
     filename = sg.popup_get_file(
         "Select a new Marker List!",
         no_window=True,
-        file_types=(("Tab delimited Text", "*.txt"), ("Tab Separated Values", "*.tsv")),
+        file_types=(
+            ("Tab delimited Text", "*.txt"),
+            ("Tab Separated Values", "*.tsv"),
+        ),
     )
     if filename:
         marker_sets[filename] = {}
@@ -628,14 +682,22 @@ def marker_remove(window, values, marker_sets):
 
 
 def marker_setkey(values, marker_sets):
-    marker_sets[values["-marker_list-"][0]]["identifier_col"] = values["-marker_key-"]
+    marker_sets[values["-marker_list-"][0]]["identifier_col"] = values[
+        "-marker_key-"
+    ]
     return
 
 
 def marker_setclass(values, marker_sets):
-    marker_sets[values["-marker_list-"][0]]["class_col"] = values["-marker_class-"]
+    marker_sets[values["-marker_list-"][0]]["class_col"] = values[
+        "-marker_class-"
+    ]
     marker_sets[values["-marker_list-"][0]]["classes"] = list(
-        set(marker_sets[values["-marker_list-"][0]]["table"][values["-marker_class-"]])
+        set(
+            marker_sets[values["-marker_list-"][0]]["table"][
+                values["-marker_class-"]
+            ]
+        )
     )
     marker_conv = create_conversion(marker_sets)
     return marker_conv
@@ -654,7 +716,10 @@ def create_markerlist(marker_sets, marker_conv, marker_params):
     counter = 1
     for path in marker_sets:
         mset = marker_sets[path]["table"][
-            [marker_sets[path]["identifier_col"], marker_sets[path]["class_col"]]
+            [
+                marker_sets[path]["identifier_col"],
+                marker_sets[path]["class_col"],
+            ]
         ]
         mset.rename(
             columns={
@@ -679,9 +744,9 @@ def create_markerlist(marker_sets, marker_conv, marker_params):
     elif marker_params["what"] == "intersect":
         markerset.dropna(inplace=True)
     if marker_params["how"] == "majority":
-        markerset_final = pd.DataFrame(markerset.mode(axis=1, dropna=True)[0]).rename(
-            columns={0: "class"}
-        )
+        markerset_final = pd.DataFrame(
+            markerset.mode(axis=1, dropna=True)[0]
+        ).rename(columns={0: "class"})
     elif marker_params["how"] == "exclude":
         markerset_final = markerset.mode(axis=1, dropna=True).fillna(np.nan)
         if 1 in markerset_final.columns:
@@ -739,7 +804,10 @@ def session_save(
     status,
 ):
     filename = sg.popup_get_file(
-        "Save Session", no_window=True, file_types=(("Numpy", "*.npy"),), save_as=True
+        "Save Session",
+        no_window=True,
+        file_types=(("Numpy", "*.npy"),),
+        save_as=True,
     )
     if filename:
         file = {
@@ -845,7 +913,9 @@ def session_open(window, values, filename):
 
     if fract_paths:
         fract_refreshtable(window, fract_tables[fract_paths[0]])
-        window["-fractionation_path-"].Update(values=fract_paths, value=fract_paths[0])
+        window["-fractionation_path-"].Update(
+            values=fract_paths, value=fract_paths[0]
+        )
     else:
         fract_refreshtable(window, [])
         window["-fractionation_path-"].Update(values=fract_paths, value="")
@@ -1028,7 +1098,10 @@ def create_markerprofiles(fract_data, key, fract_info, marker_list):
             ]
         for condition in profiles_vis:
             fract_marker_vis[condition] = pd.merge(
-                profiles_vis[condition], marker_list, left_index=True, right_index=True
+                profiles_vis[condition],
+                marker_list,
+                left_index=True,
+                right_index=True,
             )
 
             # profiles_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_index = True, right_index = True)
@@ -1152,9 +1225,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
 
         class_sizes = {}
         for classname in list(set(fract_marker[condition]["class"])):
-            class_sizes[classname] = list(fract_marker[condition]["class"]).count(
-                classname
-            )
+            class_sizes[classname] = list(
+                fract_marker[condition]["class"]
+            ).count(classname)
         class_maxsize = max(class_sizes.values())
 
         fract_marker_up[condition] = fract_marker[condition]
@@ -1173,7 +1246,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
             # print('difference:', class_difference)
 
             if class_sizes[classname] > class_maxsize:
-                ID_rnd = random.sample(list(data_class.index), class_difference - 1)
+                ID_rnd = random.sample(
+                    list(data_class.index), class_difference - 1
+                )
                 fract_marker_up[condition].drop(ID_rnd, inplace=True)
 
             if class_sizes[classname] < class_maxsize:
@@ -1190,7 +1265,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         k += 1
 
                         std_rnd = stds[condition].loc[[ID_rnd]]
-                        std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
+                        std_rnd = std_rnd[
+                            ~std_rnd.index.duplicated(keep="first")
+                        ]
 
                         profile_rnd = data_class.loc[[ID_rnd]]
                         profile_rnd = profile_rnd[
@@ -1208,7 +1285,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                                 std_rnd.columns.str.endswith(suffix)
                             ]
                             sigma = 2 * std_rnd[col_std].iloc[0]
-                            nv = np.random.normal(profile_rnd[col_val][0], sigma)
+                            nv = np.random.normal(
+                                profile_rnd[col_val][0], sigma
+                            )
                             nv = 0.0 if nv < 0 else 1.0 if nv > 1 else nv[0]
                             list_noised.append(nv)
 
@@ -1218,9 +1297,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         profile_noised.index = [name_up]
                         profile_noised["class"] = [classname]
                         class_up = class_up.append(profile_noised)
-                    fract_marker_up[condition] = fract_marker_up[condition].append(
-                        class_up
-                    )
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
 
                 if mode == "average":
                     for i in range(class_difference):
@@ -1253,7 +1332,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         ]
 
                         profile_av = (
-                            pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3])
+                            pd.concat(
+                                [profile_rnd_1, profile_rnd_2, profile_rnd_3]
+                            )
                             .median(axis=0)
                             .to_frame()
                             .transpose()
@@ -1262,9 +1343,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         profile_av.index = [name_up]
                         profile_av["class"] = [classname]
                         class_up = class_up.append(profile_av)
-                    fract_marker_up[condition] = fract_marker_up[condition].append(
-                        class_up
-                    )
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
 
                 if mode == "noisedaverage":
                     for i in range(class_difference):
@@ -1300,7 +1381,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         ]
 
                         profile_av = (
-                            pd.concat([profile_rnd_1, profile_rnd_2, profile_rnd_3])
+                            pd.concat(
+                                [profile_rnd_1, profile_rnd_2, profile_rnd_3]
+                            )
                             .median(axis=0)
                             .to_frame()
                             .transpose()
@@ -1318,7 +1401,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         #     nv = 0. if nv < 0 else 1. if nv > 1 else nv[0]
                         #     # print(sigma)
                         nv = np.random.normal(
-                            profile_av_flat, 2 * class_std_flat, size=profile_av.shape
+                            profile_av_flat,
+                            2 * class_std_flat,
+                            size=profile_av.shape,
                         )
                         nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
 
@@ -1326,7 +1411,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
 
                         # values = np.where(values > 1, 1, np.where(values < 0, 0, values))
 
-                        profile_noised = pd.DataFrame(nv, columns=profile_av.columns)
+                        profile_noised = pd.DataFrame(
+                            nv, columns=profile_av.columns
+                        )
                         profile_noised.index = [name_up]
                         profile_noised["class"] = [classname]
                         class_up = class_up.append(profile_noised)
@@ -1334,9 +1421,9 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
                         # profile_av.index = [name_up]
                         # profile_av['class'] = [classname]
                         # class_up = class_up.append(profile_av)
-                    fract_marker_up[condition] = fract_marker_up[condition].append(
-                        class_up
-                    )
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
 
         # noised_df = pd.DataFrame([noised_values], columns=df_mean.columns)
 
@@ -1349,7 +1436,9 @@ def marker_mix(fract_marker_up):
     for condition in fract_marker_up:
         class_list = list(set(list(fract_marker_up[condition]["class"])))
         combinations = [
-            (a, b) for idx, a in enumerate(class_list) for b in class_list[idx + 1 :]
+            (a, b)
+            for idx, a in enumerate(class_list)
+            for b in class_list[idx + 1 :]
         ]
 
         fract_mixed_up[condition] = pd.DataFrame(
@@ -1374,7 +1463,8 @@ def marker_mix(fract_marker_up):
             )
 
             new_index = [
-                f"{i}_{j}" for i, j in zip(profiles_own.index, profiles_other.index)
+                f"{i}_{j}"
+                for i, j in zip(profiles_own.index, profiles_other.index)
             ]
             mix_steps = [i / 10 for i in range(0, 11)]
 
@@ -1539,7 +1629,9 @@ def enable_markersettings(window, is_enabled):
     if is_enabled:
         window["-status_marker-"].Update(value="missing", text_color="white")
     else:
-        window["-status_marker-"].Update(value="ready!", text_color="dark green")
+        window["-status_marker-"].Update(
+            value="ready!", text_color="dark green"
+        )
     return
 
 
@@ -1709,7 +1801,9 @@ def refresh_window(window, status):
                 "-global_report-",
                 "-global_reset-",
             ]:
-                window[element].Update(disabled=not status["comparison_global"])
+                window[element].Update(
+                    disabled=not status["comparison_global"]
+                )
 
             if status["comparison_global"] and status["tp_data"]:
                 for element in ["-class_run-"]:
@@ -1720,7 +1814,9 @@ def refresh_window(window, status):
                     "-class_report-",
                     "-class_reset-",
                 ]:
-                    window[element].Update(disabled=not status["comparison_class"])
+                    window[element].Update(
+                        disabled=not status["comparison_class"]
+                    )
             else:
                 for element in [
                     "-class_run-",
@@ -1733,7 +1829,9 @@ def refresh_window(window, status):
 
                 if status["lipidome_data"]:
                     for element in ["-lipidome_predict-"]:
-                        window[element].Update(disabled=status["lipidome_prediction"])
+                        window[element].Update(
+                            disabled=status["lipidome_prediction"]
+                        )
                     for element in [
                         "-lipidome_report-",
                         "-lipidome_reset-",

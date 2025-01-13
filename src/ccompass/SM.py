@@ -37,7 +37,9 @@ def create_line_plot(data, title=None):
     if title:
         plt.title(title)
     plt.ylim(0, 1)
-    fig.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to make room for the legend
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.95]
+    )  # Adjust layout to make room for the legend
     return fig
 
 
@@ -45,7 +47,9 @@ def update_class_info(marker_list, classnames, data):
     class_info = []
     for classname in classnames:
         count = data[
-            data.index.isin(marker_list[marker_list["class"] == classname].index)
+            data.index.isin(
+                marker_list[marker_list["class"] == classname].index
+            )
         ].shape[0]
         class_info.append([classname, count])
     return class_info
@@ -78,7 +82,9 @@ def SM_exec(fract_data, fract_info, marker_list, key):
 
         profiles_df = pd.DataFrame(median_classprofiles)
         profiles_dict[condition] = profiles_df
-        class_info_dict[condition] = update_class_info(marker_list, classnames, data)
+        class_info_dict[condition] = update_class_info(
+            marker_list, classnames, data
+        )
         distinct_profiles_dict[condition] = distinct_profiles
 
     sg.theme("DarkTeal11")
@@ -127,7 +133,9 @@ def SM_exec(fract_data, fract_info, marker_list, key):
         elif event_SM == "-condition-":
             condition = values_SM["-condition-"]
             fig = create_line_plot(profiles_dict[condition], title=condition)
-            figure_agg = update_figure(window_SM["-CANVAS-"].TKCanvas, figure_agg, fig)
+            figure_agg = update_figure(
+                window_SM["-CANVAS-"].TKCanvas, figure_agg, fig
+            )
             window_SM["-CLASSINFO-"].update(values=class_info_dict[condition])
         elif event_SM == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
@@ -142,7 +150,9 @@ def SM_exec(fract_data, fract_info, marker_list, key):
                 # Save individual Excel files for each condition with distinct profiles for each class
                 for cond, distinct_profiles in distinct_profiles_dict.items():
                     with pd.ExcelWriter(
-                        os.path.join(folder_path, f"markerprofiles_{cond}.xlsx")
+                        os.path.join(
+                            folder_path, f"markerprofiles_{cond}.xlsx"
+                        )
                     ) as writer:
                         for classname, df in distinct_profiles.items():
                             df.to_excel(writer, sheet_name=classname)
@@ -151,7 +161,9 @@ def SM_exec(fract_data, fract_info, marker_list, key):
                 for cond, df in profiles_dict.items():
                     fig = create_line_plot(df, title=cond)
                     fig.savefig(
-                        os.path.join(folder_path, f"markerprofiles_{cond}.pdf"),
+                        os.path.join(
+                            folder_path, f"markerprofiles_{cond}.pdf"
+                        ),
                         format="pdf",
                     )
                     plt.close(fig)

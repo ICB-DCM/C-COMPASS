@@ -20,7 +20,8 @@ def get_data_directory() -> Path:
     if system == "Windows":
         return Path(
             os.getenv(
-                "APPDATA", os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+                "APPDATA",
+                os.path.join(os.path.expanduser("~"), "AppData", "Roaming"),
             )
         )
 

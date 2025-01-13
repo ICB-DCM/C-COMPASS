@@ -17,7 +17,9 @@ def reduce_to_single_column(row):
 def calculate_mean(row):
     if pd.isnull(row["SVM_winner"]):
         return np.nan
-    row_values = row.dropna()[1:]  # Exclude the first column which is 'reduced_column'
+    row_values = row.dropna()[
+        1:
+    ]  # Exclude the first column which is 'reduced_column'
     return np.mean(row_values)
 
 
@@ -81,7 +83,9 @@ def stats_exec3(
             df = pd.DataFrame(index=empty_index)
             combined_index = df.index
         for subcon in subcons:
-            combined_index = combined_index.union(fract_data["class"][subcon].index)
+            combined_index = combined_index.union(
+                fract_data["class"][subcon].index
+            )
 
         # combined_index = tp_data[condition].index
         # for subcon in subcons:
@@ -112,11 +116,13 @@ def stats_exec3(
 
         for subcon in subcons:
             marker_df = learning_xyz[subcon]["W_train_df"][
-                ~learning_xyz[subcon]["W_train_df"].index.duplicated(keep="first")
+                ~learning_xyz[subcon]["W_train_df"].index.duplicated(
+                    keep="first"
+                )
             ]
-            results[condition]["metrics"]["marker"] = results[condition]["metrics"][
-                "marker"
-            ].fillna(marker_df)
+            results[condition]["metrics"]["marker"] = results[condition][
+                "metrics"
+            ]["marker"].fillna(marker_df)
 
         ## add SVM results:
         results[condition]["SVM"] = {}
@@ -138,7 +144,9 @@ def stats_exec3(
             for roundn in learning_xyz[subcon]["w_full_prob_df"]:
                 learning_xyz[subcon]["w_full_combined"] = pd.merge(
                     learning_xyz[subcon]["w_full_combined"],
-                    learning_xyz[subcon]["w_full_prob_df"][roundn]["SVM_winner"],
+                    learning_xyz[subcon]["w_full_prob_df"][roundn][
+                        "SVM_winner"
+                    ],
                     left_index=True,
                     right_index=True,
                     how="left",
@@ -151,7 +159,8 @@ def stats_exec3(
                     )
                 ]
                 learning_xyz[subcon]["w_full_combined"].rename(
-                    columns={"SVM_winner": roundn + "_SVM_winner"}, inplace=True
+                    columns={"SVM_winner": roundn + "_SVM_winner"},
+                    inplace=True,
                 )
                 learning_xyz[subcon]["w_full_prob_combined"] = pd.merge(
                     learning_xyz[subcon]["w_full_prob_combined"],
@@ -160,12 +169,12 @@ def stats_exec3(
                     right_index=True,
                     how="left",
                 )
-                learning_xyz[subcon]["w_full_prob_combined"] = learning_xyz[subcon][
-                    "w_full_prob_combined"
-                ].loc[
-                    ~learning_xyz[subcon]["w_full_prob_combined"].index.duplicated(
-                        keep="first"
-                    )
+                learning_xyz[subcon]["w_full_prob_combined"] = learning_xyz[
+                    subcon
+                ]["w_full_prob_combined"].loc[
+                    ~learning_xyz[subcon][
+                        "w_full_prob_combined"
+                    ].index.duplicated(keep="first")
                 ]
                 learning_xyz[subcon]["w_full_prob_combined"].rename(
                     columns={"SVM_prob": roundn + "_SVM_prob"}, inplace=True
@@ -175,11 +184,13 @@ def stats_exec3(
                 lambda row: row.nunique() == 1, axis=1
             )
             learning_xyz[subcon]["w_full_combined"]["SVM_winner"] = np.where(
-                SVM_equal, learning_xyz[subcon]["w_full_combined"].iloc[:, 0], np.nan
+                SVM_equal,
+                learning_xyz[subcon]["w_full_combined"].iloc[:, 0],
+                np.nan,
             )
-            learning_xyz[subcon]["w_full_prob_combined"]["SVM_prob"] = learning_xyz[
-                subcon
-            ]["w_full_prob_combined"].mean(axis=1)
+            learning_xyz[subcon]["w_full_prob_combined"]["SVM_prob"] = (
+                learning_xyz[subcon]["w_full_prob_combined"].mean(axis=1)
+            )
 
             learning_xyz[subcon]["w_full_combined"] = pd.merge(
                 learning_xyz[subcon]["w_full_combined"],
@@ -191,10 +202,13 @@ def stats_exec3(
             learning_xyz[subcon]["w_full_combined"] = learning_xyz[subcon][
                 "w_full_combined"
             ].loc[
-                ~learning_xyz[subcon]["w_full_combined"].index.duplicated(keep="first")
+                ~learning_xyz[subcon]["w_full_combined"].index.duplicated(
+                    keep="first"
+                )
             ]
             learning_xyz[subcon]["w_full_combined"].loc[
-                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].isna(), "SVM_prob"
+                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].isna(),
+                "SVM_prob",
             ] = np.nan
 
             results[condition]["SVM"]["winner_combined"] = pd.merge(
@@ -204,9 +218,9 @@ def stats_exec3(
                 right_index=True,
                 how="left",
             )
-            results[condition]["SVM"]["winner_combined"] = results[condition]["SVM"][
-                "winner_combined"
-            ].loc[
+            results[condition]["SVM"]["winner_combined"] = results[condition][
+                "SVM"
+            ]["winner_combined"].loc[
                 ~results[condition]["SVM"]["winner_combined"].index.duplicated(
                     keep="first"
                 )
@@ -218,9 +232,9 @@ def stats_exec3(
                 right_index=True,
                 how="left",
             )
-            results[condition]["SVM"]["prob_combined"] = results[condition]["SVM"][
-                "prob_combined"
-            ].loc[
+            results[condition]["SVM"]["prob_combined"] = results[condition][
+                "SVM"
+            ]["prob_combined"].loc[
                 ~results[condition]["SVM"]["prob_combined"].index.duplicated(
                     keep="first"
                 )
@@ -235,7 +249,9 @@ def stats_exec3(
         )
         SVM_major.name = "SVM_subwinner"
         results[condition]["metrics"]["SVM_winner"] = np.where(
-            SVM_equal, results[condition]["SVM"]["winner_combined"].iloc[:, 0], np.nan
+            SVM_equal,
+            results[condition]["SVM"]["winner_combined"].iloc[:, 0],
+            np.nan,
         )
         results[condition]["metrics"] = pd.merge(
             results[condition]["metrics"],
@@ -252,8 +268,12 @@ def stats_exec3(
 
         ## add CClist:
         for subcon in subcons:
-            stacked_arrays = np.stack(list(learning_xyz[subcon]["z_full"].values()))
-            learning_xyz[subcon]["z_full_mean"] = np.mean(stacked_arrays, axis=0)
+            stacked_arrays = np.stack(
+                list(learning_xyz[subcon]["z_full"].values())
+            )
+            learning_xyz[subcon]["z_full_mean"] = np.mean(
+                stacked_arrays, axis=0
+            )
             learning_xyz[subcon]["z_full_mean_df"] = pd.DataFrame(
                 learning_xyz[subcon]["z_full_mean"],
                 index=learning_xyz[subcon]["x_full_df"].index,
@@ -299,15 +319,19 @@ def stats_exec3(
         ## add CC:
         for classname in classnames:
             # results[condition]['metrics']['CC_'+classname] = results[condition]['metrics']['CClist_'+classname].apply(lambda x: np.mean(x) if x else np.nan)
-            results[condition]["metrics"]["CC_" + classname] = results[condition][
-                "metrics"
-            ]["CClist_" + classname].apply(lambda x: np.nanmean(x) if x else np.nan)
+            results[condition]["metrics"]["CC_" + classname] = results[
+                condition
+            ]["metrics"]["CClist_" + classname].apply(
+                lambda x: np.nanmean(x) if x else np.nan
+            )
         cc_cols = [
             col
             for col in results[condition]["metrics"].columns
             if col.startswith("CC_")
         ]
-        cc_sums = results[condition]["metrics"][cc_cols].sum(axis=1, skipna=True)
+        cc_sums = results[condition]["metrics"][cc_cols].sum(
+            axis=1, skipna=True
+        )
         # cc_sums = results[condition]['metrics'][cc_cols].applymap(safe_sum)
         results[condition]["metrics"][cc_cols] = results[condition]["metrics"][
             cc_cols
@@ -333,7 +357,9 @@ def stats_exec3(
         # print(max_col.dtype)
         # print(max_col.head())
         max_col = max_col.astype(str)
-        results[condition]["metrics"]["NN_winner"] = max_col.str.replace("CC_", "")
+        results[condition]["metrics"]["NN_winner"] = max_col.str.replace(
+            "CC_", ""
+        )
 
         ## add CA:
         if mode == "deep":
@@ -349,11 +375,11 @@ def stats_exec3(
                     results_class.index, "CA_relevant"
                 ] = "yes"
                 results[condition]["class_abundance"][classname] = {}
-                results[condition]["class_abundance"][classname]["CA"] = np.median(
-                    results_class["TPA"]
+                results[condition]["class_abundance"][classname]["CA"] = (
+                    np.median(results_class["TPA"])
                 )
-                results[condition]["class_abundance"][classname]["count"] = len(
-                    results_class
+                results[condition]["class_abundance"][classname]["count"] = (
+                    len(results_class)
                 )
         elif mode == "rough":
             pass
@@ -370,24 +396,27 @@ def stats_exec3(
                 & (results[condition]["metrics"]["marker"].isna() == False)
             ][["CC_" + class_act]]
             thresh = np.percentile(
-                nonmarker_z["CC_" + class_act].tolist(), NN_params["reliability"]
+                nonmarker_z["CC_" + class_act].tolist(),
+                NN_params["reliability"],
             )
-            results[condition]["metrics"]["fCC_" + class_act] = results[condition][
-                "metrics"
-            ]["CC_" + class_act]
+            results[condition]["metrics"]["fCC_" + class_act] = results[
+                condition
+            ]["metrics"]["CC_" + class_act]
             results[condition]["metrics"].loc[
                 results[condition]["metrics"]["fCC_" + class_act] < thresh,
                 "fCC_" + class_act,
             ] = 0.0
 
         fcc_cols = [
-            col for col in results[condition]["metrics"] if col.startswith("fCC_")
+            col
+            for col in results[condition]["metrics"]
+            if col.startswith("fCC_")
         ]
         fcc_sums = results[condition]["metrics"][fcc_cols].sum(axis=1)
         # fcc_sums[fcc_sums == 0] = 1
-        results[condition]["metrics"][fcc_cols] = results[condition]["metrics"][
-            fcc_cols
-        ].div(fcc_sums, axis=0)
+        results[condition]["metrics"][fcc_cols] = results[condition][
+            "metrics"
+        ][fcc_cols].div(fcc_sums, axis=0)
 
         ## add fNN_winner:
         fcc_columns = results[condition]["metrics"][
@@ -399,20 +428,25 @@ def stats_exec3(
         ]
         fmax_col = fcc_columns.idxmax(axis=1)
         fmax_col = fmax_col.astype(str)
-        results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace("fCC_", "")
+        results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace(
+            "fCC_", ""
+        )
 
         ## add nCClist:
         if mode == "deep":
             for classname in classnames:
-                results[condition]["metrics"]["nCClist_" + classname] = results[
-                    condition
-                ]["metrics"]["CClist_" + classname].apply(
-                    lambda lst: [
-                        x * results[condition]["class_abundance"][classname]["CA"]
-                        if not np.isnan(x)
-                        else np.nan
-                        for x in lst
-                    ]
+                results[condition]["metrics"]["nCClist_" + classname] = (
+                    results[condition]["metrics"]["CClist_" + classname].apply(
+                        lambda lst: [
+                            x
+                            * results[condition]["class_abundance"][classname][
+                                "CA"
+                            ]
+                            if not np.isnan(x)
+                            else np.nan
+                            for x in lst
+                        ]
+                    )
                 )
 
             # nCClist_df = results[condition]['metrics'][]
@@ -425,13 +459,15 @@ def stats_exec3(
                 )
             # normalize:
             nCC_cols = [
-                col for col in results[condition]["metrics"] if col.startswith("nCC_")
+                col
+                for col in results[condition]["metrics"]
+                if col.startswith("nCC_")
             ]
             nCC_sums = results[condition]["metrics"][nCC_cols].sum(axis=1)
             nCC_sums[nCC_sums == 0] = 1
-            results[condition]["metrics"][nCC_cols] = results[condition]["metrics"][
-                nCC_cols
-            ].div(nCC_sums, axis=0)
+            results[condition]["metrics"][nCC_cols] = results[condition][
+                "metrics"
+            ][nCC_cols].div(nCC_sums, axis=0)
 
             ## add CPA
             for classname in classnames:
@@ -514,9 +550,9 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
                 & (~results[condition]["metrics"]["TPA"].isnull())
             ]
             # classnames.append(classname)
-            results[condition]["metrics"].loc[results_class.index, "CA_relevant"] = (
-                "yes"
-            )
+            results[condition]["metrics"].loc[
+                results_class.index, "CA_relevant"
+            ] = "yes"
             results[condition]["class_abundance"][classname] = {}
             results[condition]["class_abundance"][classname]["CA"] = np.median(
                 results_class["TPA"]
@@ -549,12 +585,16 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
 
         median_CC_df = pd.DataFrame(
             normalized_median_CC,
-            columns=list(learning_xyz[condition]["z_full_df"].values())[0].columns,
+            columns=list(learning_xyz[condition]["z_full_df"].values())[
+                0
+            ].columns,
             index=list(learning_xyz[condition]["z_full_df"].values())[0].index,
         ).add_prefix("CC_")
         IQR_CC_df = pd.DataFrame(
             IQR_CC,
-            columns=list(learning_xyz[condition]["z_full_df"].values())[0].columns,
+            columns=list(learning_xyz[condition]["z_full_df"].values())[
+                0
+            ].columns,
             index=list(learning_xyz[condition]["z_full_df"].values())[0].index,
         ).add_prefix("dCC_")
 
@@ -579,11 +619,12 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
                 & (results[condition]["metrics"]["marker"].isna() == False)
             ][["CC_" + class_act]]
             thresh = np.percentile(
-                nonmarker_z["CC_" + class_act].tolist(), NN_params["reliability"]
+                nonmarker_z["CC_" + class_act].tolist(),
+                NN_params["reliability"],
             )
-            results[condition]["metrics"]["fCC_" + class_act] = results[condition][
-                "metrics"
-            ]["CC_" + class_act]
+            results[condition]["metrics"]["fCC_" + class_act] = results[
+                condition
+            ]["metrics"]["CC_" + class_act]
             results[condition]["metrics"].loc[
                 results[condition]["metrics"]["fCC_" + class_act] < thresh,
                 "fCC_" + class_act,
@@ -595,13 +636,15 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
             if col.startswith("fCC_")
         ]
         row_sums = results[condition]["metrics"][fCC_columns].sum(axis=1)
-        results[condition]["metrics"][fCC_columns] = results[condition]["metrics"][
-            fCC_columns
-        ].div(row_sums, axis=0)
+        results[condition]["metrics"][fCC_columns] = results[condition][
+            "metrics"
+        ][fCC_columns].div(row_sums, axis=0)
 
         # add nCC:
         # classnames = list(learning_xyz[condition]['x_full_df'].columns)
-        classnames = list(learning_xyz[condition]["z_full_df"].values())[0].columns
+        classnames = list(learning_xyz[condition]["z_full_df"].values())[
+            0
+        ].columns
         num_rows = stacked_CC.shape[1]
 
         # Create a dictionary to hold the data
@@ -620,7 +663,8 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
 
         # Create a DataFrame from the dictionary
         list_df = pd.DataFrame(
-            data, index=list(learning_xyz[condition]["z_full_df"].values())[0].index
+            data,
+            index=list(learning_xyz[condition]["z_full_df"].values())[0].index,
         )
 
         results[condition]["metrics"] = pd.merge(
@@ -639,13 +683,15 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
             )
 
         nCC_cols = [
-            col for col in results[condition]["metrics"] if col.startswith("nCC_")
+            col
+            for col in results[condition]["metrics"]
+            if col.startswith("nCC_")
         ]
         nCC_sums = results[condition]["metrics"][nCC_cols].sum(axis=1)
         nCC_sums[nCC_sums == 0] = 1
-        results[condition]["metrics"][nCC_cols] = results[condition]["metrics"][
-            nCC_cols
-        ].div(nCC_sums, axis=0)
+        results[condition]["metrics"][nCC_cols] = results[condition][
+            "metrics"
+        ][nCC_cols].div(nCC_sums, axis=0)
 
         for classname in classnames:
             results[condition]["metrics"]["CPA_" + classname] = (
@@ -697,7 +743,9 @@ def stats_exec2(learning_xyz, NN_params, tp_data, fract_marker):
 def compare_lists(list1, list2):
     # Function to compare two lists and handle NaNs
     return sum(
-        abs(a - b) for a, b in zip(list1, list2) if not pd.isna(a) and not pd.isna(b)
+        abs(a - b)
+        for a, b in zip(list1, list2)
+        if not pd.isna(a) and not pd.isna(b)
     )
 
 
@@ -723,7 +771,8 @@ def comp_exec3(mode, results, learning_xyz):
     for comb in combinations:
         print(comb)
         classnames = list(
-            set(results[comb[0]]["classnames"]) & set(results[comb[1]]["classnames"])
+            set(results[comb[0]]["classnames"])
+            & set(results[comb[1]]["classnames"])
         )
         comparison[comb] = {}
 
@@ -758,7 +807,9 @@ def comp_exec3(mode, results, learning_xyz):
             elif mode == "rough":
                 pass
         rl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("RL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("RL_")
         ]
         comparison[comb]["metrics"]["RLS"] = (
             comparison[comb]["metrics"][rl_cols].abs().sum(axis=1)
@@ -781,7 +832,9 @@ def comp_exec3(mode, results, learning_xyz):
                 - results[comb[0]]["metrics"]["fCC_" + classname]
             )
         frl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("fRL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("fRL_")
         ]
         comparison[comb]["metrics"]["fRLS"] = (
             comparison[comb]["metrics"][frl_cols].abs().sum(axis=1)
@@ -805,8 +858,10 @@ def comp_exec3(mode, results, learning_xyz):
         # u_df, common_indices, ncc_columns = perform_mann_whitney_tests_per_cell(metrics_own, metrics_other, 'CClist_')
         # t_df, common_indices, ncc_columns = perform_t_tests_per_cell(metrics_own, metrics_other, 'CClist_')
 
-        test_df, common_indices, ncc_columns = perform_mann_whitney_t_tests_per_cell(
-            metrics_own, metrics_other, "CClist_"
+        test_df, common_indices, ncc_columns = (
+            perform_mann_whitney_t_tests_per_cell(
+                metrics_own, metrics_other, "CClist_"
+            )
         )
         # for classname in classnames:
         #     u_df.rename(columns = {'CClist_'+classname+'_P' : 'P(u)_'+classname,
@@ -841,14 +896,20 @@ def comp_exec3(mode, results, learning_xyz):
         RLS_null = {}
         for ID in common_indices:
             cclists_own = [
-                metrics_own.loc[ID, "CClist_" + classname] for classname in classnames
+                metrics_own.loc[ID, "CClist_" + classname]
+                for classname in classnames
             ]
             cclists_other = [
-                metrics_other.loc[ID, "CClist_" + classname] for classname in classnames
+                metrics_other.loc[ID, "CClist_" + classname]
+                for classname in classnames
             ]
 
-            cclists_own_transposed = [list(values) for values in zip(*cclists_own)]
-            cclists_other_transposed = [list(values) for values in zip(*cclists_other)]
+            cclists_own_transposed = [
+                list(values) for values in zip(*cclists_own)
+            ]
+            cclists_other_transposed = [
+                list(values) for values in zip(*cclists_other)
+            ]
 
             RLS_results[ID] = []
             RLS_null[ID] = []
@@ -862,7 +923,8 @@ def comp_exec3(mode, results, learning_xyz):
             for i in range(len(cclists_other_transposed)):
                 for j in range(i + 1, len(cclists_other_transposed)):
                     null_result = compare_lists(
-                        cclists_other_transposed[i], cclists_other_transposed[j]
+                        cclists_other_transposed[i],
+                        cclists_other_transposed[j],
                     )
                     RLS_null[ID].append(null_result)
 
@@ -887,7 +949,8 @@ def comp_exec3(mode, results, learning_xyz):
                 if (
                     is_all_nan(comparison[comb]["RLS_results"].loc[index])
                     or is_all_nan(comparison[comb]["RLS_null"].loc[index])
-                    or len(set(comparison[comb]["RLS_results"].loc[index])) == 1
+                    or len(set(comparison[comb]["RLS_results"].loc[index]))
+                    == 1
                     or len(set(comparison[comb]["RLS_null"].loc[index])) == 1
                 ):
                     comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
@@ -897,7 +960,9 @@ def comp_exec3(mode, results, learning_xyz):
                         comparison[comb]["RLS_null"].loc[index],
                         alternative="two-sided",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = p_value_u
+                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = (
+                        p_value_u
+                    )
             else:
                 comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
@@ -929,13 +994,15 @@ def comp_exec3(mode, results, learning_xyz):
                 for i in range(len(ncclists_own_transposed)):
                     for j in range(i + 1, len(ncclists_own_transposed)):
                         null_result = compare_lists(
-                            ncclists_own_transposed[i], ncclists_own_transposed[j]
+                            ncclists_own_transposed[i],
+                            ncclists_own_transposed[j],
                         )
                         nRLS_null[ID].append(null_result)
                 for i in range(len(ncclists_other_transposed)):
                     for j in range(i + 1, len(ncclists_other_transposed)):
                         null_result = compare_lists(
-                            ncclists_other_transposed[i], ncclists_other_transposed[j]
+                            ncclists_other_transposed[i],
+                            ncclists_other_transposed[j],
                         )
                         nRLS_null[ID].append(null_result)
 
@@ -956,21 +1023,31 @@ def comp_exec3(mode, results, learning_xyz):
                         comparison[comb]["nRLS_null"].loc[index],
                         nan_policy="omit",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = p_value
+                    comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = (
+                        p_value
+                    )
                     if (
                         is_all_nan(comparison[comb]["nRLS_results"].loc[index])
                         or is_all_nan(comparison[comb]["nRLS_null"].loc[index])
-                        or len(set(comparison[comb]["nRLS_results"].loc[index])) == 1
-                        or len(set(comparison[comb]["nRLS_null"].loc[index])) == 1
+                        or len(
+                            set(comparison[comb]["nRLS_results"].loc[index])
+                        )
+                        == 1
+                        or len(set(comparison[comb]["nRLS_null"].loc[index]))
+                        == 1
                     ):
-                        comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
+                        comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = (
+                            pd.NA
+                        )
                     else:
                         stat_u, p_value_u = stats.mannwhitneyu(
                             comparison[comb]["nRLS_results"].loc[index],
                             comparison[comb]["nRLS_null"].loc[index],
                             alternative="two-sided",
                         )
-                        comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = p_value_u
+                        comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = (
+                            p_value_u
+                        )
                 else:
                     comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = pd.NA
                     comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
@@ -991,7 +1068,9 @@ def comp_exec3(mode, results, learning_xyz):
                     metrics_other["CPA_" + classname]
                 )
                 metrics_other = impute_data(
-                    metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
+                    metrics_other,
+                    "CPA_log_" + classname,
+                    "CPA_imp_" + classname,
                 )
 
                 comparison[comb]["metrics"]["CFC_" + classname] = (
@@ -1003,14 +1082,18 @@ def comp_exec3(mode, results, learning_xyz):
                     metrics_own["nCPA_" + classname]
                 )
                 metrics_own = impute_data(
-                    metrics_own, "nCPA_log_" + classname, "nCPA_imp_" + classname
+                    metrics_own,
+                    "nCPA_log_" + classname,
+                    "nCPA_imp_" + classname,
                 )
 
                 metrics_other["nCPA_log_" + classname] = np.log2(
                     metrics_other["nCPA_" + classname]
                 )
                 metrics_other = impute_data(
-                    metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
+                    metrics_other,
+                    "nCPA_log_" + classname,
+                    "nCPA_imp_" + classname,
                 )
 
                 comparison[comb]["metrics"]["nCFC_" + classname] = (
@@ -1046,7 +1129,8 @@ def comp_exec2(results, learning_xyz):
         print(comb)
         # classnames = list(set(results[comb[0]]['classnames'] & results[comb[1]]['classnames']))
         classnames = list(
-            set(results[comb[0]]["classnames"]) & set(results[comb[1]]["classnames"])
+            set(results[comb[0]]["classnames"])
+            & set(results[comb[1]]["classnames"])
         )
         comparison[comb] = {}
 
@@ -1092,10 +1176,14 @@ def comp_exec2(results, learning_xyz):
                 - results[comb[0]]["metrics"]["nCC_" + classname]
             )
         rl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("RL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("RL_")
         ]
         nrl_cols = [
-            col for col in comparison[comb]["metrics"].columns if col.startswith("nRL_")
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("nRL_")
         ]
         comparison[comb]["metrics"]["RLS"] = (
             comparison[comb]["metrics"][rl_cols].abs().sum(axis=1)
@@ -1339,7 +1427,9 @@ def hotelling_t2_test(data1, data2, regularization_value=1e-6):
     cov2 = np.cov(data2, rowvar=False)
 
     # Ensure pooled_cov is 2D
-    pooled_cov = np.atleast_2d(((n1 - 1) * cov1 + (n2 - 1) * cov2) / (n1 + n2 - 2))
+    pooled_cov = np.atleast_2d(
+        ((n1 - 1) * cov1 + (n2 - 1) * cov2) / (n1 + n2 - 2)
+    )
     pooled_cov += np.eye(pooled_cov.shape[0]) * regularization_value
 
     mean_diff = mean1 - mean2
@@ -1466,7 +1556,9 @@ def impute_data(df, colname, newcol):
 
     # Apply the imputation for 0 values
     df[newcol] = df[colname].apply(
-        lambda x: np.random.normal(mean_imp, sigma, 1)[0] if x == -np.inf else x
+        lambda x: np.random.normal(mean_imp, sigma, 1)[0]
+        if x == -np.inf
+        else x
     )
 
     return df
@@ -1596,13 +1688,17 @@ def impute_nan_with_mean(data):
 
 def is_all_nan(list_):
     return (
-        all(np.isnan(x) for x in list_) if isinstance(list_, list) else np.isnan(list_)
+        all(np.isnan(x) for x in list_)
+        if isinstance(list_, list)
+        else np.isnan(list_)
     )
 
 
 def perform_paired_t_tests_per_cell(df1, df2, prefix):
     cc_columns = [
-        col for col in df1.columns if col.startswith(prefix) and col in df2.columns
+        col
+        for col in df1.columns
+        if col.startswith(prefix) and col in df2.columns
     ]
     common_indices = df1.index.intersection(df2.index)
 
@@ -1627,7 +1723,9 @@ def perform_paired_t_tests_per_cell(df1, df2, prefix):
                 # Calculate mean difference and standard deviation of differences
                 diff = np.array(list_df1) - np.array(list_df2)
                 mean_diff = np.mean(diff)
-                std_diff = np.std(diff, ddof=1)  # ddof=1 for sample standard deviation
+                std_diff = np.std(
+                    diff, ddof=1
+                )  # ddof=1 for sample standard deviation
 
                 # Perform paired t-test
                 t_stat, p_value = stats.ttest_rel(list_df1, list_df2)
@@ -1681,7 +1779,9 @@ def perform_paired_t_tests_per_cell(df1, df2, prefix):
 
 def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
     cc_columns = [
-        col for col in df1.columns if col.startswith(prefix) and col in df2.columns
+        col
+        for col in df1.columns
+        if col.startswith(prefix) and col in df2.columns
     ]
     common_indices = df1.index.intersection(df2.index)
 
@@ -1725,7 +1825,9 @@ def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
 
                 # Calculating Cohen's d
                 diff = [
-                    value_1 - value_2 for value_1 in list_df1 for value_2 in list_df2
+                    value_1 - value_2
+                    for value_1 in list_df1
+                    for value_2 in list_df2
                 ]
                 mean_diff = np.mean(diff)
                 std_diff = np.std(diff, ddof=1)
@@ -1743,7 +1845,9 @@ def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
 
 def perform_t_tests_per_cell(df1, df2, prefix):
     cc_columns = [
-        col for col in df1.columns if col.startswith(prefix) and col in df2.columns
+        col
+        for col in df1.columns
+        if col.startswith(prefix) and col in df2.columns
     ]
     common_indices = df1.index.intersection(df2.index)
 
@@ -1773,7 +1877,9 @@ def perform_t_tests_per_cell(df1, df2, prefix):
                 # Calculate mean difference and standard deviation of differences
                 # diff = np.mean(list_df1) - np.mean(list_df2)
                 mean_diff = np.mean(diff)
-                std_diff = np.std(diff, ddof=1)  # ddof=1 for sample standard deviation
+                std_diff = np.std(
+                    diff, ddof=1
+                )  # ddof=1 for sample standard deviation
 
                 # Perform paired t-test
                 t_stat, p_value = stats.ttest_ind(list_df1, list_df2)
@@ -1854,9 +1960,9 @@ def stats_exec(learning_xyz, tp_data):
                 & (~results[condition]["metrics"]["TPA"].isnull())
             ]
             classnames.append(classname)
-            results[condition]["metrics"].loc[results_class.index, "CA_relevant"] = (
-                "yes"
-            )
+            results[condition]["metrics"].loc[
+                results_class.index, "CA_relevant"
+            ] = "yes"
             results[condition]["class_abundance"][classname] = {}
             results[condition]["class_abundance"][classname]["mean"] = np.mean(
                 results_class["TPA"]
@@ -1872,12 +1978,14 @@ def stats_exec(learning_xyz, tp_data):
         for classname in classnames:
             CC_list = []
             for roundn in learning_xyz[condition]["z_full_df"]:
-                CC_list.append(learning_xyz[condition]["z_full_df"][roundn][classname])
+                CC_list.append(
+                    learning_xyz[condition]["z_full_df"][roundn][classname]
+                )
             combined_CC = pd.concat(CC_list, axis=0)
             # combined_CC = pd.concat(CC_list, axis = 1)
 
-            results[condition]["metrics"]["CC_" + classname] = combined_CC.median(
-                axis=0
+            results[condition]["metrics"]["CC_" + classname] = (
+                combined_CC.median(axis=0)
             )
             Q1 = combined_CC.quantile(0.25)
             Q3 = combined_CC.quantile(0.75)
@@ -1895,11 +2003,19 @@ def stats_exec(learning_xyz, tp_data):
                 / results[condition]["class_abundance"][classname]["mean"]
             )
             results[condition]["metrics"]["dpCC_" + classname] = (
-                abs(1 / results[condition]["class_abundance"][classname]["mean"])
+                abs(
+                    1
+                    / results[condition]["class_abundance"][classname]["mean"]
+                )
                 * results[condition]["metrics"]["dCC_" + classname]
                 + abs(
                     -results[condition]["metrics"]["CC_" + classname]
-                    / (results[condition]["class_abundance"][classname]["mean"]) ** 2
+                    / (
+                        results[condition]["class_abundance"][classname][
+                            "mean"
+                        ]
+                    )
+                    ** 2
                 )
                 * results[condition]["class_abundance"][classname]["std"]
             )
@@ -1912,15 +2028,19 @@ def stats_exec(learning_xyz, tp_data):
         ]
         for col in nCC_col:
             nCC_col = col.replace("pCC_", "nCC_")
-            results[condition]["metrics"][nCC_col] = results[condition]["metrics"][col]
+            results[condition]["metrics"][nCC_col] = results[condition][
+                "metrics"
+            ][col]
         nCC_cols = [
             col
             for col in results[condition]["metrics"].columns
             if col.startswith("nCC_")
         ]
-        results[condition]["metrics"][nCC_cols] = results[condition]["metrics"][
-            nCC_cols
-        ].div(results[condition]["metrics"][nCC_cols].sum(axis=1), axis=0)
+        results[condition]["metrics"][nCC_cols] = results[condition][
+            "metrics"
+        ][nCC_cols].div(
+            results[condition]["metrics"][nCC_cols].sum(axis=1), axis=0
+        )
         for classname in classnames:
             results[condition]["metrics"]["CC_factor_" + classname] = (
                 results[condition]["metrics"]["nCC_" + classname]
@@ -2003,17 +2123,23 @@ def comp_exec(learning_xyz, results):
 
         for classname in classnames:
             results[comb]["comparison"]["RL_" + classname] = (
-                metrics_other["nCC_" + classname] - metrics_own["nCC_" + classname]
+                metrics_other["nCC_" + classname]
+                - metrics_own["nCC_" + classname]
             )
             results[comb]["comparison"]["dRL_" + classname] = (
-                metrics_other["dnCC_" + classname] + metrics_own["dnCC_" + classname]
+                metrics_other["dnCC_" + classname]
+                + metrics_own["dnCC_" + classname]
             )
 
         RLS_columns = [
-            col for col in results[comb]["comparison"].columns if col.startswith("RL_")
+            col
+            for col in results[comb]["comparison"].columns
+            if col.startswith("RL_")
         ]
         dRLS_columns = [
-            col for col in results[comb]["comparison"].columns if col.startswith("dRL_")
+            col
+            for col in results[comb]["comparison"].columns
+            if col.startswith("dRL_")
         ]
 
         results[comb]["comparison"]["RLS"] = (
@@ -2025,17 +2151,23 @@ def comp_exec(learning_xyz, results):
 
         for classname in classnames:
             results[comb]["comparison"]["RC_" + classname] = (
-                metrics_other["CC_" + classname] - metrics_own["CC_" + classname]
+                metrics_other["CC_" + classname]
+                - metrics_own["CC_" + classname]
             )
             results[comb]["comparison"]["dRC_" + classname] = (
-                metrics_other["dCC_" + classname] + metrics_own["dCC_" + classname]
+                metrics_other["dCC_" + classname]
+                + metrics_own["dCC_" + classname]
             )
 
         RCS_columns = [
-            col for col in results[comb]["comparison"].columns if col.startswith("RC_")
+            col
+            for col in results[comb]["comparison"].columns
+            if col.startswith("RC_")
         ]
         dRCS_columns = [
-            col for col in results[comb]["comparison"].columns if col.startswith("dRC_")
+            col
+            for col in results[comb]["comparison"].columns
+            if col.startswith("dRC_")
         ]
 
         results[comb]["comparison"]["RCS"] = (
@@ -2047,10 +2179,12 @@ def comp_exec(learning_xyz, results):
 
         for classname in classnames:
             results[comb]["comparison"]["CPD_" + classname] = (
-                metrics_other["rCPA_" + classname] - metrics_own["rCPA_" + classname]
+                metrics_other["rCPA_" + classname]
+                - metrics_own["rCPA_" + classname]
             )
             results[comb]["comparison"]["dCPD_" + classname] = (
-                metrics_other["drCPA_" + classname] + metrics_own["drCPA_" + classname]
+                metrics_other["drCPA_" + classname]
+                + metrics_own["drCPA_" + classname]
             )
     return results
 

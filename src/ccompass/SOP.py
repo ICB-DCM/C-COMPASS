@@ -9,7 +9,6 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
-# import umap.umap_ as umap
 import matplotlib.pyplot as plt
 import copy
 
@@ -30,8 +29,12 @@ def plot_compressed(data, classes, name):
         current_color = cmap(i)
         if organelle == "none":
             current_color = "grey"
-        scatter = ax.scatter(
-            data_class[0], data_class[1], s=0.2, color=current_color, label=organelle
+        ax.scatter(
+            data_class[0],
+            data_class[1],
+            s=0.2,
+            color=current_color,
+            label=organelle,
         )
     ax.legend(fontsize="x-small")
     plt.title(name)
@@ -47,7 +50,7 @@ def create_wxyz(
     fract_full_up,
     fract_mixed_up,
 ):
-    split_size = 0.8
+    # split_size = 0.8
 
     conditions = [x for x in fract_conditions if x != "[KEEP]"]
     learning_wxyz = {}
@@ -85,11 +88,17 @@ def create_wxyz(
         W_full_up = list(fract_full_up[condition]["class"])
         learning_wxyz[condition]["W_full_up"] = W_full_up
 
-        x_train = fract_marker[condition].drop(columns=["class"]).to_numpy(dtype=float)
+        x_train = (
+            fract_marker[condition]
+            .drop(columns=["class"])
+            .to_numpy(dtype=float)
+        )
         learning_wxyz[condition]["x_train"] = x_train
 
         x_train_up = (
-            fract_marker_up[condition].drop(columns=["class"]).to_numpy(dtype=float)
+            fract_marker_up[condition]
+            .drop(columns=["class"])
+            .to_numpy(dtype=float)
         )
         # x_train_up = fract_train_up_con.drop(columns = ['class']).to_numpy(dtype = float)
         learning_wxyz[condition]["x_train_up"] = x_train_up
@@ -97,35 +106,47 @@ def create_wxyz(
         # x_val_up = fract_val_up_con.drop(columns = ['class']).to_numpy(dtype = float)
         # learning_wxyz[condition]['x_val_up'] = x_val_up
 
-        x_test = fract_test[condition].drop(columns=["class"]).to_numpy(dtype=float)
+        x_test = (
+            fract_test[condition].drop(columns=["class"]).to_numpy(dtype=float)
+        )
         learning_wxyz[condition]["x_test"] = x_test
 
-        x_full = fract_full[condition].drop(columns=["class"]).to_numpy(dtype=float)
+        x_full = (
+            fract_full[condition].drop(columns=["class"]).to_numpy(dtype=float)
+        )
         learning_wxyz[condition]["x_full"] = x_full
 
         x_full_up = (
-            fract_full_up[condition].drop(columns=["class"]).to_numpy(dtype=float)
+            fract_full_up[condition]
+            .drop(columns=["class"])
+            .to_numpy(dtype=float)
         )
         learning_wxyz[condition]["x_full_up"] = x_full_up
 
         x_train_mixed_up = (
-            fract_mixed_up[condition].drop(columns=classes).to_numpy(dtype=float)
+            fract_mixed_up[condition]
+            .drop(columns=classes)
+            .to_numpy(dtype=float)
         )
         learning_wxyz[condition]["x_train_mixed_up"] = x_train_mixed_up
 
-        Z_train = pd.get_dummies(fract_marker[condition]["class"]).to_numpy(dtype=float)
-        learning_wxyz[condition]["Z_train"] = Z_train
-
-        Z_train_up = pd.get_dummies(fract_marker_up[condition]["class"]).to_numpy(
+        Z_train = pd.get_dummies(fract_marker[condition]["class"]).to_numpy(
             dtype=float
         )
+        learning_wxyz[condition]["Z_train"] = Z_train
+
+        Z_train_up = pd.get_dummies(
+            fract_marker_up[condition]["class"]
+        ).to_numpy(dtype=float)
         # Z_train_up = pd.get_dummies(fract_train_up_con['class']).to_numpy(dtype = float)
         learning_wxyz[condition]["Z_train_up"] = Z_train_up
 
         # Z_val_up = pd.get_dummies(fract_val_up_con['class']).to_numpy(dtype = float)
         # learning_wxyz[condition]['Z_val_up'] = Z_val_up
 
-        Z_train_mixed_up = fract_mixed_up[condition][classes].to_numpy(dtype=float)
+        Z_train_mixed_up = fract_mixed_up[condition][classes].to_numpy(
+            dtype=float
+        )
         learning_wxyz[condition]["Z_train_mixed_up"] = Z_train_mixed_up
 
     return learning_wxyz
@@ -196,12 +217,16 @@ def SOP_exec(learning_wxyz, fract_conditions, fract_marker, fract_test):
         )
 
         svm_confusion = pd.DataFrame(
-            confusion_matrix(svm_Y_train, svm_y_train, labels=list(clf.classes_)),
+            confusion_matrix(
+                svm_Y_train, svm_y_train, labels=list(clf.classes_)
+            ),
             index=clf.classes_,
             columns=clf.classes_,
         )
         svm_accuracy = accuracy_score(svm_Y_train, svm_y_train)
-        svm_precision = precision_score(svm_Y_train, svm_y_train, average="macro")
+        svm_precision = precision_score(
+            svm_Y_train, svm_y_train, average="macro"
+        )
         svm_recall = recall_score(svm_Y_train, svm_y_train, average="macro")
         svm_f1 = f1_score(svm_Y_train, svm_y_train, average="macro")
 
@@ -225,8 +250,15 @@ def SOP_exec(learning_wxyz, fract_conditions, fract_marker, fract_test):
 
 
 def plot_umaps(
-    learning_wxyz, fract_marker, fract_marker_up, fract_test, fract_full, fract_full_up
+    learning_wxyz,
+    fract_marker,
+    fract_marker_up,
+    fract_test,
+    fract_full,
+    fract_full_up,
 ):
+    import umap.umap_ as umap
+
     umaps = {}
 
     for condition in learning_wxyz:
@@ -259,16 +291,22 @@ def plot_umaps(
         train_up_umap = reducer.fit_transform(x_train_up)
         train_up_umap_df = pd.DataFrame(train_up_umap)
         train_up_umap_df["class"] = list(fract_marker_up[condition]["class"])
-        plot_compressed(train_up_umap_df, classes, "UMAP_train_up_" + condition)
+        plot_compressed(
+            train_up_umap_df, classes, "UMAP_train_up_" + condition
+        )
 
         test_umap = reducer.fit_transform(x_test)
         test_umap_df = pd.DataFrame(test_umap)
-        test_umap_df["class"] = list(fract_test[condition].fillna("none")["class"])
+        test_umap_df["class"] = list(
+            fract_test[condition].fillna("none")["class"]
+        )
         plot_compressed(test_umap_df, classes, "UMAP_test_" + condition)
 
         full_umap = reducer.fit_transform(x_full)
         full_umap_df = pd.DataFrame(full_umap)
-        full_umap_df["class"] = list(fract_full[condition].fillna("none")["class"])
+        full_umap_df["class"] = list(
+            fract_full[condition].fillna("none")["class"]
+        )
         plot_compressed(full_umap_df, classes, "UMAP_full_" + condition)
 
         full_up_umap = reducer.fit_transform(x_full_up)

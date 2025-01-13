@@ -29,7 +29,11 @@ def FSD_exec(preparams, data_ways):
                             text_color="dark grey",
                         )
                     ],
-                    [sg.Text("filtered by InnerCorrelation:", text_color="black")],
+                    [
+                        sg.Text(
+                            "filtered by InnerCorrelation:", text_color="black"
+                        )
+                    ],
                     [
                         sg.Text(
                             "\t" + str(preparams["class"]["corrfilter"]),
@@ -78,7 +82,11 @@ def FSD_exec(preparams, data_ways):
                             text_color="dark grey",
                         )
                     ],
-                    [sg.Text("filtered by InnerCorrelation:", text_color="black")],
+                    [
+                        sg.Text(
+                            "filtered by InnerCorrelation:", text_color="black"
+                        )
+                    ],
                     [
                         sg.Text(
                             "\t" + str(preparams["vis"]["corrfilter"]),
@@ -138,7 +146,11 @@ def FSD_exec(preparams, data_ways):
                             text_color="dark grey",
                         )
                     ],
-                    [sg.Text("OuterCorrelations calculated:", text_color="black")],
+                    [
+                        sg.Text(
+                            "OuterCorrelations calculated:", text_color="black"
+                        )
+                    ],
                     [
                         sg.Text(
                             "\t" + str(preparams["global"]["outcorr"]),

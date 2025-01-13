@@ -30,6 +30,12 @@ ccompass = "ccompass.CCMPS:main"
 dev = ["pre-commit>=3", "tox"]
 doc = ["sphinx", "sphinx-rtd-theme"]
 
+[tool.ruff]
+line-length = 79
+lint.ignore = [
+    "E712",  # Avoid equality comparisons to True/False
+]
+
 [tool.tox]
 requires = ["tox>=4.19"]
 env_list = ["doc"]
