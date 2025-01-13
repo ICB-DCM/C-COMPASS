@@ -1,7 +1,7 @@
 V. Contributions
 =========================
 
-We welcome contributions to C-COMPASS and encourage the community to participate in its development. Whether you are fixing bugs, adding new features, or improving documentation, your help is greatly appreciated. 
+We welcome contributions to C-COMPASS and encourage the community to participate in its development. Whether you are fixing bugs, adding new features, or improving documentation, your help is greatly appreciated.
 
 To contribute, please follow these steps:
 
@@ -13,3 +13,25 @@ To contribute, please follow these steps:
 Before starting major changes, it's a good idea to open an issue to discuss the proposed feature or bug fix. This helps avoid duplicate work and ensures your contributions are aligned with the project's goals. For additional guidance, please refer to our coding guidelines and the issue tracker on GitHub.
 
 We appreciate your time and effort in making C-COMPASS even better!
+
+VI. Pre-commit Hooks
+--------------------
+
+We use `pre-commit <https://github.com/pre-commit/pre-commit>`__ hooks to
+ensure code quality and consistency. Pre-commit hooks automatically run checks
+and formatting tools before each commit, helping to catch issues early.
+
+To set up the pre-commit hooks in your local environment, follow these steps:
+
+1. Install `pre-commit` if you haven't already:
+   ```sh
+   pip install pre-commit
+   ```
+
+2. Navigate to the project directory and run:
+   ```sh
+   pre-commit install
+   ```
+
+3. You're all set! The pre-commit hooks will now run automatically before each
+   commit.
