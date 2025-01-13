@@ -77,7 +77,8 @@ jobs:
         ccompass &
         echo $! > ccompass_pid.txt
         sleep 10
-        taskkill /F /PID $(cat ccompass_pid.txt)
+        kill $(cat ccompass_pid.txt)
+      shell: bash
 
   test_macos:
     runs-on: macos-latest
@@ -109,5 +110,5 @@ jobs:
       run: |
         ccompass &
         echo $! > ccompass_pid.txt
-        sleep 10
+        sleep 20
         kill $(cat ccompass_pid.txt)
