@@ -1,10 +1,6 @@
-##### FRACTIONATION SUMMARY DISPLAY
+"""Fractionation summary display."""
 
 import FreeSimpleGUI as sg
-
-
-## internal functions:
-# ------------------------------------------------------------------------------
 
 
 def FSD_exec(preparams, data_ways):

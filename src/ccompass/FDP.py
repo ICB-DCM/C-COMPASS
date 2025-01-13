@@ -1,4 +1,4 @@
-##### FRACTIONATION DATA PROCESSING
+"""Fractionation data processing."""
 
 import copy
 import numpy as np
@@ -8,10 +8,6 @@ from tkinter import messagebox
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr
 from collections import Counter
-
-
-## internal functions:
-# ------------------------------------------------------------------------------
 
 
 def create_dataset(
@@ -469,10 +465,6 @@ def modify_structure(data_in):
                 ][mode]
                 # data_out[way][condition] = data_in[way][condition][mode]
     return data_out
-
-
-## run script::
-# ------------------------------------------------------------------------------
 
 
 def FDP_exec(

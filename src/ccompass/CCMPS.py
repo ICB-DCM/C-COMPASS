@@ -1,4 +1,4 @@
-##### CELLCOMPASS
+"""C-COMPASS main window."""
 
 from . import CCMPS_actions as action
 from . import PPMS
@@ -10,34 +10,18 @@ from . import MOP
 from . import MOA
 from . import SM
 from . import RP
-
-
 import copy
 import pickle
-
-# from NPC import NPC
-# from MLO_01_function import MLO, first_prediction
-# from CM_01_function import CM
-# from MM_01_function import MM
-
 from tkinter import messagebox
-
-
-# import runpy
-
 import FreeSimpleGUI as sg
 import pandas as pd
-
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-# -----------------------------------------------------------------------------------------------------------------------------
-
-import os
-
 
 def main():
+    """The entry point for the C-COMPASS application."""
     fract_paths, fract_tables, fract_data, fract_pos = action.resetinput()
     fract_data, fract_std, fract_intermediate, fract_info, fract_conditions = (
         action.reset_fract()

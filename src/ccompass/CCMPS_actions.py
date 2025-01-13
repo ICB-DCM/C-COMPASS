@@ -1,3 +1,5 @@
+"""Actions related to the main window."""
+
 import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
@@ -5,14 +7,6 @@ from tkinter import messagebox, simpledialog
 from datetime import datetime
 import random
 import copy
-
-
-## parameters:
-# ------------------------------------------------------------------------------
-
-
-## internal functions:
-# ------------------------------------------------------------------------------
 
 
 def fract_refreshtable(window, table):
@@ -138,10 +132,6 @@ def tp_clearinput(window):
     window["-tp_path-"].Update(values=[])
     window["-tp_table-"].Update(values=[])
     return
-
-
-## external functions:
-# ------------------------------------------------------------------------------
 
 
 def reset_infract():

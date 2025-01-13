@@ -1,4 +1,4 @@
-##### TOTAL PROTEOME PROCESSING
+"""Total proteome profiling."""
 
 import copy
 import math
@@ -7,10 +7,6 @@ import pandas as pd
 import FreeSimpleGUI as sg
 from tkinter import messagebox
 from scipy.stats import pearsonr
-
-
-## internal functions:
-# ------------------------------------------------------------------------------
 
 
 def create_dataset(
@@ -167,12 +163,6 @@ def normalize_data(data, window):
                 else (x - q2) / (q2 - q1)
             )
     return data
-
-
-## run script::
-# ------------------------------------------------------------------------------
-
-# minrep = 2
 
 
 def TPP_exec(

@@ -1,4 +1,5 @@
-### RESULT PLOTS
+"""Result plots"""
+
 import FreeSimpleGUI as sg
 import pandas as pd
 import seaborn as sns

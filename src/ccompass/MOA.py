@@ -1,5 +1,4 @@
-### MULTIPLE ORGANELLE ANALYSIS
-
+"""Multiple organelle analysis."""
 
 import pandas as pd
 import numpy as np

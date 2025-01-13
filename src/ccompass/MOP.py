@@ -1,11 +1,11 @@
-##### MULTIPLE ORGANELLE PREDICTION
+"""Multiple organelle prediction."""
+
 import numpy as np
 import pandas as pd
 import random
 import copy
 from datetime import datetime
 from scipy import stats
-
 from sklearn import svm
 from sklearn.metrics import (
     accuracy_score,
@@ -14,23 +14,12 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix,
 )
-
 import tensorflow as tf
 from tensorflow import keras
 import keras_tuner as kt
 import keras.backend as K
 from ._utils import get_data_directory
 # from tensorflow.keras.models import Model
-
-
-import os
-
-# Define the path to the 'Classifier_Models' folder within the user's data directory
-classifier_directory = get_data_directory() / "CCOMPASS_Models"
-
-# Create the folder if it does not exist
-if not os.path.exists(classifier_directory):
-    os.makedirs(classifier_directory)
 
 
 optimizer_classes = {
@@ -822,6 +811,10 @@ def multi_predictions(
     ]
     set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
 
+    # Define the path to the 'Classifier_Models' folder within the user's data directory
+    classifier_directory = get_data_directory() / "CCOMPASS_Models"
+    classifier_directory.mkdir(exist_ok=True, parents=True)
+
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
     FNN_tuner = kt.Hyperband(
@@ -830,7 +823,7 @@ def multi_predictions(
         objective="val_mean_squared_error",
         max_epochs=NN_params["NN_epochs"],
         factor=3,
-        directory=classifier_directory,
+        directory=str(classifier_directory),
         project_name=time + "_Classifier_" + condition + "_" + str(roundn),
     )
 
