@@ -19,17 +19,14 @@ import tensorflow as tf
 from tensorflow import keras
 import keras_tuner as kt
 import keras.backend as K
-
+from .CCMPS import get_data_directory
 # from tensorflow.keras.models import Model
 
 
 import os
 
-# Get the user's AppData directory
-appdata_directory = os.getenv("APPDATA")
-
-# Define the path to the 'Classifier_Models' folder within AppData
-classifier_directory = os.path.join(appdata_directory, "CCOMPASS_Models")
+# Define the path to the 'Classifier_Models' folder within the user's data directory
+classifier_directory = get_data_directory() / "CCOMPASS_Models"
 
 # Create the folder if it does not exist
 if not os.path.exists(classifier_directory):
