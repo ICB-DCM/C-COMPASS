@@ -41,6 +41,7 @@ jobs:
       run: |
         Xvfb :99 -screen 0 1024x768x16 &
         export DISPLAY=:99
+        python -c "import matplotlib.pyplot"  # let matplotlib build its font cache
         ccompass &
         echo $! > ccompass_pid.txt
         sleep 10
@@ -61,7 +62,7 @@ jobs:
     - name: Cache pip
       uses: actions/cache@v4
       with:
-        path: ~/.cache/pip
+        path: ~\AppData\Local\pip\Cache
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-pip-
@@ -74,6 +75,7 @@ jobs:
     - name: Launch C-COMPASS
       # Ensure that we can open the GUI
       run: |
+        python -c "import matplotlib.pyplot"  # let matplotlib build its font cache
         ccompass &
         echo $! > ccompass_pid.txt
         sleep 10
@@ -108,7 +110,8 @@ jobs:
     - name: Launch C-COMPASS
       # Ensure that we can open the GUI
       run: |
+        python -c "import matplotlib.pyplot"  # let matplotlib build its font cache
         ccompass &
         echo $! > ccompass_pid.txt
-        sleep 20
+        sleep 10
         kill $(cat ccompass_pid.txt)
