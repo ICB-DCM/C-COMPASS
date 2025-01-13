@@ -17,17 +17,26 @@ The data analyzed by C-COMPASS typically derives from proteomics fractionation s
 
 ## Installation
 
-### Prerequisites
-C-COMPASS is distributed as a portable application, meaning you do not need to install Python or any dependencies.
+```bash
+pip install ccompass
+```
 
-### Running the Software
-1. **Download the ZIP file** from the repository or release section.
-2. **Extract the ZIP** file to any location on your machine.
-3. **Navigate to the extracted Folder**
-4. **Double-click** 'C-CMPS.bat' to start the application.
-5. The software will initialize the portable Python environment and launch the GUI. (can take a few minutes)
+### Prerequisites
+C-COMPASS requires Python>=3.10, and due to its `tensorflow` dependency Python<=3.12.
+
+#### Ubuntu
+
+```bash
+sudo apt-get install python3-tk
+```
 
 ## Usage
+
+To launch the GUI, run the following command:
+
+```bash
+ccompass
+```
 
 ### Graphical User Interface (GUI)
 - The GUI will guide you through the process of loading and analyzing your proteomics dataset, including fractionation samples and Total Proteome samples.

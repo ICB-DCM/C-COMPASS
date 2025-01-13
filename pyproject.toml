@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ccompass"
+version = "1.0.0"
+description = "C-COMPASS (Cellular COMPartmentclASSifier) is an advanced open-source software tool designed for the quantitative analysis of fractionated proteomics samples."
+authors = [
+    { name = "Daniel Haas", email = "daniel.haas@helmholtz-munich.de" }
+]
+dependencies = [
+    "keras",
+    "keras-tuner",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "tensorflow",
+    "scikit-learn",
+    "scipy",
+    "seaborn",
+    "PySimpleGUI==4.60.5.0",
+]
+requires-python = ">=3.10"
+
+[project.scripts]
+ccompass = "ccompass.CCMPS:main"
