@@ -27,11 +27,21 @@ requires-python = ">=3.10"
 ccompass = "ccompass.CCMPS:main"
 
 [project.optional-dependencies]
-dev = ["pre-commit>=3"]
-
+dev = ["pre-commit>=3", "tox"]
+doc = ["sphinx", "sphinx-rtd-theme"]
 
 [tool.ruff]
 line-length = 79
 lint.ignore = [
     "E712",  # Avoid equality comparisons to True/False
 ]
+
+[tool.tox]
+requires = ["tox>=4.19"]
+env_list = ["doc"]
+
+[tool.tox.env.doc]
+description = "Build the documentation"
+extras = ["doc"]
+commands = [["sphinx-build", "-W", "-b", "html", "doc/", "doc/_build/html"]]
+working_directory = "doc"
