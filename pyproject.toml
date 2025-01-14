@@ -17,6 +17,7 @@ dependencies = [
     "numpy",
     "openpyxl",
     "pandas",
+    "pydantic",
     "tensorflow",
     "scikit-learn",
     "scipy",
