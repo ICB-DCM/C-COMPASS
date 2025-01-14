@@ -9,6 +9,7 @@ import keras_tuner as kt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from keras import ops
 from scipy import stats
 from sklearn import svm
 from sklearn.metrics import (
@@ -274,7 +275,7 @@ def create_fullprofiles(fract_marker, fract_test):
 
 
 def sum1_normalization(x):
-    return x / (K.sum(x, axis=1, keepdims=True) + K.epsilon())
+    return x / (ops.sum(x, axis=1, keepdims=True) + K.epsilon())
 
 
 def combine_rounds(data):
@@ -374,7 +375,7 @@ def MOP_exec(
             # units_init = np.shape(y_train_mixed_up)[1]
             model.add(
                 tf.keras.Input(
-                    self.set_shapes[0],
+                    (self.set_shapes[0],),
                 )
             )
             # model.add(tf.keras.Input(units_init,))
@@ -848,7 +849,7 @@ def multi_predictions(
     FNN_ens = []
     FNN_ens.append(FNN_best)
     # FNN_ens[0] = copy.deepcopy(FNN_best)
-    FNN_best.build(y_train_mixed_up.shape)
+    # FNN_best.build(y_train_mixed_up.shape)
 
     stringlist = []
     FNN_best.summary(print_fn=lambda x: stringlist.append(x))
