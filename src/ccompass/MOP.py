@@ -9,6 +9,7 @@ import keras_tuner as kt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from keras import ops
 from scipy import stats
 from sklearn import svm
 from sklearn.metrics import (
@@ -274,7 +275,7 @@ def create_fullprofiles(fract_marker, fract_test):
 
 
 def sum1_normalization(x):
-    return x / (K.sum(x, axis=1, keepdims=True) + K.epsilon())
+    return x / (ops.sum(x, axis=1, keepdims=True) + K.epsilon())
 
 
 def combine_rounds(data):
