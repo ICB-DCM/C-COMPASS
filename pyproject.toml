@@ -10,16 +10,18 @@ authors = [
     { name = "Daniel Haas", email = "daniel.haas@helmholtz-munich.de" }
 ]
 dependencies = [
+    "FreeSimpleGUI",
     "keras",
     "keras-tuner",
     "matplotlib",
     "numpy",
+    "openpyxl",
     "pandas",
     "tensorflow",
     "scikit-learn",
     "scipy",
     "seaborn",
-    "FreeSimpleGUI",
+    "xlsxwriter",
 ]
 requires-python = ">=3.10"
 
