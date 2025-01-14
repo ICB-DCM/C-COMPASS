@@ -375,7 +375,7 @@ def MOP_exec(
             # units_init = np.shape(y_train_mixed_up)[1]
             model.add(
                 tf.keras.Input(
-                    self.set_shapes[0],
+                    (self.set_shapes[0],),
                 )
             )
             # model.add(tf.keras.Input(units_init,))
@@ -849,7 +849,7 @@ def multi_predictions(
     FNN_ens = []
     FNN_ens.append(FNN_best)
     # FNN_ens[0] = copy.deepcopy(FNN_best)
-    FNN_best.build(y_train_mixed_up.shape)
+    # FNN_best.build(y_train_mixed_up.shape)
 
     stringlist = []
     FNN_best.summary(print_fn=lambda x: stringlist.append(x))
