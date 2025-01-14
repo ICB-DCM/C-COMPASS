@@ -278,7 +278,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
 
             results[condition]["SVM"]["winner_combined"] = pd.merge(
                 results[condition]["SVM"]["winner_combined"],
-                learning_xyz[subcon]["w_full_combined"]["SVM_winner"],
+                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].rename(
+                    f"SVM_winner_{subcon}"
+                ),
                 left_index=True,
                 right_index=True,
                 how="left",
@@ -292,7 +294,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
             ]
             results[condition]["SVM"]["prob_combined"] = pd.merge(
                 results[condition]["SVM"]["prob_combined"],
-                learning_xyz[subcon]["w_full_combined"]["SVM_prob"],
+                learning_xyz[subcon]["w_full_combined"]["SVM_prob"].rename(
+                    f"SVM_prob_{subcon}"
+                ),
                 left_index=True,
                 right_index=True,
                 how="left",
@@ -360,7 +364,9 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
             for subcon in subcons:
                 CC_list = pd.merge(
                     CC_list,
-                    learning_xyz[subcon]["z_full_mean_df"][classname],
+                    learning_xyz[subcon]["z_full_mean_df"][classname].rename(
+                        f"{classname}_{subcon}"
+                    ),
                     left_index=True,
                     right_index=True,
                     how="left",
