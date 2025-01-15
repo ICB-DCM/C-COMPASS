@@ -1,29 +1,7 @@
-I. Installation
-==============================
+Installation
+============
 
-System Requirements
---------------------
-
-- 64-bit Windows Operating System
-
-
-Running the Software
---------------------
-
-- Download the ZIP file from the repository or release section.
-- Extract the ZIP file to any location on your machine.
-- Navigate to the extracted folder.
-- Double-click `C-CMPS.bat` to start the application.
-- The software will initialize the portable Python environment and launch the GUI (this may take a few minutes).
-
-
-Command-Line Usage (optional)
------------------------------
-
-You can also run the software via the command line:
-
-> python CCMPS.py
-
+See `https://github.com/ICB-DCM/C-COMPASS?tab=readme-ov-file#installation <https://github.com/ICB-DCM/C-COMPASS?tab=readme-ov-file#installation>`__ for the latest installation instructions.
 
 Trouble-Shooting
 ----------------
