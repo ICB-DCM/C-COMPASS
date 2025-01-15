@@ -1,0 +1,132 @@
+name: Build and Package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  linux_bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ github.job }}-${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -e .
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --name ccompass_bundle_onefile --onefile --windowed -p . $(which ccompass)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ccompass_bundle_onefile_linux
+        path: dist/ccompass_bundle_onefile
+
+  windows_bundle:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ github.job }}-${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -e .
+
+    - name: Create launcher script
+      # we can't use the setuptools shim (.exe) on Windows
+      run: |
+        echo "from ccompass.CCMPS import main" > launcher.py
+        echo "main()" >> launcher.py
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller \
+          --name ccompass_bundle_onefile \
+          --onefile \
+          --windowed \
+          -p . \
+          launcher.py \
+          --hidden-import numpy.core._dtype_ctypes \
+          --hidden-import numpy.core.multiarray
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ccompass_bundle_onefile_windows
+        path: dist/ccompass_bundle_onefile.exe
+
+  macos_bundle:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ github.job }}-${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -e .
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --name ccompass_bundle_onefile --onefile --windowed -p . $(which ccompass)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ccompass_bundle_onefile_macos
+        path: dist/ccompass_bundle_onefile

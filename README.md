@@ -17,6 +17,14 @@ The data analyzed by C-COMPASS typically derives from proteomics fractionation s
 
 ## Installation
 
+### Single-file executables
+
+Single-file executables that don't require a Python installation are available on the release page.
+
+On Windows, make sure to install the Microsoft C and C++ (MSVC) runtime libraries before ([further information](ttps://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170), [direct download](https://aka.ms/vs/17/release/vc_redist.x64.exe)).
+
+### Via pip
+
 ```bash
 pip install ccompass
 ```
