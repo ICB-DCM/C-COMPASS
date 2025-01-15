@@ -1,14 +1,15 @@
-# .readthedocs.yaml (version 2)
+# .readthedocs.yml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
 version: 2
 
-build:
-  environment:
-    GITHUB_API_TOKEN: ${GITHUB_API_TOKEN}
-
 sphinx:
-  configuration: docs/conf.py
+  builder: html
+  configuration: doc/conf.py
+  fail_on_warning: True
 
-python:
-  version: 3.8
-  install:
-    - requirements: docs/requirements.txt
+build:
+  os: "ubuntu-22.04"
+  tools:
+    python: "3.12"
