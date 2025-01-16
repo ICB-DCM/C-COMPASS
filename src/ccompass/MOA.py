@@ -165,7 +165,7 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         ### ## add TPA:
         ### if mode == 'deep':
         ###     TPA_list = []
-        ###     tp_nontrans = tp_data[condition].applymap(lambda x: 2 ** x)
+        ###     tp_nontrans = tp_data[condition].map(lambda x: 2 ** x)
         ###     for replicate in tp_data[condition]:
         ###         TPA_list.append(tp_nontrans[replicate])
         ###     combined_TPA = pd.concat(TPA_list, axis = 1)
@@ -403,7 +403,7 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
         cc_sums = results[condition]["metrics"][cc_cols].sum(
             axis=1, skipna=True
         )
-        # cc_sums = results[condition]['metrics'][cc_cols].applymap(safe_sum)
+        # cc_sums = results[condition]['metrics'][cc_cols].map(safe_sum)
         results[condition]["metrics"][cc_cols] = results[condition]["metrics"][
             cc_cols
         ].div(cc_sums, axis=0)
@@ -799,7 +799,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
         ## add TPA:
         TPA_list = []
         TPA_list = []
-        tp_nontrans = tp_data[condition].applymap(lambda x: 2**x)
+        tp_nontrans = tp_data[condition].map(lambda x: 2**x)
         for replicate in tp_data[condition]:
             TPA_list.append(tp_nontrans[replicate])
         combined_TPA = pd.concat(TPA_list, axis=1)
