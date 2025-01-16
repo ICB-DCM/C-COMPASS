@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-from . import CM, FDP, MOA, MOP, PPMS, RP, SM, TM, TPP
+from . import MOA, PPMS, RP
 
 # tensorflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -1328,13 +1328,15 @@ def main():
                 pass
         elif event == "-fractionation_start-":
             if model.fract_paths:
+                from .FDP import FDP_exec
+
                 (
                     model.fract_data,
                     model.fract_std,
                     model.fract_intermediate,
                     model.fract_info,
                     model.fract_conditions,
-                ) = FDP.FDP_exec(
+                ) = FDP_exec(
                     main_window,
                     model.fract_tables,
                     model.fract_preparams,
@@ -1424,13 +1426,15 @@ def main():
                 pass
         elif event == "-tp_start-":
             if model.tp_paths:
+                from .TPP import TPP_exec
+
                 (
                     model.tp_data,
                     model.tp_intermediate,
                     model.tp_info,
                     model.tp_conditions,
                     model.tp_icorr,
-                ) = TPP.TPP_exec(
+                ) = TPP_exec(
                     main_window,
                     model.tp_data,
                     model.tp_tables,
@@ -1482,8 +1486,10 @@ def main():
             model.marker_params = PPMS.PPMS_exec_marker(model.marker_params)
 
         elif event == "-marker_manage-":
+            from .CM import CM_exec
+
             if check_markers(model.marker_sets):
-                model.marker_conv = CM.CM_exec(
+                model.marker_conv = CM_exec(
                     model.marker_sets, model.marker_conv
                 )
             else:
@@ -1493,13 +1499,15 @@ def main():
 
         elif event == "-marker_test-":
             if check_markers(model.marker_sets):
+                from .TM import TM_exec
+
                 try:
                     model.marker_list = create_markerlist(
                         model.marker_sets,
                         model.marker_conv,
                         model.marker_params,
                     )
-                    TM.TM_exec(
+                    TM_exec(
                         model.fract_data,
                         model.fract_info,
                         model.marker_list,
@@ -1515,13 +1523,15 @@ def main():
                 )
         elif event == "-marker_profiles-":
             if check_markers(model.marker_sets):
+                from .SM import SM_exec
+
                 try:
                     model.marker_list = create_markerlist(
                         model.marker_sets,
                         model.marker_conv,
                         model.marker_params,
                     )
-                    SM.SM_exec(
+                    SM_exec(
                         model.fract_data,
                         model.fract_info,
                         model.marker_list,
@@ -1554,6 +1564,8 @@ def main():
                     "Error", "Please select key and class columns!"
                 )
             else:
+                from .MOP import create_fullprofiles
+
                 try:
                     # print('Starting try block')
                     model.marker_list = create_markerlist(
@@ -1574,7 +1586,7 @@ def main():
                         model.marker_list,
                     )
                     # print('check2: marker profiles created')
-                    model.fract_full = MOP.create_fullprofiles(
+                    model.fract_full = create_fullprofiles(
                         model.fract_marker, model.fract_test
                     )
                     model.status["marker_matched"] = True
@@ -1604,6 +1616,8 @@ def main():
             model.NN_params = PPMS.PPMS_exec_NN(model.NN_params)
 
         elif event == "-classification_MOP-":
+            from .MOP import MOP_exec
+
             (
                 model.learning_xyz,
                 model.NN_params,
@@ -1614,7 +1628,7 @@ def main():
                 model.svm_marker,
                 model.svm_test,
                 model.svm_metrics,
-            ) = MOP.MOP_exec(
+            ) = MOP_exec(
                 model.fract_conditions,
                 model.fract_full,
                 model.fract_marker,
