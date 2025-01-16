@@ -1823,7 +1823,7 @@ class MainController:
                 self.model.fract_marker,
                 self.model.fract_marker_vis,
                 self.model.fract_test,
-                self.model.classnames,
+                _,
             ) = create_markerprofiles(
                 self.model.fract_data,
                 values["-marker_fractkey-"],
