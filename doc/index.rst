@@ -1,5 +1,5 @@
-Welcome to CCMPS Documentation
-==============================
+Welcome to C-COMPASS Documentation
+==================================
 
 Introduction
 ------------
@@ -18,7 +18,6 @@ With C-COMPASS, users can perform comprehensive quantitative analyses of compart
    :caption: Contents:
 
    installation.rst
-   preparation.rst
    usage.rst
    faq.rst
    contributing.rst

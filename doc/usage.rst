@@ -1,146 +1,198 @@
-III. Usage Guide
-================
+===========
+Usage Guide
+===========
+
+0. Data Preparation
+===================
+
+* To analyze your spatial proteomics datasets, you need the proteomics report file(s) derived from your spectral search software, such as MaxQuant, Spectronaut, DIANN, or others. Your data must be reported as a **pivot report table**, meaning that your table includes one column per sample, as well as additional columns for further information. The necessary columns are:
+
+  * One column per sample (fraction).
+  * One column containing a **unique identifier** (e.g., protein groups, protein ID, etc.).
+  * One column containing key names that match the key names in your marker list (usually gene names). Ensure these keys are compatible, including case sensitivity.
+
+* Furthermore, you need a file containing your marker proteins. C-COMPASS provides prepared marker lists from previous publications, or you can use a custom export from a database relevant to your project. This file must include at least two columns:
+
+  * A column containing key names matching those in your dataset (usually gene names, see above).
+  * A column containing **class annotations** (for spatial proteomics experiments, this should represent the compartments where the marker proteins are located).
+
+* An additional dataset containing the total proteomes of the fractionation samples (proteomes derived from whole cell/tissue lysate) can be provided for **class-centric analysis** of compartments. This file should contain:
+
+  * One column per total proteome sample.
+  * One column containing the **same unique identifier** as used in the fractionation samples (see above).
+
+
+Additional Notes
+----------------
+
+* All input files must be **tab-delimited** (.tsv or .txt).
+* If using an export file from **Perseus**, ensure that the file does not contain a second-layer header.
+* Input datasets (for both fractionation and total proteome) can be stored in the same file or split across different files. If they are split, ensure that the **identifiers** are consistent.
+
 
 1. Graphical User Interface (GUI)
--------------------------------------
+=================================
 
-   a. C-COMPASS allows you to save and load your sessions via the main toolbar.
+C-COMPASS allows you to save and load your sessions via the main toolbar.
 
-   b. A session can be saved as a NumPy (.npy) file, which includes all datasets, marker lists, settings, analyses, trainings, and statistics. These will be fully restored upon loading.
+A session can be saved as a NumPy (``.npy``) file, which includes all datasets,
+marker lists, settings, analyses, trainings, and statistics. These will be
+fully restored upon loading.
 
-2. Pre-Training
--------------------
+2. Before training
+==================
 
-   a. **Data Import**
+#. **Data Import**
 
-      i. There are two tabs for data import: Fractionation and TotalProteome.
+   #. There are two tabs for data import: `Fractionation` and `TotalProteome`.
 
-      ii. Fractionation data can be analyzed independently, but TotalProteome is required for final class-centric statistics.
+   #. Fractionation data can be analyzed independently, but TotalProteome is
+      required for final class-centric statistics.
 
-      iii. Use the "Add file..." button to import datasets. Multiple datasets can be imported and will appear in the dropdown menu. To remove a dataset, select it from the dropdown and click "Remove."
+   #. Use the `Add file...` button to import datasets.
+      Multiple datasets can be imported and will appear in the dropdown menu.
+      To remove a dataset, select it from the dropdown and click `Remove.`
 
-      iv. The table will display all column names found in the selected dataset.
+   #. The table will display all column names found in the selected dataset.
 
-   b. **Sample Annotation**
+#. **Sample Annotation**
 
-      i. For Fractionation data: Assign the condition, replicate number, and fraction numbers by selecting the relevant column names and clicking the appropriate button.
+   #. For Fractionation data: Assign the condition, replicate number, and
+      fraction numbers by selecting the relevant column names and clicking the
+      appropriate button.
 
-      ii. For TotalProteome data: Follow the same steps as Fractionation data, using consistent condition names.
+   #. For TotalProteome data: Follow the same steps as Fractionation data,
+      using consistent condition names.
 
-      iii. Set the identifier column (e.g., ProteinGroups) for both Fractionation and TotalProteome datasets using the "Set Identifier" button. Ensure compatibility between these columns.
+   #. Set the identifier column (e.g., `ProteinGroups`) for both Fractionation and
+      TotalProteome datasets using the "Set Identifier" button.
+      Ensure compatibility between these columns.
 
-      iv. For other columns, either remove them or mark them as "Keep." Data marked as "Keep" will not be used in the analysis but will be available for export.
+   #. For other columns, either remove them or mark them as `Keep.`
+      Data marked as `Keep` will not be used in the analysis but will be
+      available for export.
 
-      v. **IMPORTANT**: Ensure that the column matching the marker list's naming (usually the gene name column) is kept.
+   #. **IMPORTANT**: Ensure that the column matching the marker list's naming
+      (usually the gene name column) is kept.
 
-   c. **Pre-Processing**
+#. **Pre-Processing**
 
-      i. Once columns are annotated, click "Process Fract." or "Process TP" to import the data.
+   #. Once columns are annotated, click `Process Fract.` or `Process TP`
+      to import the data.
 
-      ii. Fractionation and TotalProteome data can be processed independently.
+   #. Fractionation and TotalProteome data can be processed independently.
 
-   d. **Marker List Import**
+#. **Marker List Import**
 
-      i. In the "Marker Selection" frame, load marker lists via the "Add..." button. Multiple marker lists can be imported, and individual lists can be removed using the "Remove" button.
+   #. In the `Marker Selection` frame, load marker lists via the `Add...`
+      button. Multiple marker lists can be imported, and individual lists can
+      be removed using the `Remove` button.
 
-      ii. Imported marker lists will be displayed in the box.
+   #. Imported marker lists will be displayed in the box.
 
-      iii. For each marker list, specify the key column (e.g., gene names) and the class column (e.g., compartment).
+   #. For each marker list, specify the key column (e.g., gene names)
+      and the class column (e.g., compartment).
 
-      iv. In the "Fract. Key" section, select the column from the fractionation dataset that contains the compatible key naming. If the identifier and key column are the same, select "[IDENTIFIER]."
+   #. In the `Fract. Key` section, select the column from the fractionation dataset that contains the compatible key naming. If the identifier and key column are the same, select `[IDENTIFIER].`
 
-   e. **Marker Check & Matching**
+#. **Marker Check & Matching**
 
-      i. Click "Manage..." to view all class annotations from the marker lists. Unselect any classes you do not want in the analysis or rename them.
+   #. Click `Manage...` to view all class annotations from the marker lists.
+      Unselect any classes you do not want in the analysis or rename them.
 
-      ii. Classes with different nomenclatures (e.g., "ER" vs. "Endoplasmic Reticulum") can be merged by giving them the same name.
+   #. Classes with different nomenclatures (e.g., ``ER`` vs. ``Endoplasmic Reticulum``) can be merged by giving them the same name.
 
-      iii. Median profiles of marker proteins and Pearson correlation matrices can be displayed via the corresponding buttons. Export options for plots and tables are available.
+   #. Median profiles of marker proteins and Pearson correlation matrices
+      can be displayed via the corresponding buttons.
+      Export options for plots and tables are available.
 
-      iv. Confirm your marker selection by clicking "Match!."
+   #. Confirm your marker selection by clicking `Match!`.
 
 3. Training
----------------
+===========
 
-   a. Start the training process by clicking "Train C-COMPASS."
+#. Start the training process by clicking `Train C-COMPASS`.
 
-   b. Various network architectures will be trained and evaluated for optimal results. This process may take over an hour, depending on dataset size.
+#. Various network architectures will be trained and evaluated for optimal results. This process may take over an hour, depending on dataset size.
 
-   c. Progress will be shown in the background console window.
+#. Progress will be shown in the background console window.
 
-   d. **Hint**: Save your session after training to avoid repeating the process.
+#. **Hint**: Save your session after training to avoid repeating the process.
 
-   e. **Note**: Future versions will optimize training time while maintaining calculation accuracy.
+#. **Note**: Future versions will optimize training time while maintaining calculation accuracy.
 
-4. Post-Training
---------------------
+4. After training
+=================
 
-   a. **Statistics**
+#. **Statistics**
 
-      i. After training, create "Static Statistics" via "Predict Proteome" to generate quantitative classifications for each condition.
+   #. After training, create `Static Statistics` via `Predict Proteome`
+      to generate quantitative classifications for each condition.
 
-      ii. Predictions can be exported or imported for comparison across sessions, ensuring compatible identifiers.
+   #. Predictions can be exported or imported for comparison across sessions,
+      ensuring compatible identifiers.
 
-      iii. Use the "Report" button to export results.
+   #. Use the `Report` button to export results.
 
-      iv. Create simple plots and export them, along with the corresponding data tables.
+   #. Create simple plots and export them, along with the corresponding data tables.
 
-   b. **Conditional Comparison - Global Changes**
+#. **Conditional Comparison - Global Changes**
 
-      i. "Calculate Global Changes" compares localization across conditions, providing relocalization results.
+   #. `Calculate Global Changes` compares localization across conditions,
+      providing relocalization results.
 
-      ii. Results can be displayed and exported similarly to the statistics.
+   #. Results can be displayed and exported similarly to the statistics.
 
-   c. **Conditional Comparison - Class-centric Changes**
+#. **Conditional Comparison - Class-centric Changes**
 
-      i. **CPA (Class-centric Protein Amount)**: The amount of protein within a compartment, normalized by total proteome data. This is a relative value that requires comparison across conditions.
+   #. **CPA (Class-centric Protein Amount)**: The amount of protein within a compartment, normalized by total proteome data. This is a relative value that requires comparison across conditions.
 
-      ii. **CFC (Class-centric Fold-Change)**: The fold change of proteins across conditions within a compartment, based on CPA values. Only proteins with valid fractionation and total proteome data for both conditions will have CFC values.
+   #. **CFC (Class-centric Fold-Change)**: The fold change of proteins across conditions within a compartment, based on CPA values. Only proteins with valid fractionation and total proteome data for both conditions will have CFC values.
 
 5. Spatial Lipidomics
--------------------------
+======================
 
-   a. C-COMPASS has been used for spatial lipidomics analysis, though no dedicated feature currently exists for multi-omics analysis.
+#. C-COMPASS has been used for spatial lipidomics analysis, though no dedicated feature currently exists for multi-omics analysis.
 
-   b. You can concatenate proteomics and lipidomics datasets into one file before importing into C-COMPASS. Lipids will be treated like proteins, and spatial information can be derived similarly.
+#. You can concatenate proteomics and lipidomics datasets into one file before importing into C-COMPASS. Lipids will be treated like proteins, and spatial information can be derived similarly.
 
-   c. Future versions of C-COMPASS will include features specifically designed for lipidomics.
+#. Future versions of C-COMPASS will include features specifically designed for lipidomics.
 
 6. Parameters
------------------
+=============
 
-   a. All parameters are set to default values used in our publication. It is not recommended to change them unless you are familiar with the procedure and its impact on results.
+#. All parameters are set to default values used in our publication. It is not recommended to change them unless you are familiar with the procedure and its impact on results.
 
-   b. **Parameters - Fractionation**
+#. **Parameters - Fractionation**
 
-      i. Parameters for analysis and visualization can be adjusted independently.
+   #. Parameters for analysis and visualization can be adjusted independently.
 
-      ii. **Min. valid fractions**: Profiles with fewer valid values across fractions can be filtered out.
+   #. **Min. valid fractions**: Profiles with fewer valid values across fractions can be filtered out.
 
-      iii. **Found in at least X Replicates**: Proteins found in fewer replicates than specified will be removed.
+   #. **Found in at least X Replicates**: Proteins found in fewer replicates than specified will be removed.
 
-      iv. **Pre-scaling**: Options include MinMax scaling or Area scaling.
+   #. **Pre-scaling**: Options include MinMax scaling or Area scaling.
 
-      v. **Exclude Proteins from Worst Correlated Replicate**: Removes the replicate with the lowest Pearson correlation.
+   #. **Exclude Proteins from Worst Correlated Replicate**: Removes the replicate with the lowest Pearson correlation.
 
-      vi. **Post-scaling**: Same options as Pre-scaling, useful for median profiles.
+   #. **Post-scaling**: Same options as Pre-scaling, useful for median profiles.
 
-      vii. **Remove Baseline Profiles**: Removes profiles with only 0 values after processing.
+   #. **Remove Baseline Profiles**: Removes profiles with only 0 values after processing.
 
-   c. **Parameters - TotalProteome**
+#. **Parameters - TotalProteome**
 
-      i. **Found in at least X**: Similar to Fractionation data, this filters proteins found in fewer replicates.
+   #. **Found in at least X**: Similar to Fractionation data, this filters proteins found in fewer replicates.
 
-      ii. **Imputation**: Missing values can be replaced by 0 or other values.
+   #. **Imputation**: Missing values can be replaced by 0 or other values.
 
-   d. **Parameters - Marker Selection**
+#. **Parameters - Marker Selection**
 
-      i. Discrepancies across marker lists can be handled by excluding markers or taking the majority annotation.
+   #. Discrepancies across marker lists can be handled by excluding markers or taking the majority annotation.
 
-   e. **Parameters - Spatial Prediction**
+#. **Parameters - Spatial Prediction**
 
-      i. **WARNING**: Changes here are not recommended!
+   #. **WARNING**: Changes here are not recommended!
 
-      ii. Various upsampling, noise, and SVM filtering methods are available for marker prediction.
+   #. Various upsampling, noise, and SVM filtering methods are available for marker prediction.
 
-   f. **Other parameters** for network training and optimization can be configured, including dense layer activation, output activation, loss function, optimizers, and number of epochs.
+#. **Other parameters** for network training and optimization can be configured, including dense layer activation, output activation, loss function, optimizers, and number of epochs.

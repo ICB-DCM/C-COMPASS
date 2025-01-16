@@ -1,5 +1,5 @@
-V. Contributions
-=========================
+Contributing
+============
 
 We welcome contributions to C-COMPASS and encourage the community to participate in its development. Whether you are fixing bugs, adding new features, or improving documentation, your help is greatly appreciated.
 
@@ -14,8 +14,8 @@ Before starting major changes, it's a good idea to open an issue to discuss the 
 
 We appreciate your time and effort in making C-COMPASS even better!
 
-VI. Pre-commit Hooks
---------------------
+Pre-commit Hooks
+----------------
 
 We use `pre-commit <https://github.com/pre-commit/pre-commit>`__ hooks to
 ensure code quality and consistency. Pre-commit hooks automatically run checks
