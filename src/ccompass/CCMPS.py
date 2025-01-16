@@ -1555,7 +1555,9 @@ class MainController:
                 )
 
             elif event == "-marker_parameters-":
-                self.model.marker_params = PPMS.PPMS_exec_marker(
+                from .marker_parameters_dialog import show_dialog
+
+                self.model.marker_params = show_dialog(
                     self.model.marker_params
                 )
 
