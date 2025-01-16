@@ -213,8 +213,8 @@ class SessionModel(BaseModel):
         self.tp_identifiers = {}
 
     def reset_fract(self):
-        self.fract_data = {"class": [], "vis": []}
-        self.fract_std = {"class": [], "vis": []}
+        self.fract_data = {"class": {}, "vis": {}}
+        self.fract_std = {"class": {}, "vis": {}}
         self.fract_intermediate = {}
         self.fract_info = {}
         self.fract_conditions = []
@@ -288,7 +288,7 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
                 button_color="grey",
             ),
             sg.Combo(
-                (fract_paths),
+                fract_paths,
                 size=(58, 1),
                 key="-fractionation_path-",
                 disabled=False,
@@ -460,7 +460,7 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
                 button_color="grey",
             ),
             sg.Combo(
-                (tp_paths),
+                tp_paths,
                 size=(58, 1),
                 key="-tp_path-",
                 disabled=False,
@@ -1315,7 +1315,7 @@ class MainController:
                 break
 
             if event == "-fractionation_add-":
-                fract_add(values, self.main_window, model=self.model)
+                fract_add(self.main_window, model=self.model)
             elif event == "-fractionation_remove-":
                 if values["-fractionation_path-"]:
                     fract_rem(
@@ -1433,7 +1433,6 @@ class MainController:
 
             elif event == "-tp_add-":
                 tp_add(
-                    values,
                     self.main_window,
                     self.model.tp_paths,
                     self.model.tp_tables,
@@ -2108,7 +2107,7 @@ def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
                 fract_tables[path] = table
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
-    return (values, fract_tables)
+    return values, fract_tables
 
 
 def fract_buttons(window, status):
@@ -2178,7 +2177,6 @@ def tp_clearinput(window):
 
 
 def fract_add(
-    values,
     window,
     model: SessionModel,
 ):
@@ -2190,45 +2188,43 @@ def fract_add(
             ("Text (tab delimited)", "*.txt"),
         ),
     )
-    if filename:
-        model.fract_paths.append(filename)
-        window["-fractionation_path-"].Update(
-            values=model.fract_paths, value=filename
-        )
-        data = pd.read_csv(filename, sep="\t", header=0)
-        data = data.replace("NaN", np.nan)
-        data = data.replace("Filtered", np.nan)
-        colnames = data.columns.values.tolist()
-        table = []
-        for name in colnames:
-            namelist = [name, "", "", ""]
-            table.append(namelist)
-        model.fract_tables[filename] = table
-        model.fract_indata[filename] = data
-        model.fract_pos[filename] = []
-        model.fract_identifiers[filename] = []
+    if not filename:
+        return
 
-        fract_refreshtable(window, table)
-    return
+    model.fract_paths.append(filename)
+    window["-fractionation_path-"].Update(
+        values=model.fract_paths, value=filename
+    )
+    data = pd.read_csv(filename, sep="\t", header=0)
+    data = data.replace("NaN", np.nan)
+    data = data.replace("Filtered", np.nan)
+    colnames = data.columns.values.tolist()
+    table = []
+    for name in colnames:
+        namelist = [name, "", "", ""]
+        table.append(namelist)
+    model.fract_tables[filename] = table
+    model.fract_indata[filename] = data
+    model.fract_pos[filename] = []
+    model.fract_identifiers[filename] = []
+
+    fract_refreshtable(window, table)
 
 
 def fract_rem(values, window, model: SessionModel):
     sure = sg.popup_yes_no("Remove data from list?")
-    if sure == "Yes":
-        model.fract_paths.remove(values["-fractionation_path-"])
-        del model.fract_tables[values["-fractionation_path-"]]
-        if model.fract_paths:
-            curr = model.fract_paths[0]
-            fract_refreshtable(window, model.fract_tables[curr])
-        else:
-            curr = []
-            fract_refreshtable(window, curr)
-        window["-fractionation_path-"].Update(
-            values=model.fract_paths, value=curr
-        )
+    if sure != "Yes":
+        return
+
+    model.fract_paths.remove(values["-fractionation_path-"])
+    del model.fract_tables[values["-fractionation_path-"]]
+    if model.fract_paths:
+        curr = model.fract_paths[0]
+        fract_refreshtable(window, model.fract_tables[curr])
     else:
-        pass
-    return
+        curr = []
+        fract_refreshtable(window, curr)
+    window["-fractionation_path-"].Update(values=model.fract_paths, value=curr)
 
 
 def fract_defrem(values, window, fract_tables):
@@ -2239,7 +2235,6 @@ def fract_defrem(values, window, fract_tables):
         del table[index]
     fract_tables[path] = table
     window["-fractionation_table-"].Update(values=fract_tables[path])
-    return
 
 
 def fract_defkeep(values, window, fract_tables):
@@ -2251,7 +2246,6 @@ def fract_defkeep(values, window, fract_tables):
         table[pos][3] = "-"
     fract_tables[path] = table
     window["-fractionation_table-"].Update(values=fract_tables[path])
-    return
 
 
 def fract_defcon(values, window, fract_tables):
@@ -2267,7 +2261,6 @@ def fract_defcon(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_defrep(values, window, fract_tables):
@@ -2283,7 +2276,6 @@ def fract_defrep(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_deffract(values, window, fract_tables):
@@ -2299,7 +2291,6 @@ def fract_deffract(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_defident(values, window, input_tables, ident_pos, identifiers):
@@ -2328,7 +2319,7 @@ def fract_defident(values, window, input_tables, ident_pos, identifiers):
     return identifiers
 
 
-def fract_export(values, data, protein_info):
+def fract_export(data, protein_info):
     export_folder = sg.popup_get_folder("Export Folder")
     if export_folder:
         experiment = simpledialog.askstring("Export", "Experiment Name: ")
@@ -2417,9 +2408,6 @@ def fract_export(values, data, protein_info):
     return
 
 
-# ------------------------------------------------------------------------------
-
-
 def is_float(element):
     try:
         float(element)
@@ -2435,9 +2423,7 @@ def convert_to_float(x):
         return x
 
 
-def tp_add(
-    values, window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
-):
+def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
     filename = sg.popup_get_file(
         "Chose dataset",
         no_window=True,
@@ -2641,7 +2627,6 @@ def refresh_markertable(window, values, marker_sets):
             values=marker_sets[file_list[0]]["table"].columns.tolist(),
             value=marker_sets[file_list[0]]["class_col"],
         )
-    return
 
 
 def refresh_markercols(window, values, marker_sets):
@@ -2661,7 +2646,6 @@ def refresh_markercols(window, values, marker_sets):
     except Exception:
         window["-marker_key-"].Update(values=[], value="-")
         window["-marker_class-"].Update(values=[], value="-")
-    return
 
 
 def marker_add(window, values, marker_sets):
@@ -2673,21 +2657,22 @@ def marker_add(window, values, marker_sets):
             ("Tab Separated Values", "*.tsv"),
         ),
     )
-    if filename:
-        marker_sets[filename] = {}
-        # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
-        marker_sets[filename]["table"] = pd.read_csv(
-            filename, sep="\t", header=0
-        ).apply(lambda x: x.astype(str).str.upper())
-        marker_sets[filename]["identifier_col"] = "-"
-        marker_sets[filename]["class_col"] = "-"
-        marker_sets[filename]["classes"] = []
-        refresh_markertable(window, values, marker_sets)
+    if not filename:
+        return
 
-        # window['-marker_test-'].Update(disabled = False)
-        # window['-marker_profiles-'].Update(disabled = False)
-        # window['-marker_remove-'].Update(disabled = False)
-    return
+    marker_sets[filename] = {}
+    # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
+    marker_sets[filename]["table"] = pd.read_csv(
+        filename, sep="\t", header=0
+    ).apply(lambda x: x.astype(str).str.upper())
+    marker_sets[filename]["identifier_col"] = "-"
+    marker_sets[filename]["class_col"] = "-"
+    marker_sets[filename]["classes"] = []
+    refresh_markertable(window, values, marker_sets)
+
+    # window['-marker_test-'].Update(disabled = False)
+    # window['-marker_profiles-'].Update(disabled = False)
+    # window['-marker_remove-'].Update(disabled = False)
 
 
 def marker_remove(window, values, marker_sets):
@@ -2704,7 +2689,6 @@ def marker_setkey(values, marker_sets):
     marker_sets[values["-marker_list-"][0]]["identifier_col"] = values[
         "-marker_key-"
     ]
-    return
 
 
 def marker_setclass(values, marker_sets):
@@ -3745,5 +3729,3 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
             "-class_reset-",
         ]:
             window[element].Update(disabled=True)
-
-    return
