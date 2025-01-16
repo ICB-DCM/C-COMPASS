@@ -30,8 +30,9 @@ requires-python = ">=3.10"
 ccompass = "ccompass.CCMPS:main"
 
 [project.optional-dependencies]
-dev = ["pre-commit>=3", "tox"]
+dev = ["pre-commit>=3", "pytest", "tox"]
 doc = ["sphinx", "sphinx-rtd-theme"]
+test = ["pytest"]
 
 [tool.ruff]
 line-length = 79
@@ -40,6 +41,16 @@ lint.ignore = [
 ]
 lint.extend-select = [
     "I",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+    "src",
+]
+filterwarnings = [
+    # Issues with older protobuf
+    "ignore:Type google._upb.* uses PyType_Spec with a metaclass that has custom tp_new.:DeprecationWarning"
 ]
 
 [tool.tox]
