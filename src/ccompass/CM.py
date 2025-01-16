@@ -1,4 +1,7 @@
-"""Class manager."""
+"""Class manager.
+
+Window for mapping annotations to classes.
+"""
 
 import FreeSimpleGUI as sg
 import numpy as np
@@ -6,29 +9,21 @@ import pandas as pd
 
 
 def refresh_conversion(conversion, values):
+    """Refresh the conversion dictionary with the new values from the GUI."""
     for o in conversion:
-        if values["--" + o + "--"] == True:
-            conversion[o] = values["--" + o + "_class--"]
-        elif values["--" + o + "--"] == False:
-            conversion[o] = np.nan
+        conversion[o] = (
+            values[f"--{o}_class--"] if values[f"--{o}--"] else np.nan
+        )
     return conversion
 
 
-def CM_exec(markers, marker_conv):
+def CM_exec(marker_conv: dict[str, str | float]) -> dict[str, str | float]:
     conv_old = marker_conv
-
-    num_names = 0
-    for name in marker_conv:
-        if not pd.isnull(marker_conv[name]):
-            num_names += 1
+    num_names = sum(not pd.isnull(v) for v in marker_conv.values())
 
     layout_column = [
         [sg.Text("Annotation", size=(25, 1)), sg.Text("Class", size=(20, 1))],
-        [
-            sg.Text(
-                "--------------------------------------------------------------------------------"
-            )
-        ],
+        [sg.Text("-" * 80)],
         *[
             [
                 sg.Checkbox(
@@ -36,13 +31,13 @@ def CM_exec(markers, marker_conv):
                     default=not pd.isnull(marker_conv[o]),
                     enable_events=True,
                     size=(20, 5),
-                    key="--" + o + "--",
+                    key=f"--{o}--",
                 ),
                 sg.InputText(
                     str(marker_conv[o]),
                     visible=not pd.isnull(marker_conv[o]),
                     size=(20, 5),
-                    key="--" + o + "_class--",
+                    key=f"--{o}_class--",
                 ),
             ]
             for o in marker_conv
@@ -68,11 +63,11 @@ def CM_exec(markers, marker_conv):
             sg.Column(
                 layout=[
                     [
-                        sg.Text("initial annotations: "),
+                        sg.Text("Initial annotations: "),
                         sg.Text(str(len(marker_conv))),
                     ],
                     [
-                        sg.Text("used annotations: "),
+                        sg.Text("Used annotations: "),
                         sg.Text(str(num_names), key="-num_anno-"),
                     ],
                     [
@@ -104,18 +99,18 @@ def CM_exec(markers, marker_conv):
     while True:
         event_CM, values_CM = window_CM.read()
         for k in marker_conv:
-            if event_CM == "--" + k + "--":
-                window_CM["--" + k + "_class--"].Update(
-                    visible=values_CM["--" + k + "--"]
+            # checkbox clicked?
+            if event_CM == f"--{k}--":
+                window_CM[f"--{k}_class--"].Update(
+                    visible=values_CM[f"--{k}--"]
                 )
-                if values_CM["--" + k + "--"] == True:
-                    window_CM["--" + k + "_class--"].Update(value=k)
+                if values_CM[f"--{k}--"]:
+                    window_CM[f"--{k}_class--"].Update(value=k)
                     num_names += 1
-                    window_CM["-num_anno-"].Update(value=str(num_names))
-                elif values_CM["--" + k + "--"] == False:
-                    window_CM["--" + k + "_class--"].Update(value=False)
+                else:
+                    window_CM[f"--{k}_class--"].Update(value=False)
                     num_names -= 1
-                    window_CM["-num_anno-"].Update(value=str(num_names))
+                window_CM["-num_anno-"].Update(value=str(num_names))
 
         if event_CM == sg.WIN_CLOSED or event_CM == "--cancel--":
             marker_conv = conv_old
