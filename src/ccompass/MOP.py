@@ -331,7 +331,7 @@ def pairwise_t_test(
                             (
                                 idx,
                                 col,
-                                "Condition {} vs {}".format(i + 1, j + 1),
+                                f"Condition {i + 1} vs {j + 1}",
                                 t_stat,
                                 p_value,
                                 magnitude_of_change,
@@ -1170,7 +1170,7 @@ def mix_profiles(
                 f"{i + cur}_{value}" for i, value in enumerate(new_index)
             ]
             own_part = profiles_own.multiply(part)
-            other_part = profiles_other.multiply((1 - part))
+            other_part = profiles_other.multiply(1 - part)
 
             own_part.index = new_index_part
             other_part.index = new_index_part

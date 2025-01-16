@@ -3273,7 +3273,7 @@ def marker_mix(fract_marker_up):
                     f"{i + cur}_{value}" for i, value in enumerate(new_index)
                 ]
                 own_part = profiles_own.multiply(part)
-                other_part = profiles_other.multiply((1 - part))
+                other_part = profiles_other.multiply(1 - part)
 
                 own_part.index = new_index_part
                 other_part.index = new_index_part

@@ -41,6 +41,8 @@ lint.ignore = [
 ]
 lint.extend-select = [
     "I",
+    "UP",
+
 ]
 
 [tool.pytest.ini_options]
