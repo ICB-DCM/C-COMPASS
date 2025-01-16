@@ -480,7 +480,6 @@ def FDP_exec(
     conditions_trans,
     fract_indata,
 ):
-    sg.theme("DarkTeal11")
     layout_FDP = [
         [
             sg.Column(

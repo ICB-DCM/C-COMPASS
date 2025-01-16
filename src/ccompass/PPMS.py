@@ -72,8 +72,6 @@ def NN_default():
 def PPMS_exec_fract(params_old):
     combination_both = action.set_combinations(params_old)
 
-    sg.theme("DarkTeal11")
-
     layout_class = [
         [
             sg.Checkbox(
@@ -422,8 +420,6 @@ def PPMS_exec_fract(params_old):
 
 
 def PPMS_exec_marker(params_old):
-    sg.theme("DarkTeal11")
-
     if params_old["how"] == "exclude":
         how_exclude = True
         how_majority = False
@@ -524,7 +520,6 @@ def PPMS_exec_marker(params_old):
 
 
 def PPMS_exec_TP(params_old):
-    sg.theme("DarkTeal11")
     tp_params = copy.deepcopy(params_old)
 
     if params_old["imputation"] == "normal":
@@ -613,7 +608,6 @@ def PPMS_exec_TP(params_old):
 
 
 def PPMS_exec_NN(params_old):
-    sg.theme("DarkTeal11")
     NN_params = copy.deepcopy(params_old)
 
     if "adam" in params_old["optimizers"]:

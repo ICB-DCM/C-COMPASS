@@ -94,8 +94,6 @@ def TM_exec(fract_data, fract_info, marker_list, key):
             marker_list, classnames, data
         )
 
-    sg.theme("DarkTeal11")
-
     condition = list(correlation_matrices.keys())[0]
     layout_TM = [
         [

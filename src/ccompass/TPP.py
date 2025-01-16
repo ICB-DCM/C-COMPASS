@@ -180,7 +180,6 @@ def TPP_exec(
 ):
     minrep = tp_preparams["minrep"]
 
-    sg.theme("DarkTeal11")
     layout_TPP = [
         [
             sg.Column(
