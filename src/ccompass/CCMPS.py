@@ -1375,7 +1375,9 @@ class MainController:
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_parameters-":
-                self.model.fract_preparams = PPMS.PPMS_exec_fract(
+                from .fractionation_parameters_dialog import show_dialog
+
+                self.model.fract_preparams = show_dialog(
                     self.model.fract_preparams
                 )
             elif event == "-fractionation_reset-":
