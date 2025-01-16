@@ -93,7 +93,7 @@ def show_dialog(params_old: dict[str, Any]) -> dict[str, Any]:
             break
 
         if event == "--PMM_exclude--":
-            marker_params["how"] = "esclude"
+            marker_params["how"] = "exclude"
             window["--PMM_exclude--"].Update(value=True)
             window["--PMM_majority--"].Update(value=False)
         elif event == "--PMM_majority--":
