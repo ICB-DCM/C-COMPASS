@@ -267,10 +267,8 @@ class SessionModel(BaseModel):
             return cls(**data)
 
 
-def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
-    """Create the "Data Import" frame."""
-
-    # The fractionation tab
+def create_fractionation_tab(fract_paths) -> sg.Tab:
+    """Create the "Fractionation" tab."""
     layout_fractionation = [
         [
             sg.Button(
@@ -308,6 +306,8 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
                 key="-fractionation_table-",
                 auto_size_columns=False,
                 vertical_scroll_only=False,
+                expand_x=True,
+                expand_y=True,
             )
         ],
         [
@@ -430,6 +430,17 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
         ],
     ]
 
+    return sg.Tab(
+        " - Fractionation - ",
+        layout_fractionation,
+        expand_x=True,
+        expand_y=True,
+    )
+
+
+def create_total_proteome_tab(tp_paths) -> sg.Tab:
+    """Create the "Total Proteome" tab."""
+
     layout_TP = [
         [
             sg.Button(
@@ -467,6 +478,8 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
                 key="-tp_table-",
                 auto_size_columns=False,
                 vertical_scroll_only=False,
+                expand_x=True,
+                expand_y=True,
             )
         ],
         [
@@ -585,6 +598,20 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
         ],
     ]
 
+    return sg.Tab(
+        " - TotalProteomes - ",
+        layout_TP,
+        key="-total_tab-",
+        expand_x=True,
+        expand_y=True,
+    )
+
+
+def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
+    """Create the "Data Import" frame."""
+
+    # The fractionation tab
+
     # layout_additional =     [[sg.Button('Add file...', size = (8,1), key = '-additional_add-', disabled = False, enable_events = True, button_color = 'grey'),
     #                         sg.Combo((fract_paths), size=(58, 1), key = '-additional_path-', disabled = False, enable_events = True, readonly = True),
     #                         sg.Button('Remove', size = (8,1), key = '-additional_remove-', disabled = False, enable_events = True, button_color = 'darkred')],
@@ -616,25 +643,22 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
                 sg.TabGroup(
                     [
                         [
-                            sg.Tab(
-                                " - Fractionation - ",
-                                layout_fractionation,
-                            ),
-                            sg.Tab(
-                                " - TotalProteomes - ",
-                                layout_TP,
-                                key="-total_tab-",
-                            ),
+                            create_fractionation_tab(fract_paths),
+                            create_total_proteome_tab(tp_paths),
                         ]
                     ],
                     tab_location="topleft",
                     tab_background_color="grey",
                     size=(600, 450),
+                    expand_x=True,
+                    expand_y=True,
                 )
             ]
         ],
         title="Data Import",
         size=(620, 480),
+        expand_x=True,
+        expand_y=True,
     )
 
 
@@ -930,6 +954,8 @@ def get_spatial_prediction_frame() -> sg.Frame:
         ],
         title="Spatial Prediction",
         size=(600, 480),
+        expand_x=True,
+        expand_y=True,
     )
 
 
@@ -1091,6 +1117,8 @@ def get_marker_selection_frame() -> sg.Frame:
         ],
         title="Marker Selection",
         size=(620, 220),
+        expand_x=True,
+        expand_y=True,
     )
 
 
@@ -1208,6 +1236,8 @@ def get_conditional_comparison_frame() -> sg.Frame:
         ],
         title="Conditional Comparison",
         size=(600, 220),
+        expand_x=True,
+        expand_y=True,
     )
 
 
