@@ -1558,10 +1558,12 @@ class MainController:
                 )
 
             elif event == "-marker_manage-":
-                from .CM import CM_exec
+                from .class_manager_dialog import show_class_manager_dialog
 
                 if check_markers(self.model.marker_sets):
-                    self.model.marker_conv = CM_exec(self.model.marker_conv)
+                    self.model.marker_conv = show_class_manager_dialog(
+                        self.model.marker_conv
+                    )
                 else:
                     messagebox.showerror(
                         "Error", "Please define key and class column."

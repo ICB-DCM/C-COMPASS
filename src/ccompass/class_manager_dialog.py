@@ -1,6 +1,6 @@
-"""Class manager.
+"""Class manager dialog.
 
-Window for mapping annotations to classes.
+Dialog window for selecting and mapping annotations to classes.
 """
 
 import FreeSimpleGUI as sg
@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 
 
-def refresh_conversion(conversion, values):
+def _refresh_conversion(
+    conversion: dict[str, str | float], values: dict
+) -> dict[str, str | float]:
     """Refresh the conversion dictionary with the new values from the GUI."""
     for o in conversion:
         conversion[o] = (
@@ -17,10 +19,10 @@ def refresh_conversion(conversion, values):
     return conversion
 
 
-def CM_exec(marker_conv: dict[str, str | float]) -> dict[str, str | float]:
-    conv_old = marker_conv
-    num_names = sum(not pd.isnull(v) for v in marker_conv.values())
-
+def _create_class_manager_window(
+    marker_conv: dict[str, str | float], num_names: int
+) -> sg.Window:
+    """Create the class manager window."""
     layout_column = [
         [sg.Text("Annotation", size=(25, 1)), sg.Text("Class", size=(20, 1))],
         [sg.Text("-" * 80)],
@@ -94,30 +96,40 @@ def CM_exec(marker_conv: dict[str, str | float]) -> dict[str, str | float]:
         ]
     ]
 
-    window_CM = sg.Window("Classes", layout_CM, size=(600, 400))
+    return sg.Window("Classes", layout_CM, size=(600, 400))
+
+
+def show_class_manager_dialog(
+    marker_conv: dict[str, str | float],
+) -> dict[str, str | float]:
+    """Show the class managar dialog."""
+    conv_old = marker_conv
+    num_names = sum(not pd.isnull(v) for v in marker_conv.values())
+
+    window = _create_class_manager_window(marker_conv, num_names)
 
     while True:
-        event_CM, values_CM = window_CM.read()
-        for k in marker_conv:
-            # checkbox clicked?
-            if event_CM == f"--{k}--":
-                window_CM[f"--{k}_class--"].Update(
-                    visible=values_CM[f"--{k}--"]
-                )
-                if values_CM[f"--{k}--"]:
-                    window_CM[f"--{k}_class--"].Update(value=k)
-                    num_names += 1
-                else:
-                    window_CM[f"--{k}_class--"].Update(value=False)
-                    num_names -= 1
-                window_CM["-num_anno-"].Update(value=str(num_names))
+        event, values = window.read()
 
-        if event_CM == sg.WIN_CLOSED or event_CM == "--cancel--":
+        if event == sg.WIN_CLOSED or event == "--cancel--":
             marker_conv = conv_old
             break
-        if event_CM == "--accept--":
-            marker_conv = refresh_conversion(marker_conv, values_CM)
+
+        for k in marker_conv:
+            # checkbox clicked?
+            if event == f"--{k}--":
+                window[f"--{k}_class--"].Update(visible=values[f"--{k}--"])
+                if values[f"--{k}--"]:
+                    window[f"--{k}_class--"].Update(value=k)
+                    num_names += 1
+                else:
+                    window[f"--{k}_class--"].Update(value=False)
+                    num_names -= 1
+                window["-num_anno-"].Update(value=str(num_names))
+
+        if event == "--accept--":
+            marker_conv = _refresh_conversion(marker_conv, values)
             break
 
-    window_CM.close()
+    window.close()
     return marker_conv
