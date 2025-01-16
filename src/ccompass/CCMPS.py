@@ -213,8 +213,8 @@ class SessionModel(BaseModel):
         self.tp_identifiers = {}
 
     def reset_fract(self):
-        self.fract_data = {"class": [], "vis": []}
-        self.fract_std = {"class": [], "vis": []}
+        self.fract_data = {"class": {}, "vis": {}}
+        self.fract_std = {"class": {}, "vis": {}}
         self.fract_intermediate = {}
         self.fract_info = {}
         self.fract_conditions = []
@@ -251,6 +251,14 @@ class SessionModel(BaseModel):
         self.reset_classification()
         self.status["marker_matched"] = False
 
+    def reset(self, other: "SessionModel" = None):
+        """Reset to default values or copy from another session."""
+        if other is None:
+            other = SessionModel()
+
+        for key, value in other.model_dump().items():
+            setattr(self, key, value)
+
     def to_numpy(self, filepath: Path | str):
         """Serialize using np.save."""
         filepath = Path(filepath)
@@ -280,7 +288,7 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
                 button_color="grey",
             ),
             sg.Combo(
-                (fract_paths),
+                fract_paths,
                 size=(58, 1),
                 key="-fractionation_path-",
                 disabled=False,
@@ -452,7 +460,7 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
                 button_color="grey",
             ),
             sg.Combo(
-                (tp_paths),
+                tp_paths,
                 size=(58, 1),
                 key="-tp_path-",
                 disabled=False,
@@ -1296,69 +1304,69 @@ class MainController:
 
         # The event loop
         while True:
-            event, values_CCMPS = self.main_window.read()
+            event, values = self.main_window.read()
             # refresh_window(window_CCMPS, status)
 
             # if status['fractionation_data']:
             #     window_CCMPS['-status_fract-'].Update('ready')
             # else:
             #     window_CCMPS['-status_fract-'].Update('missing')
+            if event == sg.WIN_CLOSED or event == "Exit":
+                break
 
             if event == "-fractionation_add-":
-                fract_add(values_CCMPS, self.main_window, model=self.model)
+                fract_add(self.main_window, model=self.model)
             elif event == "-fractionation_remove-":
-                if values_CCMPS["-fractionation_path-"]:
+                if values["-fractionation_path-"]:
                     fract_rem(
-                        values_CCMPS,
+                        values,
                         self.main_window,
                         model=self.model,
                     )
             elif event == "-fractionation_path-":
                 fract_refreshtable(
                     self.main_window,
-                    self.model.fract_tables[
-                        values_CCMPS["-fractionation_path-"]
-                    ],
+                    self.model.fract_tables[values["-fractionation_path-"]],
                 )
             elif event == "-fractionation_edit_remove-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     fract_defrem(
-                        values_CCMPS, self.main_window, self.model.fract_tables
+                        values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_keep-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     fract_defkeep(
-                        values_CCMPS, self.main_window, self.model.fract_tables
+                        values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_condition-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     fract_defcon(
-                        values_CCMPS, self.main_window, self.model.fract_tables
+                        values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_replicate-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     fract_defrep(
-                        values_CCMPS, self.main_window, self.model.fract_tables
+                        values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_fractions-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     fract_deffract(
-                        values_CCMPS, self.main_window, self.model.fract_tables
+                        values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_identifier-":
-                if values_CCMPS["-fractionation_table-"]:
+                if values["-fractionation_table-"]:
                     self.model.fract_identifiers = fract_defident(
-                        values_CCMPS,
+                        values,
                         self.main_window,
                         self.model.fract_tables,
                         self.model.fract_pos,
@@ -1372,7 +1380,8 @@ class MainController:
                 )
             elif event == "-fractionation_reset-":
                 sure = sg.popup_yes_no(
-                    "Reset Fractionation Pre-Processing? You have to run it again to use your data."
+                    "Reset Fractionation Pre-Processing? "
+                    "You have to run it again to use your data."
                 )
                 if sure == "Yes":
                     self.model.reset_fractionation()
@@ -1384,9 +1393,6 @@ class MainController:
                         values=["[IDENTIFIER]"], value=""
                     )
                     # window_CCMPS['-classification_SVM-'].Update(disabled = True)
-
-                else:
-                    pass
             elif event == "-fractionation_start-":
                 if self.model.fract_paths:
                     from .FDP import FDP_exec
@@ -1427,7 +1433,6 @@ class MainController:
 
             elif event == "-tp_add-":
                 tp_add(
-                    values_CCMPS,
                     self.main_window,
                     self.model.tp_paths,
                     self.model.tp_tables,
@@ -1436,9 +1441,9 @@ class MainController:
                     self.model.tp_identifiers,
                 )
             elif event == "-tp_remove-":
-                if values_CCMPS["-tp_path-"]:
+                if values["-tp_path-"]:
                     tp_rem(
-                        values_CCMPS,
+                        values,
                         self.main_window,
                         self.model.tp_paths,
                         self.model.tp_tables,
@@ -1446,33 +1451,27 @@ class MainController:
             elif event == "-tp_path-":
                 tp_refreshtable(
                     self.main_window,
-                    self.model.tp_tables[values_CCMPS["-tp_path-"]],
+                    self.model.tp_tables[values["-tp_path-"]],
                 )
             elif event == "-tp_edit_remove-":
-                if values_CCMPS["-tp_table-"]:
-                    tp_defrem(
-                        values_CCMPS, self.main_window, self.model.tp_tables
-                    )
+                if values["-tp_table-"]:
+                    tp_defrem(values, self.main_window, self.model.tp_tables)
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_keep-":
-                if values_CCMPS["-tp_table-"]:
-                    tp_defkeep(
-                        values_CCMPS, self.main_window, self.model.tp_tables
-                    )
+                if values["-tp_table-"]:
+                    tp_defkeep(values, self.main_window, self.model.tp_tables)
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_condition-":
-                if values_CCMPS["-tp_table-"]:
-                    tp_defcon(
-                        values_CCMPS, self.main_window, self.model.tp_tables
-                    )
+                if values["-tp_table-"]:
+                    tp_defcon(values, self.main_window, self.model.tp_tables)
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_identifier-":
-                if values_CCMPS["-tp_table-"]:
+                if values["-tp_table-"]:
                     self.model.tp_identifiers = tp_defident(
-                        values_CCMPS,
+                        values,
                         self.main_window,
                         self.model.tp_tables,
                         self.model.tp_pos,
@@ -1484,7 +1483,8 @@ class MainController:
                 )
             elif event == "-tp_reset-":
                 sure = sg.popup_yes_no(
-                    "Reset TotalProteome Pre-Processing? You have to run it again to use your data."
+                    "Reset TotalProteome Pre-Processing? "
+                    "You have to run it again to use your data."
                 )
                 if sure == "Yes":
                     self.model.reset_tp()
@@ -1497,10 +1497,8 @@ class MainController:
                             )
                         )
                         self.model.status["comparison_class"] = False
-                else:
-                    pass
             elif event == "-tp_start-":
-                if self.self.model.tp_paths:
+                if self.model.tp_paths:
                     from .TPP import TPP_exec
 
                     (
@@ -1533,34 +1531,25 @@ class MainController:
                 tp_export(self.model.tp_data, self.model.tp_info)
 
             elif event == "-marker_add-":
-                marker_add(
-                    self.main_window, values_CCMPS, self.model.marker_sets
-                )
-                event, values_CCMPS = self.main_window.read(timeout=50)
-                if self.model.marker_sets:
-                    self.model.status["marker_file"] = True
-                else:
-                    self.model.status["marker_file"] = False
+                marker_add(self.main_window, values, self.model.marker_sets)
+                self.model.status["marker_file"] = bool(self.model.marker_sets)
             elif event == "-marker_remove-":
                 try:
                     marker_remove(
-                        self.main_window, values_CCMPS, self.model.marker_sets
+                        self.main_window, values, self.model.marker_sets
                     )
                 except Exception:
                     pass
-                if self.model.marker_sets:
-                    self.model.status["marker_file"] = True
-                else:
-                    self.model.status["marker_file"] = False
+                self.model.status["marker_file"] = bool(self.model.marker_sets)
             elif event == "-marker_list-":
                 refresh_markercols(
-                    self.main_window, values_CCMPS, self.model.marker_sets
+                    self.main_window, values, self.model.marker_sets
                 )
             elif event == "-marker_key-":
-                marker_setkey(values_CCMPS, self.model.marker_sets)
+                marker_setkey(values, self.model.marker_sets)
             elif event == "-marker_class-":
                 self.model.marker_conv = marker_setclass(
-                    values_CCMPS, self.model.marker_sets
+                    values, self.model.marker_sets
                 )
 
             elif event == "-marker_parameters-":
@@ -1581,115 +1570,11 @@ class MainController:
                     )
 
             elif event == "-marker_test-":
-                if check_markers(self.model.marker_sets):
-                    from .TM import TM_exec
-
-                    try:
-                        self.model.marker_list = create_markerlist(
-                            self.model.marker_sets,
-                            self.model.marker_conv,
-                            self.model.marker_params,
-                        )
-                        TM_exec(
-                            self.model.fract_data,
-                            self.model.fract_info,
-                            self.model.marker_list,
-                            values_CCMPS["-marker_fractkey-"],
-                        )
-                    except Exception:
-                        messagebox.showerror(
-                            "Error",
-                            "Something is wrong with your marker list.",
-                        )
-                else:
-                    messagebox.showerror(
-                        "Error", "Please define key and class column."
-                    )
+                self._open_marker_correlations(values["-marker_fractkey-"])
             elif event == "-marker_profiles-":
-                if check_markers(self.model.marker_sets):
-                    from .SM import SM_exec
-
-                    try:
-                        self.model.marker_list = create_markerlist(
-                            self.model.marker_sets,
-                            self.model.marker_conv,
-                            self.model.marker_params,
-                        )
-                        SM_exec(
-                            self.model.fract_data,
-                            self.model.fract_info,
-                            self.model.marker_list,
-                            values_CCMPS["-marker_fractkey-"],
-                        )
-                    except Exception:
-                        messagebox.showerror(
-                            "Error",
-                            "Something is wrong with your marker list.",
-                        )
-                else:
-                    messagebox.showerror(
-                        "Error", "Please define key and class column."
-                    )
-
+                self._open_marker_profiles(values["-marker_fractkey-"])
             elif event == "-marker_accept-":
-                if values_CCMPS["-marker_list-"] == []:
-                    messagebox.showerror(
-                        "Error", "Please import at least one Marker List!"
-                    )
-                elif self.model.fract_data["class"] == []:
-                    messagebox.showerror(
-                        "Error", "Please import Fractionation Data first!"
-                    )
-                elif (
-                    values_CCMPS["-marker_fractkey-"] == ""
-                    or values_CCMPS["-marker_class-"] == ""
-                    or values_CCMPS["-marker_key-"] == ""
-                ):
-                    messagebox.showerror(
-                        "Error", "Please select key and class columns!"
-                    )
-                else:
-                    from .MOP import create_fullprofiles
-
-                    try:
-                        # print('Starting try block')
-                        self.model.marker_list = create_markerlist(
-                            self.model.marker_sets,
-                            self.model.marker_conv,
-                            self.model.marker_params,
-                        )
-                        # print('check1: marker_list created')
-                        (
-                            self.model.fract_marker,
-                            self.model.fract_marker_vis,
-                            self.model.fract_test,
-                            self.model.classnames,
-                        ) = create_markerprofiles(
-                            self.model.fract_data,
-                            values_CCMPS["-marker_fractkey-"],
-                            self.model.fract_info,
-                            self.model.marker_list,
-                        )
-                        # print('check2: marker profiles created')
-                        self.model.fract_full = create_fullprofiles(
-                            self.model.fract_marker, self.model.fract_test
-                        )
-                        self.model.status["marker_matched"] = True
-                        # print('check3: full profiles created')
-                        # enable_markersettings(window_CCMPS, False)
-                        # print('check4: marker settings enabled')
-                        # window_CCMPS['-classification_MOP-'].Update(disabled = False)
-                        # print('check5: classification MOP updated')
-                        # window_CCMPS['-classification_SVM-'].Update(disabled = False)
-                        # print('check6: classification SVM updated')
-                    except Exception as e:
-                        print(f"An error occurred: {e}")
-                        import traceback
-
-                        traceback.print_exc()
-                        messagebox.showerror(
-                            "Error", "Incompatible Fractionation Key!"
-                        )
+                self._handle_match_markers(values)
 
             elif event == "-marker_reset-":
                 self.model.reset_marker()
@@ -1701,32 +1586,7 @@ class MainController:
                 self.model.NN_params = PPMS.PPMS_exec_NN(self.model.NN_params)
 
             elif event == "-classification_MOP-":
-                from .MOP import MOP_exec
-
-                (
-                    self.model.learning_xyz,
-                    self.model.NN_params,
-                    self.model.fract_full_up,
-                    self.model.fract_marker_up,
-                    self.model.fract_mixed_up,
-                    self.model.fract_unmixed_up,
-                    self.model.svm_marker,
-                    self.model.svm_test,
-                    self.model.svm_metrics,
-                ) = MOP_exec(
-                    self.model.fract_conditions,
-                    self.model.fract_full,
-                    self.model.fract_marker,
-                    self.model.fract_test,
-                    self.model.fract_std,
-                    self.model.fract_info,
-                    values_CCMPS["-marker_fractkey-"],
-                    self.model.NN_params,
-                )
-                # window_CCMPS['-classification_statistics-'].Update(disabled = False)
-                # window_CCMPS['-status_comparison-'].Update('done!')
-                self.model.status["training"] = True
-
+                self._handle_training(key=values["-marker_fractkey-"])
             elif event == "-classification_reset-":
                 self.model.reset_classification()
 
@@ -1751,152 +1611,15 @@ class MainController:
                         pickle.dump(self.model.results, file)
 
             elif event == "-statistic_import-":
-                filename = sg.popup_get_file(
-                    "Import Statistics",
-                    no_window=True,
-                    file_types=(("Pickle", "*.pkl"),),
-                )
-                if filename:
-                    with open(filename, "rb") as file:
-                        results_new = pickle.load(file)
-                    try:
-                        for condition in results_new:
-                            if condition in self.model.results:
-                                messagebox.showerror(
-                                    "Error",
-                                    "There are already statistics for "
-                                    + condition
-                                    + " in your current session.",
-                                )
-                            else:
-                                self.model.results[condition] = copy.deepcopy(
-                                    results_new[condition]
-                                )
-                        self.model.status[
-                            "proteome_prediction"
-                        ] = self.model.status["training"] = True
-                    except Exception:
-                        messagebox.showerror(
-                            "Error", "Incompatible file type!"
-                        )
+                self._handle_import_prediction()
 
             elif event == "-statistic_report-":
-                export_folder = sg.popup_get_folder("Statistics Report")
-                if export_folder:
-                    for condition in self.model.results:
-                        fname = Path(
-                            export_folder, f"CCMPS_statistics_{condition}.xlsx"
-                        )
-                        selected_columns = [
-                            col
-                            for col in self.model.results[condition][
-                                "metrics"
-                            ].columns
-                            if col.startswith("fCC_")
-                        ] + ["SVM_winner", "fNN_winner", "marker"]
-                        df_out = self.model.results[condition]["metrics"][
-                            selected_columns
-                        ]
-                        df_out.columns = [
-                            col.replace("fCC_", "CC_ClassContribution_")
-                            if col.startswith("fCC_")
-                            else "C-CMPS_MainClass"
-                            if col == "fNN_winner"
-                            else col
-                            for col in df_out.columns
-                        ]
-                        df_out.to_excel(fname, index=True)
-
+                self._handle_statistics_report()
             elif event == "-global_report-":
-                export_folder = sg.popup_get_folder("Global Changes Report")
-                if export_folder:
-                    for comb in self.model.comparison:
-                        fname = Path(
-                            export_folder,
-                            f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
-                        )
-                        selected_columns = [
-                            col
-                            for col in self.model.comparison[comb][
-                                "metrics"
-                            ].columns
-                            if col.startswith("fRL_")
-                        ] + ["fRLS", "DS", "P(t)_RLS"]
-                        df_out = self.model.comparison[comb]["metrics"][
-                            selected_columns
-                        ]
-                        df_out.columns = [
-                            col.replace("fRL_", "RL_Relocalization_")
-                            if col.startswith("fRL_")
-                            else "RLS_ReLocalizationScore"
-                            if col == "fRLS"
-                            else "DS_DistanceScore"
-                            if col == "DS"
-                            else "P-Value"
-                            if col == "P(t)_RLS"
-                            else col
-                            for col in df_out.columns
-                        ]
-                        df_out.to_excel(fname, index=True)
+                self._handle_global_changes_report()
 
             elif event == "-class_report-":
-                export_folder = sg.popup_get_folder(
-                    "Class-centric Changes Report"
-                )
-                if export_folder:
-                    for condition in self.model.results:
-                        fname = Path(
-                            export_folder,
-                            f"CCMPS_ClassComposition_{condition}.xlsx",
-                        )
-                        selected_columns = [
-                            col
-                            for col in self.model.results[condition][
-                                "metrics"
-                            ].columns
-                            if col.startswith("nCPA")
-                        ] + ["TPA"]
-                        df_out = self.model.results[condition]["metrics"][
-                            selected_columns
-                        ]
-                        df_out.columns = [
-                            col.replace(
-                                "nCPA_imp_",
-                                "nCPA_normalizedClasscentrigProteinAmount_",
-                            )
-                            if col.startswith("nCPA_")
-                            else "TPA_TotalProteinAmount"
-                            if col == "TPA"
-                            else col
-                            for col in df_out.columns
-                        ]
-                        df_out.to_excel(fname, index=True)
-                    for comb in self.model.comparison:
-                        fname = Path(
-                            export_folder,
-                            f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
-                        )
-                        selected_columns = [
-                            col
-                            for col in self.model.comparison[comb][
-                                "metrics"
-                            ].columns
-                            if col.startswith("nCFC_")
-                        ]
-                        df_out = self.model.comparison[comb]["metrics"][
-                            selected_columns
-                        ]
-                        df_out.columns = [
-                            col.replace(
-                                "nCFC_",
-                                "nCFC_normalizedClasscentricFoldChange_",
-                            )
-                            if col.startswith("nCFC_")
-                            else col
-                            for col in df_out.columns
-                        ]
-                        df_out.to_excel(fname, index=True)
-
+                self._handle_class_changes_report()
             elif event == "-statistic_reset-":
                 self.model.reset_static_statistics()
 
@@ -1950,73 +1673,9 @@ class MainController:
             #     comparison = MOP_stats.comp_exec3('rough', results, learning_xyz)
 
             elif event == "-export_statistics-":
-                export_folder = sg.popup_get_folder("Export Statistics")
-                if export_folder:
-                    for condition in self.model.results:
-                        fname = Path(
-                            export_folder, f"CCMPS_statistics_{condition}.tsv"
-                        )
-                        df_out = pd.merge(
-                            self.model.fract_data["vis"][
-                                condition + "_median"
-                            ],
-                            self.model.results[condition]["metrics"],
-                            left_index=True,
-                            right_index=True,
-                            how="outer",
-                        )
-                        for colname in self.model.fract_info:
-                            df_out = pd.merge(
-                                df_out,
-                                self.model.fract_info[colname],
-                                left_index=True,
-                                right_index=True,
-                                how="left",
-                            )
-                        df_out.to_csv(
-                            fname,
-                            sep="\t",
-                            index=True,
-                            index_label="Identifier",
-                        )
-                        # results[condition]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
-
+                self._handle_export_statistics()
             elif event == "-export_comparison-":
-                export_folder = sg.popup_get_folder("Export Statistics")
-                if export_folder:
-                    for comb in self.model.comparison:
-                        fname = Path(
-                            export_folder,
-                            f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
-                        )
-                        df_out = pd.DataFrame(
-                            index=self.model.comparison[comb][
-                                "intersection_data"
-                            ].index
-                        )
-                        df_out = pd.merge(
-                            df_out,
-                            self.model.comparison[comb]["metrics"],
-                            left_index=True,
-                            right_index=True,
-                            how="left",
-                        )
-                        for colname in self.model.fract_info:
-                            df_out = pd.merge(
-                                df_out,
-                                self.model.fract_info[colname],
-                                left_index=True,
-                                right_index=True,
-                                how="left",
-                            )
-                        df_out.to_csv(
-                            fname,
-                            sep="\t",
-                            index=True,
-                            index_label="Identifier",
-                        )
-                        # comparison[comb]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
-
+                self._handle_export_comparison()
             # if event_CCMPS == '-export_statistics-':
             # path = sg.popup_get_folder('Select a folder')
             # print(path)
@@ -2043,7 +1702,7 @@ class MainController:
                 if filename:
                     session_open(
                         self.main_window,
-                        values_CCMPS,
+                        values,
                         filename,
                         model=self.model,
                     )
@@ -2057,49 +1716,365 @@ class MainController:
                     "Are you sure to close the session and start a new one?"
                 )
                 if sure == "Yes":
-                    self.model.reset_input_fract()
+                    self.model.reset()
                     fract_clearinput(self.main_window)
                     tp_clearinput(self.main_window)
-                    self.model.reset_infract()
-                    self.model.reset_fract()
-                    self.model.reset_input_tp()
-                    self.model.reset_intp()
-                    self.model.reset_tp()
 
-                    self.model.fract_preparams = PPMS.fract_default()
-                    self.model.tp_preparams = PPMS.tp_default()
-
-                    self.model.marker_sets = {}
-                    self.model.marker_conv = {}
-                    self.model.fract_full_up = {}
-                    self.model.fract_marker_up = {}
-                    self.model.fract_mixed_up = {}
-                    self.model.reset_marker()
                     self.main_window["-marker_list-"].Update(values=[])
                     self.main_window["-marker_key-"].Update(values=[])
                     self.main_window["-marker_class-"].Update(values=[])
-                    self.model.marker_params = {
-                        "how": "exclude",
-                        "what": "unite",
-                    }
-                    self.model.NN_params = PPMS.NN_default()
-
-                    self.model.status = default_status()
-
                     self.main_window["-marker_fractkey-"].Update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
-                else:
-                    pass
-
-            # -----------------------------------------------------------------------------------------------------------------------------
-
-            elif event == sg.WIN_CLOSED or event == "Exit":
-                break
 
             refresh_window(self.main_window, self.model.status)
 
         self.main_window.close()
+
+    def _open_marker_correlations(self, key: str):
+        """Open the marker correlation window."""
+        if check_markers(self.model.marker_sets):
+            from .TM import TM_exec
+
+            try:
+                self.model.marker_list = create_markerlist(
+                    self.model.marker_sets,
+                    self.model.marker_conv,
+                    self.model.marker_params,
+                )
+                TM_exec(
+                    self.model.fract_data,
+                    self.model.fract_info,
+                    self.model.marker_list,
+                    key,
+                )
+            except Exception:
+                messagebox.showerror(
+                    "Error",
+                    "Something is wrong with your marker list.",
+                )
+        else:
+            messagebox.showerror(
+                "Error", "Please define key and class column."
+            )
+
+    def _open_marker_profiles(self, key: str):
+        """Open the marker profiles window."""
+        if not check_markers(self.model.marker_sets):
+            messagebox.showerror(
+                "Error", "Please define key and class column."
+            )
+            return
+
+        from .SM import SM_exec
+
+        try:
+            self.model.marker_list = create_markerlist(
+                self.model.marker_sets,
+                self.model.marker_conv,
+                self.model.marker_params,
+            )
+            SM_exec(
+                self.model.fract_data,
+                self.model.fract_info,
+                self.model.marker_list,
+                key,
+            )
+        except Exception:
+            messagebox.showerror(
+                "Error",
+                "Something is wrong with your marker list.",
+            )
+
+    def _handle_match_markers(self, values: dict):
+        if values["-marker_list-"] == []:
+            messagebox.showerror(
+                "Error", "Please import at least one Marker List!"
+            )
+            return
+
+        if self.model.fract_data["class"] == []:
+            messagebox.showerror(
+                "Error", "Please import Fractionation Data first!"
+            )
+            return
+
+        if (
+            values["-marker_fractkey-"] == ""
+            or values["-marker_class-"] == ""
+            or values["-marker_key-"] == ""
+        ):
+            messagebox.showerror(
+                "Error", "Please select key and class columns!"
+            )
+            return
+
+        from .MOP import create_fullprofiles
+
+        try:
+            # print('Starting try block')
+            self.model.marker_list = create_markerlist(
+                self.model.marker_sets,
+                self.model.marker_conv,
+                self.model.marker_params,
+            )
+            # print('check1: marker_list created')
+            (
+                self.model.fract_marker,
+                self.model.fract_marker_vis,
+                self.model.fract_test,
+                self.model.classnames,
+            ) = create_markerprofiles(
+                self.model.fract_data,
+                values["-marker_fractkey-"],
+                self.model.fract_info,
+                self.model.marker_list,
+            )
+            # print('check2: marker profiles created')
+            self.model.fract_full = create_fullprofiles(
+                self.model.fract_marker, self.model.fract_test
+            )
+            self.model.status["marker_matched"] = True
+            # print('check3: full profiles created')
+            # enable_markersettings(window_CCMPS, False)
+            # print('check4: marker settings enabled')
+            # window_CCMPS['-classification_MOP-'].Update(disabled = False)
+            # print('check5: classification MOP updated')
+            # window_CCMPS['-classification_SVM-'].Update(disabled = False)
+            # print('check6: classification SVM updated')
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+
+            traceback.print_exc()
+            messagebox.showerror("Error", "Incompatible Fractionation Key!")
+
+    def _handle_training(self, key: str):
+        from .MOP import MOP_exec
+
+        (
+            self.model.learning_xyz,
+            self.model.NN_params,
+            self.model.fract_full_up,
+            self.model.fract_marker_up,
+            self.model.fract_mixed_up,
+            self.model.fract_unmixed_up,
+            self.model.svm_marker,
+            self.model.svm_test,
+            self.model.svm_metrics,
+        ) = MOP_exec(
+            self.model.fract_conditions,
+            self.model.fract_full,
+            self.model.fract_marker,
+            self.model.fract_test,
+            self.model.fract_std,
+            self.model.fract_info,
+            key,
+            self.model.NN_params,
+        )
+        # window_CCMPS['-classification_statistics-'].Update(disabled = False)
+        # window_CCMPS['-status_comparison-'].Update('done!')
+        self.model.status["training"] = True
+
+    def _handle_import_prediction(self):
+        filename = sg.popup_get_file(
+            "Import Statistics",
+            no_window=True,
+            file_types=(("Pickle", "*.pkl"),),
+        )
+        if not filename:
+            return
+
+        with open(filename, "rb") as file:
+            results_new = pickle.load(file)
+        try:
+            for condition in results_new:
+                if condition in self.model.results:
+                    messagebox.showerror(
+                        "Error",
+                        "There are already statistics for "
+                        + condition
+                        + " in your current session.",
+                    )
+                else:
+                    self.model.results[condition] = copy.deepcopy(
+                        results_new[condition]
+                    )
+            self.model.status["proteome_prediction"] = self.model.status[
+                "training"
+            ] = True
+        except Exception:
+            messagebox.showerror("Error", "Incompatible file type!")
+
+    def _handle_statistics_report(self):
+        export_folder = sg.popup_get_folder("Statistics Report")
+        if not export_folder:
+            return
+
+        for condition in self.model.results:
+            fname = Path(export_folder, f"CCMPS_statistics_{condition}.xlsx")
+            selected_columns = [
+                col
+                for col in self.model.results[condition]["metrics"].columns
+                if col.startswith("fCC_")
+            ] + ["SVM_winner", "fNN_winner", "marker"]
+            df_out = self.model.results[condition]["metrics"][selected_columns]
+            df_out.columns = [
+                col.replace("fCC_", "CC_ClassContribution_")
+                if col.startswith("fCC_")
+                else "C-CMPS_MainClass"
+                if col == "fNN_winner"
+                else col
+                for col in df_out.columns
+            ]
+            df_out.to_excel(fname, index=True)
+
+    def _handle_global_changes_report(self):
+        export_folder = sg.popup_get_folder("Global Changes Report")
+        if not export_folder:
+            return
+
+        for comb in self.model.comparison:
+            fname = Path(
+                export_folder,
+                f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
+            )
+            selected_columns = [
+                col
+                for col in self.model.comparison[comb]["metrics"].columns
+                if col.startswith("fRL_")
+            ] + ["fRLS", "DS", "P(t)_RLS"]
+            df_out = self.model.comparison[comb]["metrics"][selected_columns]
+            df_out.columns = [
+                col.replace("fRL_", "RL_Relocalization_")
+                if col.startswith("fRL_")
+                else "RLS_ReLocalizationScore"
+                if col == "fRLS"
+                else "DS_DistanceScore"
+                if col == "DS"
+                else "P-Value"
+                if col == "P(t)_RLS"
+                else col
+                for col in df_out.columns
+            ]
+            df_out.to_excel(fname, index=True)
+
+    def _handle_class_changes_report(self):
+        export_folder = sg.popup_get_folder("Class-centric Changes Report")
+        if not export_folder:
+            return
+
+        for condition in self.model.results:
+            fname = Path(
+                export_folder,
+                f"CCMPS_ClassComposition_{condition}.xlsx",
+            )
+            selected_columns = [
+                col
+                for col in self.model.results[condition]["metrics"].columns
+                if col.startswith("nCPA")
+            ] + ["TPA"]
+            df_out = self.model.results[condition]["metrics"][selected_columns]
+            df_out.columns = [
+                col.replace(
+                    "nCPA_imp_",
+                    "nCPA_normalizedClasscentrigProteinAmount_",
+                )
+                if col.startswith("nCPA_")
+                else "TPA_TotalProteinAmount"
+                if col == "TPA"
+                else col
+                for col in df_out.columns
+            ]
+            df_out.to_excel(fname, index=True)
+
+        for comb in self.model.comparison:
+            fname = Path(
+                export_folder,
+                f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
+            )
+            selected_columns = [
+                col
+                for col in self.model.comparison[comb]["metrics"].columns
+                if col.startswith("nCFC_")
+            ]
+            df_out = self.model.comparison[comb]["metrics"][selected_columns]
+            df_out.columns = [
+                col.replace(
+                    "nCFC_",
+                    "nCFC_normalizedClasscentricFoldChange_",
+                )
+                if col.startswith("nCFC_")
+                else col
+                for col in df_out.columns
+            ]
+            df_out.to_excel(fname, index=True)
+
+    def _handle_export_statistics(self):
+        export_folder = sg.popup_get_folder("Export Statistics")
+        if not export_folder:
+            return
+
+        for condition in self.model.results:
+            fname = Path(export_folder, f"CCMPS_statistics_{condition}.tsv")
+            df_out = pd.merge(
+                self.model.fract_data["vis"][condition + "_median"],
+                self.model.results[condition]["metrics"],
+                left_index=True,
+                right_index=True,
+                how="outer",
+            )
+            for colname in self.model.fract_info:
+                df_out = pd.merge(
+                    df_out,
+                    self.model.fract_info[colname],
+                    left_index=True,
+                    right_index=True,
+                    how="left",
+                )
+            df_out.to_csv(
+                fname,
+                sep="\t",
+                index=True,
+                index_label="Identifier",
+            )
+            # results[condition]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
+
+    def _handle_export_comparison(self):
+        export_folder = sg.popup_get_folder("Export Comparison")
+        if not export_folder:
+            return
+
+        for comb in self.model.comparison:
+            fname = Path(
+                export_folder,
+                f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
+            )
+            df_out = pd.DataFrame(
+                index=self.model.comparison[comb]["intersection_data"].index
+            )
+            df_out = pd.merge(
+                df_out,
+                self.model.comparison[comb]["metrics"],
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+            for colname in self.model.fract_info:
+                df_out = pd.merge(
+                    df_out,
+                    self.model.fract_info[colname],
+                    left_index=True,
+                    right_index=True,
+                    how="left",
+                )
+            df_out.to_csv(
+                fname,
+                sep="\t",
+                index=True,
+                index_label="Identifier",
+            )
+            # comparison[comb]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
 
 
 def fract_refreshtable(window, table):
@@ -2132,7 +2107,7 @@ def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
                 fract_tables[path] = table
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
-    return (values, fract_tables)
+    return values, fract_tables
 
 
 def fract_buttons(window, status):
@@ -2202,7 +2177,6 @@ def tp_clearinput(window):
 
 
 def fract_add(
-    values,
     window,
     model: SessionModel,
 ):
@@ -2214,45 +2188,43 @@ def fract_add(
             ("Text (tab delimited)", "*.txt"),
         ),
     )
-    if filename:
-        model.fract_paths.append(filename)
-        window["-fractionation_path-"].Update(
-            values=model.fract_paths, value=filename
-        )
-        data = pd.read_csv(filename, sep="\t", header=0)
-        data = data.replace("NaN", np.nan)
-        data = data.replace("Filtered", np.nan)
-        colnames = data.columns.values.tolist()
-        table = []
-        for name in colnames:
-            namelist = [name, "", "", ""]
-            table.append(namelist)
-        model.fract_tables[filename] = table
-        model.fract_indata[filename] = data
-        model.fract_pos[filename] = []
-        model.fract_identifiers[filename] = []
+    if not filename:
+        return
 
-        fract_refreshtable(window, table)
-    return
+    model.fract_paths.append(filename)
+    window["-fractionation_path-"].Update(
+        values=model.fract_paths, value=filename
+    )
+    data = pd.read_csv(filename, sep="\t", header=0)
+    data = data.replace("NaN", np.nan)
+    data = data.replace("Filtered", np.nan)
+    colnames = data.columns.values.tolist()
+    table = []
+    for name in colnames:
+        namelist = [name, "", "", ""]
+        table.append(namelist)
+    model.fract_tables[filename] = table
+    model.fract_indata[filename] = data
+    model.fract_pos[filename] = []
+    model.fract_identifiers[filename] = []
+
+    fract_refreshtable(window, table)
 
 
 def fract_rem(values, window, model: SessionModel):
     sure = sg.popup_yes_no("Remove data from list?")
-    if sure == "Yes":
-        model.fract_paths.remove(values["-fractionation_path-"])
-        del model.fract_tables[values["-fractionation_path-"]]
-        if model.fract_paths:
-            curr = model.fract_paths[0]
-            fract_refreshtable(window, model.fract_tables[curr])
-        else:
-            curr = []
-            fract_refreshtable(window, curr)
-        window["-fractionation_path-"].Update(
-            values=model.fract_paths, value=curr
-        )
+    if sure != "Yes":
+        return
+
+    model.fract_paths.remove(values["-fractionation_path-"])
+    del model.fract_tables[values["-fractionation_path-"]]
+    if model.fract_paths:
+        curr = model.fract_paths[0]
+        fract_refreshtable(window, model.fract_tables[curr])
     else:
-        pass
-    return
+        curr = []
+        fract_refreshtable(window, curr)
+    window["-fractionation_path-"].Update(values=model.fract_paths, value=curr)
 
 
 def fract_defrem(values, window, fract_tables):
@@ -2263,7 +2235,6 @@ def fract_defrem(values, window, fract_tables):
         del table[index]
     fract_tables[path] = table
     window["-fractionation_table-"].Update(values=fract_tables[path])
-    return
 
 
 def fract_defkeep(values, window, fract_tables):
@@ -2275,7 +2246,6 @@ def fract_defkeep(values, window, fract_tables):
         table[pos][3] = "-"
     fract_tables[path] = table
     window["-fractionation_table-"].Update(values=fract_tables[path])
-    return
 
 
 def fract_defcon(values, window, fract_tables):
@@ -2291,7 +2261,6 @@ def fract_defcon(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_defrep(values, window, fract_tables):
@@ -2307,7 +2276,6 @@ def fract_defrep(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_deffract(values, window, fract_tables):
@@ -2323,7 +2291,6 @@ def fract_deffract(values, window, fract_tables):
     window["-fractionation_table-"].Update(
         values=fract_tables[values["-fractionation_path-"]]
     )
-    return
 
 
 def fract_defident(values, window, input_tables, ident_pos, identifiers):
@@ -2352,7 +2319,7 @@ def fract_defident(values, window, input_tables, ident_pos, identifiers):
     return identifiers
 
 
-def fract_export(values, data, protein_info):
+def fract_export(data, protein_info):
     export_folder = sg.popup_get_folder("Export Folder")
     if export_folder:
         experiment = simpledialog.askstring("Export", "Experiment Name: ")
@@ -2441,9 +2408,6 @@ def fract_export(values, data, protein_info):
     return
 
 
-# ------------------------------------------------------------------------------
-
-
 def is_float(element):
     try:
         float(element)
@@ -2459,9 +2423,7 @@ def convert_to_float(x):
         return x
 
 
-def tp_add(
-    values, window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
-):
+def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
     filename = sg.popup_get_file(
         "Chose dataset",
         no_window=True,
@@ -2665,7 +2627,6 @@ def refresh_markertable(window, values, marker_sets):
             values=marker_sets[file_list[0]]["table"].columns.tolist(),
             value=marker_sets[file_list[0]]["class_col"],
         )
-    return
 
 
 def refresh_markercols(window, values, marker_sets):
@@ -2685,7 +2646,6 @@ def refresh_markercols(window, values, marker_sets):
     except Exception:
         window["-marker_key-"].Update(values=[], value="-")
         window["-marker_class-"].Update(values=[], value="-")
-    return
 
 
 def marker_add(window, values, marker_sets):
@@ -2697,21 +2657,22 @@ def marker_add(window, values, marker_sets):
             ("Tab Separated Values", "*.tsv"),
         ),
     )
-    if filename:
-        marker_sets[filename] = {}
-        # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
-        marker_sets[filename]["table"] = pd.read_csv(
-            filename, sep="\t", header=0
-        ).apply(lambda x: x.astype(str).str.upper())
-        marker_sets[filename]["identifier_col"] = "-"
-        marker_sets[filename]["class_col"] = "-"
-        marker_sets[filename]["classes"] = []
-        refresh_markertable(window, values, marker_sets)
+    if not filename:
+        return
 
-        # window['-marker_test-'].Update(disabled = False)
-        # window['-marker_profiles-'].Update(disabled = False)
-        # window['-marker_remove-'].Update(disabled = False)
-    return
+    marker_sets[filename] = {}
+    # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
+    marker_sets[filename]["table"] = pd.read_csv(
+        filename, sep="\t", header=0
+    ).apply(lambda x: x.astype(str).str.upper())
+    marker_sets[filename]["identifier_col"] = "-"
+    marker_sets[filename]["class_col"] = "-"
+    marker_sets[filename]["classes"] = []
+    refresh_markertable(window, values, marker_sets)
+
+    # window['-marker_test-'].Update(disabled = False)
+    # window['-marker_profiles-'].Update(disabled = False)
+    # window['-marker_remove-'].Update(disabled = False)
 
 
 def marker_remove(window, values, marker_sets):
@@ -2728,7 +2689,6 @@ def marker_setkey(values, marker_sets):
     marker_sets[values["-marker_list-"][0]]["identifier_col"] = values[
         "-marker_key-"
     ]
-    return
 
 
 def marker_setclass(values, marker_sets):
@@ -2830,8 +2790,7 @@ def session_open(window, values, filename, model: SessionModel):
 
     # Update session data
     tmp_session = SessionModel.from_numpy(filename)
-    for key, value in tmp_session.dict().items():
-        setattr(model, key, value)
+    model.reset(tmp_session)
 
     if model.fract_paths:
         fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
@@ -3770,5 +3729,3 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
             "-class_reset-",
         ]:
             window[element].Update(disabled=True)
-
-    return
