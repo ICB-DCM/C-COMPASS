@@ -20,6 +20,7 @@ def RP_gradient_heatmap(fract_data):
 
     # Define the layout
     layout = [
+        [sg.Button("Export all")],
         [sg.Text("Select Condition:")],
         [
             sg.Combo(
@@ -31,15 +32,14 @@ def RP_gradient_heatmap(fract_data):
             )
         ],
         [sg.Image(key="-HEATMAP-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
         "Hierarchical Clustering Heatmap",
         layout,
-        size=(600, 550),
         finalize=True,
+        resizable=True,
     )
 
     # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
@@ -154,6 +154,7 @@ def RP_stats_heatmap(results):
 
     # Define the GUI layout
     layout = [
+        [sg.Button("Export all")],
         [sg.Text("Select Condition:")],
         [
             sg.Combo(
@@ -165,14 +166,13 @@ def RP_stats_heatmap(results):
             )
         ],
         [sg.Image(key="-HEATMAP-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
         "Hierarchical Clustering Heatmap",
         layout,
-        size=(600, 550),
+        resizable=True,
         finalize=True,
     )
 
@@ -304,6 +304,7 @@ def RP_stats_distribution(results):
 
     # Define the layout
     layout = [
+        [sg.Button("Export")],
         [sg.Text("Select Condition:")],
         [
             sg.Combo(
@@ -315,12 +316,11 @@ def RP_stats_distribution(results):
             )
         ],
         [sg.Image(key="-PIECHART-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
-        "Class Distribution Pie Chart", layout, size=(600, 550), finalize=True
+        "Class Distribution Pie Chart", layout, resizable=True, finalize=True
     )
 
     # Function to plot pie chart and return as a PIL image
@@ -434,6 +434,7 @@ def RP_global_heatmap(comparison):
 
     # Define the layout
     layout = [
+        [sg.Button("Export all")],
         [sg.Text("Select Comparison:")],
         [
             sg.Combo(
@@ -445,12 +446,11 @@ def RP_global_heatmap(comparison):
             )
         ],
         [sg.Image(key="-HEATMAP-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
-        "Global Heatmap (Comparisons)", layout, size=(600, 550), finalize=True
+        "Global Heatmap (Comparisons)", layout, resizable=True, finalize=True
     )
 
     # Custom colormap: from #730000 (for -1) to #f1f2f2 (for 0) to #1a0099 (for 1)
@@ -603,6 +603,7 @@ def RP_global_distance(comparison):
 
     # Define the layout
     layout = [
+        [sg.Button("Export")],
         [sg.Text("Select Comparison:")],
         [
             sg.Combo(
@@ -614,14 +615,13 @@ def RP_global_distance(comparison):
             )
         ],
         [sg.Image(key="-SCATTERPLOT-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
         "Global Distance Scatter Plot (Comparisons)",
         layout,
-        size=(600, 550),
+        resizable=True,
         finalize=True,
     )
 
@@ -761,6 +761,7 @@ def RP_class_heatmap(results):
 
     # Define the layout
     layout = [
+        [sg.Button("Export")],
         [sg.Text("Select Classname:")],
         [
             sg.Combo(
@@ -772,12 +773,11 @@ def RP_class_heatmap(results):
             )
         ],
         [sg.Image(key="-HEATMAP-")],
-        [sg.Button("Export")],
     ]
 
     # Create the window with a static size
     window = sg.Window(
-        "Class Clustering Heatmap", layout, size=(600, 550), finalize=True
+        "Class Clustering Heatmap", layout, resizable=True, finalize=True
     )
 
     # Function to compute row-wise z-score
