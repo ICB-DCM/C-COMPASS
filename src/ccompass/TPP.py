@@ -73,8 +73,8 @@ def create_dataset(
                         )
                         replicate += 1
 
-        if data_new.applymap(lambda x: "," in str(x)).any().any():
-            data_new = data_new.applymap(
+        if data_new.map(lambda x: "," in str(x)).any().any():
+            data_new = data_new.map(
                 lambda x: str(x).replace(",", ".") if isinstance(x, str) else x
             )
             data_new = data_new.apply(pd.to_numeric, errors="coerce")

@@ -2438,9 +2438,9 @@ def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
         data = pd.read_csv(filename, sep="\t", header=0)
         data = data.replace("NaN", np.nan)
         data = data.replace("Filtered", np.nan)
-        data = data.applymap(convert_to_float)
+        data = data.map(convert_to_float)
 
-        rows_with_float = data.applymap(is_float).any(axis=1)
+        rows_with_float = data.map(is_float).any(axis=1)
         data = data[rows_with_float]
 
         colnames = data.columns.values.tolist()
@@ -2953,13 +2953,13 @@ def create_markerprofiles(fract_data, key, fract_info, marker_list):
         for condition in profiles:
             profiles[condition] = pd.merge(
                 profiles[condition],
-                fract_info[key].astype(str).applymap(str.upper),
+                fract_info[key].astype(str).map(str.upper),
                 left_index=True,
                 right_index=True,
             )
-            # profiles[condition] = pd.merge(profiles[condition], fract_info[key].applymap(str.upper), left_index = True, right_index = True)
+            # profiles[condition] = pd.merge(profiles[condition], fract_info[key].map(str.upper), left_index = True, right_index = True)
 
-            # fract_info_upper = fract_info[key].applymap(str.upper)
+            # fract_info_upper = fract_info[key].map(str.upper)
             fract_marker[condition] = (
                 pd.merge(
                     profiles[condition],
