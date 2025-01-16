@@ -46,7 +46,9 @@ class SessionModel(BaseModel):
     fract_paths: list[str] = []
     #: Fractionation column assignments
     #  filepath => [column ID, condition, replicate, fraction]
-    fract_tables: dict[str, list[str, str | int, str | int, str | int]] = {}
+    fract_tables: dict[
+        str, list[tuple[str, int | str, int | str, int | str]]
+    ] = {}
     #: ??
     fract_pos: dict[str, list[int]] = {}
     #: Fractionation input files: filepath => DataFrame
@@ -99,7 +101,7 @@ class SessionModel(BaseModel):
     tp_paths: list[str] = []
     #: Total proteome column assignments
     #  filepath => [column ID, condition]
-    tp_tables: dict[str, list[str, str]] = {}
+    tp_tables: dict[str, list[tuple[str, str]]] = {}
     #: ??
     tp_pos: dict[str, list[int]] = {}
     #: Total proteome input files: filepath => DataFrame
@@ -138,8 +140,7 @@ class SessionModel(BaseModel):
     marker_list: pd.DataFrame = pd.DataFrame()
     #: The column ID of the fractionation DataFrame that contains that is
     #  to be used for matching the markers
-    # FIXME: list vs string
-    marker_fractkey: list = ["[IDENTIFIER]"]
+    marker_fractkey: str = "[IDENTIFIER]"
 
     #: SVM marker prediction
     # "{condition}_Rep.{replicate}" => DataFrame
@@ -249,6 +250,21 @@ class SessionModel(BaseModel):
         self.fract_full = {}
         self.reset_classification()
         self.status["marker_matched"] = False
+
+    def to_numpy(self, filepath: Path | str):
+        """Serialize using np.save."""
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, "wb") as f:
+            np.save(f, self.model_dump(), allow_pickle=True)
+
+    @classmethod
+    def from_numpy(cls, filepath: Path | str):
+        """Deserialize using np.load."""
+        filepath = Path(filepath)
+        with open(filepath, "rb") as f:
+            data = np.load(f, allow_pickle=True).item()
+            return cls(**data)
 
 
 def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
@@ -1893,48 +1909,7 @@ def main():
         #         df_export_part.to_csv(full_path, sep = '\t', index = False)
 
         elif event == "Save...":
-            session_save(
-                model.fract_paths,
-                model.fract_tables,
-                model.fract_pos,
-                model.fract_indata,
-                model.fract_data,
-                model.fract_std,
-                model.fract_intermediate,
-                model.fract_identifiers,
-                model.fract_info,
-                model.fract_preparams,
-                model.tp_paths,
-                model.tp_tables,
-                model.tp_pos,
-                model.tp_indata,
-                model.tp_data,
-                model.tp_intermediate,
-                model.tp_identifiers,
-                model.tp_info,
-                model.tp_preparams,
-                model.marker_sets,
-                model.marker_params,
-                model.marker_conv,
-                model.fract_conditions,
-                model.fract_full,
-                model.fract_full_up,
-                model.fract_marker,
-                model.fract_marker_vis,
-                model.fract_marker_up,
-                model.fract_mixed_up,
-                model.fract_test,
-                model.svm_marker,
-                model.svm_test,
-                model.svm_metrics,
-                model.marker_list,
-                model.learning_xyz,
-                model.NN_params,
-                model.results,
-                model.comparison,
-                values_CCMPS["-marker_fractkey-"],
-                model.status,
-            )
+            session_save(model)
         elif event == "Open...":
             filename = sg.popup_get_file(
                 "Open Session",
@@ -2699,48 +2674,7 @@ def create_markerlist(marker_sets, marker_conv, marker_params):
     return markerset_final
 
 
-def session_save(
-    fract_paths,
-    fract_tables,
-    fract_pos,
-    fract_indata,
-    fract_data,
-    fract_std,
-    fract_intermediate,
-    fract_identifiers,
-    fract_info,
-    fract_preparams,
-    tp_paths,
-    tp_tables,
-    tp_pos,
-    tp_indata,
-    tp_data,
-    tp_intermediate,
-    tp_identifiers,
-    tp_info,
-    tp_preparams,
-    marker_sets,
-    marker_params,
-    marker_conv,
-    fract_conditions,
-    fract_full,
-    fract_full_up,
-    fract_marker,
-    fract_marker_vis,
-    fract_marker_up,
-    fract_mixed_up,
-    fract_test,
-    svm_marker,
-    svm_test,
-    svm_metrics,
-    marker_list,
-    learning_xyz,
-    NN_params,
-    results,
-    comparison,
-    marker_fractkey,
-    status,
-):
+def session_save(session: SessionModel):
     filename = sg.popup_get_file(
         "Save Session",
         no_window=True,
@@ -2748,106 +2682,17 @@ def session_save(
         save_as=True,
     )
     if filename:
-        file = {
-            "fract_paths": fract_paths,
-            "fract_tables": fract_tables,
-            "fract_pos": fract_pos,
-            "fract_indata": fract_indata,
-            "fract_data": fract_data,
-            "fract_std": fract_std,
-            "fract_intermediate": fract_intermediate,
-            "fract_identifiers": fract_identifiers,
-            "fract_info": fract_info,
-            "fract_preparams": fract_preparams,
-            "fract_full": fract_full,
-            "fract_full_up": fract_full_up,
-            "fract_marker": fract_marker,
-            "fract_marker_up": fract_marker_up,
-            "fract_marker_vis": fract_marker_vis,
-            "fract_mixed_up": fract_mixed_up,
-            "fract_test": fract_test,
-            "tp_paths": tp_paths,
-            "tp_tables": tp_tables,
-            "tp_pos": tp_pos,
-            "tp_indata": tp_indata,
-            "tp_data": tp_data,
-            "tp_intermediate": tp_intermediate,
-            "tp_identifiers": tp_identifiers,
-            "tp_info": tp_info,
-            "tp_preparams": tp_preparams,
-            "svm_marker": svm_marker,
-            "svm_test": svm_test,
-            "svm_metrics": svm_metrics,
-            "marker_sets": marker_sets,
-            "marker_params": marker_params,
-            "marker_conv": marker_conv,
-            "marker_list": marker_list,
-            "marker_fractkey": marker_fractkey,
-            "fract_conditions": fract_conditions,
-            #'learning_wxyz' : learning_wxyz,
-            "learning_xyz": learning_xyz,
-            "results": results,
-            "comparison": comparison,
-            "NN_params": NN_params,
-            "status": status,
-        }
-        np.save(filename, file)
-    return
+        session.to_numpy(filename)
 
 
 def session_open(window, values, filename, model: SessionModel):
     # filename = sg.popup_get_file('Open Session', no_window=True, file_types=(('Numpy', '*.npy'),))
     # if filename:
-    file = np.load(filename, allow_pickle="TRUE").item()
-    model.fract_paths = file["fract_paths"]
-    model.fract_tables = file["fract_tables"]
-    model.fract_pos = file["fract_pos"]
-    model.fract_indata = file["fract_indata"]
-    model.fract_data = file["fract_data"]
-    model.fract_std = file["fract_std"]
-    model.fract_intermediate = file["fract_intermediate"]
-    model.fract_identifiers = file["fract_identifiers"]
-    model.fract_info = file["fract_info"]
-    model.fract_preparams = file["fract_preparams"]
 
-    model.svm_marker = file["svm_marker"]
-    model.svm_test = file["svm_test"]
-    model.svm_metrics = file["svm_metrics"]
-
-    model.fract_full = file["fract_full"]
-    model.fract_full_up = file["fract_full_up"]
-    model.fract_marker = file["fract_marker"]
-    model.fract_marker_up = file["fract_marker_up"]
-    model.fract_marker_vis = file["fract_marker_vis"]
-    model.fract_mixed_up = file["fract_mixed_up"]
-    model.fract_test = file["fract_test"]
-
-    model.tp_paths = file["tp_paths"]
-    model.tp_tables = file["tp_tables"]
-    model.tp_pos = file["tp_pos"]
-    model.tp_indata = file["tp_indata"]
-    model.tp_data = file["tp_data"]
-    model.tp_intermediate = file["tp_intermediate"]
-    model.tp_identifiers = file["tp_identifiers"]
-    model.tp_info = file["tp_info"]
-    model.tp_preparams = file["tp_preparams"]
-
-    model.marker_sets = file["marker_sets"]
-    model.marker_params = file["marker_params"]
-    model.marker_conv = file["marker_conv"]
-    model.marker_list = file["marker_list"]
-    model.marker_fractkey = file["marker_fractkey"]
-
-    model.fract_conditions = file["fract_conditions"]
-
-    model.learning_xyz = file["learning_xyz"]
-    model.results = file["results"]
-    model.comparison = file["comparison"]
-    model.NN_params = file["NN_params"]
-
-    # learning_wxyz = file['learning_wxyz']
-
-    model.status = file["status"]
+    # Update session data
+    tmp_session = SessionModel.from_numpy(filename)
+    for key, value in tmp_session.dict().items():
+        setattr(model, key, value)
 
     if model.fract_paths:
         fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
