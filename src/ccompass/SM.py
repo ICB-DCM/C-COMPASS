@@ -118,7 +118,7 @@ def SM_exec(fract_data, fract_info, marker_list, key):
     ]
 
     window_SM = sg.Window(
-        "Marker Parameters", layout_SM, finalize=True, size=(920, 520)
+        "Marker profiles", layout_SM, finalize=True, size=(920, 520)
     )  # Adjust window width
 
     # Initial drawing
