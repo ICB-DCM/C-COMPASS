@@ -3,16 +3,252 @@
 import copy
 import os
 import pickle
+import random
+from datetime import datetime
 from pathlib import Path
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
+from typing import Any
 
 import FreeSimpleGUI as sg
+import numpy as np
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 
 from . import CM, FDP, MOA, MOP, PPMS, RP, SM, TM, TPP
-from . import CCMPS_actions as action
 
+# tensorflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+
+def default_status():
+    status = {
+        "fractionation_data": False,
+        "tp_data": False,
+        "lipidome_data": False,
+        "lipidome_total": False,
+        "marker_file": False,
+        "marker_matched": False,
+        "training": False,
+        "proteome_prediction": False,
+        "lipidome_prediction": False,
+        "comparison_global": False,
+        "comparison_class": False,
+    }
+    return status
+
+
+class SessionModel(BaseModel):
+    """Data for a C-COMPASS session."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: Filepaths for fractionation data
+    fract_paths: list[str] = []
+    #: Fractionation column assignments
+    #  filepath => [column ID, condition, replicate, fraction]
+    fract_tables: dict[str, list[str, str | int, str | int, str | int]] = {}
+    #: ??
+    fract_pos: dict[str, list[int]] = {}
+    #: Fractionation input files: filepath => DataFrame
+    fract_indata: dict[str, pd.DataFrame] = {}
+    #: Fractionation data for classification and visualization
+    #  One DataFrame for each condition x replicate
+    #  ("{condition}_Rep.{replicate}")
+    fract_data: dict[str, dict[str, pd.DataFrame]] = {"class": {}, "vis": {}}
+    #: ??
+    #  for visualization and classification, each containing one DataFrame
+    #  per condition with columns "{condition}_std_Fr.{fraction}"
+    fract_std: dict[str, dict[str, pd.DataFrame]] = {"class": {}, "vis": {}}
+    #: ??
+    #  *something* => "{condition}" => "Rep.{replicate}" => DataFrame
+    fract_intermediate: dict[str, dict[str, dict[str, pd.DataFrame]]] = {}
+    #: Identifier column for the fractionation: filepath => column id
+    fract_identifiers: dict[str, str] = {}
+    #: Addition ("keep") columns from the fractionation data
+    #  column ID => DataFrame
+    fract_info: dict[str, pd.DataFrame] = {}
+    #: Fractionation preprocessing parameters.
+    #  global/classification/visualization
+    #  "global"|"class"|"vis" => option => value
+    fract_preparams: dict[str, dict[str, Any]] = PPMS.fract_default()
+    #: Conditions in the fractionation data, including "[KEEP]"
+    fract_conditions: list[str] = []
+    #: Fractionation data for the different conditions x replicates
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_full: dict[str, pd.DataFrame] = {}
+    #: Fractionation data after upsampling
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_full_up: dict[str, pd.DataFrame] = {}
+    #: Marker abundance in the different fractions
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_marker: dict[str, pd.DataFrame] = {}
+    #: Marker abundance in the different fractions for visualization
+    #  "{condition}_median" => DataFrame
+    fract_marker_vis: dict[str, pd.DataFrame] = {}
+    #: Marker abundance in the different fractions after upsampling
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_marker_up: dict[str, pd.DataFrame] = {}
+    #: ??
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_mixed_up: dict[str, pd.DataFrame] = {}
+    #: ??
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_test: dict[str, pd.DataFrame] = {}
+
+    #: Filepaths for total proteome data
+    tp_paths: list[str] = []
+    #: Total proteome column assignments
+    #  filepath => [column ID, condition]
+    tp_tables: dict[str, list[str, str]] = {}
+    #: ??
+    tp_pos: dict[str, list[int]] = {}
+    #: Total proteome input files: filepath => DataFrame
+    tp_indata: dict[str, pd.DataFrame] = {}
+    #: Total proteome data for the different conditions
+    #  One DataFrame for each condition containing all replicates
+    #  (column names are "{condition}_Rep.{replicate}")
+    tp_data: dict[str, pd.DataFrame] = {}
+    #: ??
+    #  *something* => "{condition}" => DataFrame
+    tp_intermediate: dict[str, dict[str, pd.DataFrame]] = {}
+    #: Identifier column for the total proteome: filepath => column id
+    tp_identifiers: dict[str, str] = {}
+    #: ??
+    tp_icorr: dict = {}
+    #: ??
+    tp_conditions: list = []
+    #: ??
+    tp_info: pd.DataFrame = pd.DataFrame()
+    #: Total proteome preprocessing parameters
+    tp_preparams: dict[str, Any] = PPMS.tp_default()
+
+    #: Marker files, classes and annotations
+    #  filepath => {'table'->pd.DataFrame,
+    #  'identifier_col'-> column ID ("key column" in GUI),
+    #  'class_col': column ID with class names in the marker file,
+    #  'classes': list[str] class names
+    #  }
+    marker_sets: dict[str, dict[str, Any]] = {}
+    #: Marker selection parameters
+    marker_params: dict[str, Any] = {"how": "exclude", "what": "unite"}
+    #: Mapping of compartment names to class names
+    #  nan-values indicate that the compartment is not to be used
+    marker_conv: dict[str, str | float] = {}
+    #: Marker list "name" (gene name) => "class" (class name)
+    marker_list: pd.DataFrame = pd.DataFrame()
+    #: The column ID of the fractionation DataFrame that contains that is
+    #  to be used for matching the markers
+    # FIXME: list vs string
+    marker_fractkey: list = ["[IDENTIFIER]"]
+
+    #: SVM marker prediction
+    # "{condition}_Rep.{replicate}" => DataFrame
+    #  columns are the fractions + ["class", "svm_prediction", "svm_probability"]
+    svm_marker: dict[str, pd.DataFrame] = {}
+    #: SVM test data
+    # "{condition}_Rep.{replicate}" => DataFrame
+    #  columns are the fractions + ["class", "svm_prediction", "svm_probability"]
+    svm_test: dict[str, pd.DataFrame] = {}
+    #: SVM classification metrics for each condition x replicate
+    # "{condition}_Rep.{replicate}" => dict(
+    #   "accuracy" -> float,
+    #   "precision" -> float,
+    #   "recall" -> float,
+    #   "f1" -> float,
+    #   "confusion" -> pd.DataFrame,
+    # )
+    svm_metrics: dict[str, dict[str, Any]] = {}
+
+    #: Neural network data
+    # "{condition}_Rep.{replicate}" => dict(
+    #  {w,W,x,X,y,Y,z,Z}_... => ...
+    # )
+    learning_xyz: dict[str, dict[str, Any]] = {}
+    #: Nerural network hyperparameters
+    NN_params: dict[str, Any] = PPMS.NN_default()
+
+    #: SVM results (?)
+    # "{condition}" => dict(
+    #  "metrics" -> DataFrame,
+    #  "SVM" -> dict("winner_combined" => DataFrame,
+    #                "prob_combined" => DataFrame),
+    # )
+    results: dict[str, dict[str, Any]] = {}
+    #: ??
+    comparison: dict = {}
+    #: Indicates which of the individual analysis steps
+    #  have already been performed or not
+    status: dict[str, bool] = default_status()
+
+    def reset_global_changes(self):
+        self.comparison = {}
+        self.status["comparison_global"] = False
+        self.status["comparison_class"] = False
+
+    def reset_static_statistics(self):
+        self.reset_global_changes()
+        self.results = {}
+        self.status["proteome_prediction"] = False
+        self.status["lipidome_prediction"] = False
+
+    def reset_input_tp(self):
+        self.tp_paths = []
+        self.tp_tables = {}
+        self.tp_pos = {}
+        self.tp_data = {}
+
+    def reset_input_fract(self):
+        self.fract_paths = []
+        self.fract_tables = {}
+        self.fract_pos = {}
+        self.fract_data = {}
+
+    def reset_infract(self):
+        self.fract_indata = {}
+        self.fract_identifiers = {}
+
+    def reset_intp(self):
+        self.tp_indata = {}
+        self.tp_identifiers = {}
+
+    def reset_fract(self):
+        self.fract_data = {"class": [], "vis": []}
+        self.fract_std = {"class": [], "vis": []}
+        self.fract_intermediate = {}
+        self.fract_info = {}
+        self.fract_conditions = []
+
+    def reset_tp(self):
+        self.tp_data = {}
+        self.tp_intermediate = {}
+        self.tp_info = pd.DataFrame()
+        self.tp_conditions = []
+        self.tp_icorr = {}
+
+    def reset_fractionation(self):
+        self.reset_fract()
+        self.reset_marker()
+        self.status["fractionation_data"] = False
+
+    def reset_classification(self):
+        self.reset_static_statistics()
+
+        self.reset_global_changes()
+        self.svm_marker = {}
+        self.svm_test = {}
+        self.svm_metrics = {}
+        self.learning_xyz = {}
+
+        self.status["training"] = False
+
+    def reset_marker(self):
+        self.marker_list = pd.DataFrame()
+        self.fract_marker = {}
+        self.fract_marker_vis = {}
+        self.fract_test = {}
+        self.fract_full = {}
+        self.reset_classification()
+        self.status["marker_matched"] = False
 
 
 def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
@@ -959,65 +1195,8 @@ def get_conditional_comparison_frame() -> sg.Frame:
     )
 
 
-def main():
-    """The entry point for the C-COMPASS application."""
-    fract_paths, fract_tables, fract_data, fract_pos = action.resetinput()
-    fract_data, fract_std, fract_intermediate, fract_info, fract_conditions = (
-        action.reset_fract()
-    )
-
-    tp_paths, tp_tables, tp_data, tp_pos = action.resetinput()
-
-    fract_indata, fract_identifiers = action.reset_infract()
-    tp_indata, tp_identifiers = action.reset_intp()
-    tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
-        action.reset_tp()
-    )
-
-    fract_preparams = PPMS.fract_default()
-    tp_preparams = PPMS.tp_default()
-
-    marker_sets = marker_conv = fract_full = fract_full_up = fract_marker = (
-        fract_marker_vis
-    ) = fract_marker_up = fract_mixed_up = fract_test = svm_marker = (
-        svm_test
-    ) = svm_metrics = learning_xyz = results = comparison = {}
-    marker_params = {"how": "exclude", "what": "unite"}
-    marker_list = pd.DataFrame
-    NN_params = PPMS.NN_default()
-
-    status = action.default_status()
-
-    # status = {'fractionation_data' : False,
-    #           'tp_data' : False,
-    #           'lipidome_data' : False,
-    #           'lipidome_total' : False,
-    #           'marker_file' : False,
-    #           'marker_matched' : False,
-    #           'training' : False,
-    #           'proteome_prediction' : False,
-    #           'lipidome_prediction' : False,
-    #           'comparison_global' : False,
-    #           'comparison_class' : False}
-
-    # tp_preparams = {}
-    # marker_sets = {}
-    # marker_conv = {}
-    # fract_full = {}
-    # fract_full_up = {}
-    # fract_marker = {}
-    # fract_marker_vis = {}
-    # fract_marker_up = {}
-    # fract_mixed_up = {}
-    # fract_test = {}
-    # svm_marker = {}
-    # svm_test = {}
-    # svm_metrics = {}
-    # learning_xyz = {}
-    # results = {}
-    # comparison = {}
-
-    sg.theme("Dark Blue 3")
+def create_main_window(model: SessionModel) -> sg.Window:
+    """Create the C-COMPASS main window."""
 
     # The main menu
     menu_def = [
@@ -1028,7 +1207,9 @@ def main():
     layout_CCMPS = [
         [sg.Menu(menu_def, tearoff=False)],
         [
-            get_data_import_frame(fract_paths=fract_paths, tp_paths=tp_paths),
+            get_data_import_frame(
+                fract_paths=model.fract_paths, tp_paths=model.tp_paths
+            ),
             get_spatial_prediction_frame(),
         ],
         [
@@ -1037,12 +1218,23 @@ def main():
         ],
     ]
 
-    main_window = sg.Window("C-COMPASS", layout_CCMPS, size=(1260, 720))
+    main_window = sg.Window(
+        "C-COMPASS", layout_CCMPS, size=(1260, 720), resizable=True
+    )
+    return main_window
+
+
+def main():
+    """The entry point for the C-COMPASS application."""
+    sg.theme("Dark Blue 3")
+
+    model = SessionModel()
+    main_window = create_main_window(model=model)
 
     # The event loop
     while True:
         event, values_CCMPS = main_window.read()
-        # action.refresh_window(window_CCMPS, status)
+        # refresh_window(window_CCMPS, status)
 
         # if status['fractionation_data']:
         #     window_CCMPS['-status_fract-'].Update('ready')
@@ -1050,274 +1242,251 @@ def main():
         #     window_CCMPS['-status_fract-'].Update('missing')
 
         if event == "-fractionation_add-":
-            action.fract_add(
-                values_CCMPS,
-                main_window,
-                fract_paths,
-                fract_tables,
-                fract_indata,
-                fract_pos,
-                fract_identifiers,
-            )
+            fract_add(values_CCMPS, main_window, model=model)
         elif event == "-fractionation_remove-":
             if values_CCMPS["-fractionation_path-"]:
-                action.fract_rem(
+                fract_rem(
                     values_CCMPS,
                     main_window,
-                    fract_paths,
-                    fract_tables,
-                    fract_data,
+                    model=model,
                 )
         elif event == "-fractionation_path-":
-            action.fract_refreshtable(
+            fract_refreshtable(
                 main_window,
-                fract_tables[values_CCMPS["-fractionation_path-"]],
+                model.fract_tables[values_CCMPS["-fractionation_path-"]],
             )
         elif event == "-fractionation_edit_remove-":
             if values_CCMPS["-fractionation_table-"]:
-                action.fract_defrem(values_CCMPS, main_window, fract_tables)
+                fract_defrem(values_CCMPS, main_window, model.fract_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_edit_keep-":
             if values_CCMPS["-fractionation_table-"]:
-                action.fract_defkeep(values_CCMPS, main_window, fract_tables)
+                fract_defkeep(values_CCMPS, main_window, model.fract_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_edit_condition-":
             if values_CCMPS["-fractionation_table-"]:
-                action.fract_defcon(values_CCMPS, main_window, fract_tables)
+                fract_defcon(values_CCMPS, main_window, model.fract_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_edit_replicate-":
             if values_CCMPS["-fractionation_table-"]:
-                action.fract_defrep(values_CCMPS, main_window, fract_tables)
+                fract_defrep(values_CCMPS, main_window, model.fract_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_edit_fractions-":
             if values_CCMPS["-fractionation_table-"]:
-                action.fract_deffract(values_CCMPS, main_window, fract_tables)
+                fract_deffract(values_CCMPS, main_window, model.fract_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_edit_identifier-":
             if values_CCMPS["-fractionation_table-"]:
-                fract_identifiers = action.fract_defident(
+                model.fract_identifiers = fract_defident(
                     values_CCMPS,
                     main_window,
-                    fract_tables,
-                    fract_pos,
-                    fract_identifiers,
+                    model.fract_tables,
+                    model.fract_pos,
+                    model.fract_identifiers,
                 )
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-fractionation_parameters-":
-            fract_preparams = PPMS.PPMS_exec_fract(fract_preparams)
+            model.fract_preparams = PPMS.PPMS_exec_fract(model.fract_preparams)
         elif event == "-fractionation_reset-":
             sure = sg.popup_yes_no(
                 "Reset Fractionation Pre-Processing? You have to run it again to use your data."
             )
             if sure == "Yes":
-                (
-                    fract_data,
-                    fract_std,
-                    fract_intermediate,
-                    fract_info,
-                    fract_conditions,
-                ) = action.reset_fract()
-                action.fract_buttons(main_window, False)
+                model.reset_fractionation()
+                fract_buttons(main_window, False)
                 # window_CCMPS['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
-                marker_list = pd.DataFrame()
-                fract_marker = {}
-                fract_marker_vis = {}
-                fract_test = {}
-                fract_full = {}
-                # action.enable_markersettings(window_CCMPS, True)
-                status["fractionation_data"] = False
+                # enable_markersettings(window_CCMPS, True)
 
                 main_window["-marker_fractkey-"].Update(
                     values=["[IDENTIFIER]"], value=""
                 )
-                status["marker_matched"] = False
                 # window_CCMPS['-classification_SVM-'].Update(disabled = True)
-
-                svm_marker = svm_test = svm_metrics = learning_xyz = (
-                    results
-                ) = comparison = {}
-                status["marker_matched"] = status["marker_matched"] = status[
-                    "training"
-                ] = status["proteome_prediction"] = status[
-                    "lipidome_prediction"
-                ] = status["comparison_global"] = status[
-                    "comparison_class"
-                ] = False
 
             else:
                 pass
         elif event == "-fractionation_start-":
-            if fract_paths:
+            if model.fract_paths:
                 (
-                    fract_data,
-                    fract_std,
-                    fract_intermediate,
-                    fract_info,
-                    fract_conditions,
+                    model.fract_data,
+                    model.fract_std,
+                    model.fract_intermediate,
+                    model.fract_info,
+                    model.fract_conditions,
                 ) = FDP.FDP_exec(
                     main_window,
-                    fract_tables,
-                    fract_preparams,
-                    fract_identifiers,
-                    fract_data,
-                    fract_std,
-                    fract_intermediate,
-                    fract_info,
-                    fract_conditions,
-                    fract_indata,
+                    model.fract_tables,
+                    model.fract_preparams,
+                    model.fract_identifiers,
+                    model.fract_data,
+                    model.fract_std,
+                    model.fract_intermediate,
+                    model.fract_info,
+                    model.fract_conditions,
+                    model.fract_indata,
                 )
                 main_window["-marker_fractkey-"].Update(
-                    values=["[IDENTIFIER]"] + list(fract_info)
+                    values=["[IDENTIFIER]"] + list(model.fract_info)
                 )
-                if fract_data["class"]:
-                    status["fractionation_data"] = True
-                #     action.fract_buttons(window_CCMPS, True)
+                if model.fract_data["class"]:
+                    model.status["fractionation_data"] = True
+                #     fract_buttons(window_CCMPS, True)
             else:
                 messagebox.showerror(
                     "No dataset!", "Please import a fractionation dataset."
                 )
         elif event == "-fractionation_summary-":
-            RP.RP_gradient_heatmap(fract_data)
+            RP.RP_gradient_heatmap(model.fract_data)
             # FSD.FSD_exec(fract_preparams, fract_data)
         # if event_CCMPS == '-fractionation_export-':
-        #     action.fract_export(values_CCMPS, fract_data, fract_info)
+        #     fract_export(values_CCMPS, fract_data, fract_info)
 
         elif event == "-tp_add-":
-            action.tp_add(
+            tp_add(
                 values_CCMPS,
                 main_window,
-                tp_paths,
-                tp_tables,
-                tp_indata,
-                tp_pos,
-                tp_identifiers,
+                model.tp_paths,
+                model.tp_tables,
+                model.tp_indata,
+                model.tp_pos,
+                model.tp_identifiers,
             )
         elif event == "-tp_remove-":
             if values_CCMPS["-tp_path-"]:
-                action.tp_rem(
-                    values_CCMPS, main_window, tp_paths, tp_tables, tp_data
+                tp_rem(
+                    values_CCMPS, main_window, model.tp_paths, model.tp_tables
                 )
         elif event == "-tp_path-":
-            action.tp_refreshtable(
-                main_window, tp_tables[values_CCMPS["-tp_path-"]]
+            tp_refreshtable(
+                main_window, model.tp_tables[values_CCMPS["-tp_path-"]]
             )
         elif event == "-tp_edit_remove-":
             if values_CCMPS["-tp_table-"]:
-                action.tp_defrem(values_CCMPS, main_window, tp_tables)
+                tp_defrem(values_CCMPS, main_window, model.tp_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-tp_edit_keep-":
             if values_CCMPS["-tp_table-"]:
-                action.tp_defkeep(values_CCMPS, main_window, tp_tables)
+                tp_defkeep(values_CCMPS, main_window, model.tp_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-tp_edit_condition-":
             if values_CCMPS["-tp_table-"]:
-                action.tp_defcon(values_CCMPS, main_window, tp_tables)
+                tp_defcon(values_CCMPS, main_window, model.tp_tables)
             else:
                 messagebox.showerror("Error", "Select (a) row(s).")
         elif event == "-tp_edit_identifier-":
             if values_CCMPS["-tp_table-"]:
-                tp_identifiers = action.tp_defident(
+                model.tp_identifiers = tp_defident(
                     values_CCMPS,
                     main_window,
-                    tp_tables,
-                    tp_pos,
-                    tp_identifiers,
+                    model.tp_tables,
+                    model.tp_pos,
+                    model.tp_identifiers,
                 )
         elif event == "-tp_parameters-":
-            tp_preparams = PPMS.PPMS_exec_TP(tp_preparams)
+            model.tp_preparams = PPMS.PPMS_exec_TP(model.tp_preparams)
         elif event == "-tp_reset-":
             sure = sg.popup_yes_no(
                 "Reset TotalProteome Pre-Processing? You have to run it again to use your data."
             )
             if sure == "Yes":
-                tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
-                    action.reset_tp()
-                )
-                status["tp_data"] = False
-                if status["comparison_class"]:
-                    results, comparison = MOA.class_reset(results, comparison)
-                    status["comparison_class"] = False
+                model.reset_tp()
+
+                model.status["tp_data"] = False
+                if model.status["comparison_class"]:
+                    model.results, model.comparison = MOA.class_reset(
+                        model.results, model.comparison
+                    )
+                    model.status["comparison_class"] = False
             else:
                 pass
         elif event == "-tp_start-":
-            if tp_paths:
-                tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
-                    TPP.TPP_exec(
-                        main_window,
-                        tp_data,
-                        tp_tables,
-                        tp_preparams,
-                        tp_identifiers,
-                        tp_intermediate,
-                        tp_info,
-                        tp_icorr,
-                        tp_indata,
-                        tp_conditions,
-                    )
+            if model.tp_paths:
+                (
+                    model.tp_data,
+                    model.tp_intermediate,
+                    model.tp_info,
+                    model.tp_conditions,
+                    model.tp_icorr,
+                ) = TPP.TPP_exec(
+                    main_window,
+                    model.tp_data,
+                    model.tp_tables,
+                    model.tp_preparams,
+                    model.tp_identifiers,
+                    model.tp_intermediate,
+                    model.tp_info,
+                    model.tp_icorr,
+                    model.tp_indata,
+                    model.tp_conditions,
                 )
 
-                if tp_data:
-                    status["tp_data"] = True
-                    # action.tp_buttons(window_CCMPS, True)
+                if model.tp_data:
+                    model.status["tp_data"] = True
+                    # tp_buttons(window_CCMPS, True)
             else:
                 messagebox.showerror(
                     "No dataset!", "Please import a TP dataset."
                 )
         elif event == "-tp_export-":
-            action.tp_export(tp_data, tp_info)
+            tp_export(model.tp_data, model.tp_info)
 
         elif event == "-marker_add-":
-            action.marker_add(main_window, values_CCMPS, marker_sets)
+            marker_add(main_window, values_CCMPS, model.marker_sets)
             event, values_CCMPS = main_window.read(timeout=50)
-            if marker_sets:
-                status["marker_file"] = True
+            if model.marker_sets:
+                model.status["marker_file"] = True
             else:
-                status["marker_file"] = False
+                model.status["marker_file"] = False
         elif event == "-marker_remove-":
             try:
-                action.marker_remove(main_window, values_CCMPS, marker_sets)
+                marker_remove(main_window, values_CCMPS, model.marker_sets)
             except Exception:
                 pass
-            if marker_sets:
-                status["marker_file"] = True
+            if model.marker_sets:
+                model.status["marker_file"] = True
             else:
-                status["marker_file"] = False
+                model.status["marker_file"] = False
         elif event == "-marker_list-":
-            action.refresh_markercols(main_window, values_CCMPS, marker_sets)
+            refresh_markercols(main_window, values_CCMPS, model.marker_sets)
         elif event == "-marker_key-":
-            action.marker_setkey(values_CCMPS, marker_sets)
+            marker_setkey(values_CCMPS, model.marker_sets)
         elif event == "-marker_class-":
-            marker_conv = action.marker_setclass(values_CCMPS, marker_sets)
+            model.marker_conv = marker_setclass(
+                values_CCMPS, model.marker_sets
+            )
 
         elif event == "-marker_parameters-":
-            marker_params = PPMS.PPMS_exec_marker(marker_params)
+            model.marker_params = PPMS.PPMS_exec_marker(model.marker_params)
 
         elif event == "-marker_manage-":
-            if action.check_markers(marker_sets):
-                marker_conv = CM.CM_exec(marker_sets, marker_conv)
+            if check_markers(model.marker_sets):
+                model.marker_conv = CM.CM_exec(
+                    model.marker_sets, model.marker_conv
+                )
             else:
                 messagebox.showerror(
                     "Error", "Please define key and class column."
                 )
 
         elif event == "-marker_test-":
-            if action.check_markers(marker_sets):
+            if check_markers(model.marker_sets):
                 try:
-                    marker_list = action.create_markerlist(
-                        marker_sets, marker_conv, marker_params
+                    model.marker_list = create_markerlist(
+                        model.marker_sets,
+                        model.marker_conv,
+                        model.marker_params,
                     )
                     TM.TM_exec(
-                        fract_data,
-                        fract_info,
-                        marker_list,
+                        model.fract_data,
+                        model.fract_info,
+                        model.marker_list,
                         values_CCMPS["-marker_fractkey-"],
                     )
                 except Exception:
@@ -1329,15 +1498,17 @@ def main():
                     "Error", "Please define key and class column."
                 )
         elif event == "-marker_profiles-":
-            if action.check_markers(marker_sets):
+            if check_markers(model.marker_sets):
                 try:
-                    marker_list = action.create_markerlist(
-                        marker_sets, marker_conv, marker_params
+                    model.marker_list = create_markerlist(
+                        model.marker_sets,
+                        model.marker_conv,
+                        model.marker_params,
                     )
                     SM.SM_exec(
-                        fract_data,
-                        fract_info,
-                        marker_list,
+                        model.fract_data,
+                        model.fract_info,
+                        model.marker_list,
                         values_CCMPS["-marker_fractkey-"],
                     )
                 except Exception:
@@ -1354,7 +1525,7 @@ def main():
                 messagebox.showerror(
                     "Error", "Please import at least one Marker List!"
                 )
-            elif fract_data["class"] == []:
+            elif model.fract_data["class"] == []:
                 messagebox.showerror(
                     "Error", "Please import Fractionation Data first!"
                 )
@@ -1369,25 +1540,30 @@ def main():
             else:
                 try:
                     # print('Starting try block')
-                    marker_list = action.create_markerlist(
-                        marker_sets, marker_conv, marker_params
+                    model.marker_list = create_markerlist(
+                        model.marker_sets,
+                        model.marker_conv,
+                        model.marker_params,
                     )
                     # print('check1: marker_list created')
-                    fract_marker, fract_marker_vis, fract_test, classnames = (
-                        action.create_markerprofiles(
-                            fract_data,
-                            values_CCMPS["-marker_fractkey-"],
-                            fract_info,
-                            marker_list,
-                        )
+                    (
+                        model.fract_marker,
+                        model.fract_marker_vis,
+                        model.fract_test,
+                        model.classnames,
+                    ) = create_markerprofiles(
+                        model.fract_data,
+                        values_CCMPS["-marker_fractkey-"],
+                        model.fract_info,
+                        model.marker_list,
                     )
                     # print('check2: marker profiles created')
-                    fract_full = MOP.create_fullprofiles(
-                        fract_marker, fract_test
+                    model.fract_full = MOP.create_fullprofiles(
+                        model.fract_marker, model.fract_test
                     )
-                    status["marker_matched"] = True
+                    model.status["marker_matched"] = True
                     # print('check3: full profiles created')
-                    # action.enable_markersettings(window_CCMPS, False)
+                    # enable_markersettings(window_CCMPS, False)
                     # print('check4: marker settings enabled')
                     # window_CCMPS['-classification_MOP-'].Update(disabled = False)
                     # print('check5: classification MOP updated')
@@ -1403,68 +1579,50 @@ def main():
                     )
 
         elif event == "-marker_reset-":
-            marker_list = pd.DataFrame()
-            fract_marker = {}
-            fract_marker_vis = {}
-            fract_test = {}
-            fract_full = {}
-            svm_marker = svm_test = svm_metrics = learning_xyz = results = (
-                comparison
-            ) = {}
-            status["marker_matched"] = status["training"] = status[
-                "proteome_prediction"
-            ] = status["lipidome_prediction"] = status[
-                "comparison_global"
-            ] = status["comparison_class"] = False
-            # status['marker_matched'] = False
-
-            # action.enable_markersettings(window_CCMPS, True)
+            model.reset_marker()
+            # enable_markersettings(window_CCMPS, True)
             # window_CCMPS['-classification_MOP-'].Update(disabled = True)
             # window_CCMPS['-classification_SVM-'].Update(disabled = True)
 
         elif event == "-classification_parameters-":
-            NN_params = PPMS.PPMS_exec_NN(NN_params)
+            model.NN_params = PPMS.PPMS_exec_NN(model.NN_params)
 
         elif event == "-classification_MOP-":
             (
-                learning_xyz,
-                NN_params,
-                fract_full_up,
-                fract_marker_up,
-                fract_mixed_up,
-                fract_unmixed_up,
-                svm_marker,
-                svm_test,
-                svm_metrics,
+                model.learning_xyz,
+                model.NN_params,
+                model.fract_full_up,
+                model.fract_marker_up,
+                model.fract_mixed_up,
+                model.fract_unmixed_up,
+                model.svm_marker,
+                model.svm_test,
+                model.svm_metrics,
             ) = MOP.MOP_exec(
-                fract_conditions,
-                fract_full,
-                fract_marker,
-                fract_test,
-                fract_std,
-                fract_info,
+                model.fract_conditions,
+                model.fract_full,
+                model.fract_marker,
+                model.fract_test,
+                model.fract_std,
+                model.fract_info,
                 values_CCMPS["-marker_fractkey-"],
-                NN_params,
+                model.NN_params,
             )
             # window_CCMPS['-classification_statistics-'].Update(disabled = False)
             # window_CCMPS['-status_comparison-'].Update('done!')
-            status["training"] = True
+            model.status["training"] = True
 
         elif event == "-classification_reset-":
-            svm_marker = svm_test = svm_metrics = learning_xyz = results = (
-                comparison
-            ) = {}
-            status["training"] = status["proteome_prediction"] = status[
-                "lipidome_prediction"
-            ] = status["comparison_global"] = status["comparison_class"] = (
-                False
-            )
+            model.reset_classification()
 
         elif event == "-statistic_predict-":
-            results = MOA.stats_proteome(
-                learning_xyz, NN_params, fract_data, fract_conditions
+            model.results = MOA.stats_proteome(
+                model.learning_xyz,
+                model.NN_params,
+                model.fract_data,
+                model.fract_conditions,
             )
-            status["proteome_prediction"] = True
+            model.status["proteome_prediction"] = True
 
         elif event == "-statistic_export-":
             filename = sg.popup_get_file(
@@ -1475,7 +1633,7 @@ def main():
             )
             if filename:
                 with open(filename, "wb") as file:
-                    pickle.dump(results, file)
+                    pickle.dump(model.results, file)
 
         elif event == "-statistic_import-":
             filename = sg.popup_get_file(
@@ -1488,7 +1646,7 @@ def main():
                     results_new = pickle.load(file)
                 try:
                     for condition in results_new:
-                        if condition in results:
+                        if condition in model.results:
                             messagebox.showerror(
                                 "Error",
                                 "There are already statistics for "
@@ -1496,26 +1654,30 @@ def main():
                                 + " in your current session.",
                             )
                         else:
-                            results[condition] = copy.deepcopy(
+                            model.results[condition] = copy.deepcopy(
                                 results_new[condition]
                             )
-                    status["proteome_prediction"] = status["training"] = True
+                    model.status["proteome_prediction"] = model.status[
+                        "training"
+                    ] = True
                 except Exception:
                     messagebox.showerror("Error", "Incompatible file type!")
 
         elif event == "-statistic_report-":
             export_folder = sg.popup_get_folder("Statistics Report")
             if export_folder:
-                for condition in results:
+                for condition in model.results:
                     fname = Path(
                         export_folder, f"CCMPS_statistics_{condition}.xlsx"
                     )
                     selected_columns = [
                         col
-                        for col in results[condition]["metrics"].columns
+                        for col in model.results[condition]["metrics"].columns
                         if col.startswith("fCC_")
                     ] + ["SVM_winner", "fNN_winner", "marker"]
-                    df_out = results[condition]["metrics"][selected_columns]
+                    df_out = model.results[condition]["metrics"][
+                        selected_columns
+                    ]
                     df_out.columns = [
                         col.replace("fCC_", "CC_ClassContribution_")
                         if col.startswith("fCC_")
@@ -1529,17 +1691,19 @@ def main():
         elif event == "-global_report-":
             export_folder = sg.popup_get_folder("Global Changes Report")
             if export_folder:
-                for comb in comparison:
+                for comb in model.comparison:
                     fname = Path(
                         export_folder,
                         f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
                     )
                     selected_columns = [
                         col
-                        for col in comparison[comb]["metrics"].columns
+                        for col in model.comparison[comb]["metrics"].columns
                         if col.startswith("fRL_")
                     ] + ["fRLS", "DS", "P(t)_RLS"]
-                    df_out = comparison[comb]["metrics"][selected_columns]
+                    df_out = model.comparison[comb]["metrics"][
+                        selected_columns
+                    ]
                     df_out.columns = [
                         col.replace("fRL_", "RL_Relocalization_")
                         if col.startswith("fRL_")
@@ -1557,17 +1721,19 @@ def main():
         elif event == "-class_report-":
             export_folder = sg.popup_get_folder("Class-centric Changes Report")
             if export_folder:
-                for condition in results:
+                for condition in model.results:
                     fname = Path(
                         export_folder,
                         f"CCMPS_ClassComposition_{condition}.xlsx",
                     )
                     selected_columns = [
                         col
-                        for col in results[condition]["metrics"].columns
+                        for col in model.results[condition]["metrics"].columns
                         if col.startswith("nCPA")
                     ] + ["TPA"]
-                    df_out = results[condition]["metrics"][selected_columns]
+                    df_out = model.results[condition]["metrics"][
+                        selected_columns
+                    ]
                     df_out.columns = [
                         col.replace(
                             "nCPA_imp_",
@@ -1580,17 +1746,19 @@ def main():
                         for col in df_out.columns
                     ]
                     df_out.to_excel(fname, index=True)
-                for comb in comparison:
+                for comb in model.comparison:
                     fname = Path(
                         export_folder,
                         f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
                     )
                     selected_columns = [
                         col
-                        for col in comparison[comb]["metrics"].columns
+                        for col in model.comparison[comb]["metrics"].columns
                         if col.startswith("nCFC_")
                     ]
-                    df_out = comparison[comb]["metrics"][selected_columns]
+                    df_out = model.comparison[comb]["metrics"][
+                        selected_columns
+                    ]
                     df_out.columns = [
                         col.replace(
                             "nCFC_", "nCFC_normalizedClasscentricFoldChange_"
@@ -1602,48 +1770,47 @@ def main():
                     df_out.to_excel(fname, index=True)
 
         elif event == "-statistic_reset-":
-            results = comparison = {}
-            status["proteome_prediction"] = status[
-                "lipidome_prediction"
-            ] = status["comparison_global"] = status["comparison_class"] = (
-                False
-            )
+            model.reset_static_statistics()
 
         elif event == "-statistic_heatmap-":
-            RP.RP_stats_heatmap(results)
+            RP.RP_stats_heatmap(model.results)
 
         elif event == "-statistic_distribution-":
-            RP.RP_stats_distribution(results)
+            RP.RP_stats_distribution(model.results)
 
         elif event == "-global_heatmap-":
-            RP.RP_global_heatmap(comparison)
+            RP.RP_global_heatmap(model.comparison)
 
         elif event == "-global_distance-":
-            RP.RP_global_distance(comparison)
+            RP.RP_global_distance(model.comparison)
 
         elif event == "-class_heatmap-":
-            RP.RP_class_heatmap(results)
+            RP.RP_class_heatmap(model.results)
 
         elif event == "-class_reorganization-":
-            RP.RP_class_reorganization(comparison)
+            RP.RP_class_reorganization(model.comparison)
 
         elif event == "-global_run-":
-            comparison = MOA.global_comparison(results)
-            status["comparison_global"] = True
+            model.comparison = MOA.global_comparison(model.results)
+            model.status["comparison_global"] = True
 
         elif event == "-global_reset-":
-            comparison = {}
-            status["comparison_global"] = status["comparison_class"] = False
+            model.reset_global_changes()
 
         elif event == "-class_run-":
-            comparison = MOA.class_comparison(
-                tp_data, fract_conditions, results, comparison
+            model.comparison = MOA.class_comparison(
+                model.tp_data,
+                model.fract_conditions,
+                model.results,
+                model.comparison,
             )
-            status["comparison_class"] = True
+            model.status["comparison_class"] = True
 
         elif event == "-class_reset-":
-            results, comparison = MOA.class_reset(results, comparison)
-            status["comparison_class"] = False
+            model.results, model.comparison = MOA.class_reset(
+                model.results, model.comparison
+            )
+            model.status["comparison_class"] = False
 
         # if event_CCMPS == '-classification_comparison-':
         #     # results = MOP_stats.comp_exec(learning_xyz, results)
@@ -1655,21 +1822,21 @@ def main():
         elif event == "-export_statistics-":
             export_folder = sg.popup_get_folder("Export Statistics")
             if export_folder:
-                for condition in results:
+                for condition in model.results:
                     fname = Path(
                         export_folder, f"CCMPS_statistics_{condition}.tsv"
                     )
                     df_out = pd.merge(
-                        fract_data["vis"][condition + "_median"],
-                        results[condition]["metrics"],
+                        model.fract_data["vis"][condition + "_median"],
+                        model.results[condition]["metrics"],
                         left_index=True,
                         right_index=True,
                         how="outer",
                     )
-                    for colname in fract_info:
+                    for colname in model.fract_info:
                         df_out = pd.merge(
                             df_out,
-                            fract_info[colname],
+                            model.fract_info[colname],
                             left_index=True,
                             right_index=True,
                             how="left",
@@ -1682,25 +1849,25 @@ def main():
         elif event == "-export_comparison-":
             export_folder = sg.popup_get_folder("Export Statistics")
             if export_folder:
-                for comb in comparison:
+                for comb in model.comparison:
                     fname = Path(
                         export_folder,
                         f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
                     )
                     df_out = pd.DataFrame(
-                        index=comparison[comb]["intersection_data"].index
+                        index=model.comparison[comb]["intersection_data"].index
                     )
                     df_out = pd.merge(
                         df_out,
-                        comparison[comb]["metrics"],
+                        model.comparison[comb]["metrics"],
                         left_index=True,
                         right_index=True,
                         how="left",
                     )
-                    for colname in fract_info:
+                    for colname in model.fract_info:
                         df_out = pd.merge(
                             df_out,
-                            fract_info[colname],
+                            model.fract_info[colname],
                             left_index=True,
                             right_index=True,
                             how="left",
@@ -1726,47 +1893,47 @@ def main():
         #         df_export_part.to_csv(full_path, sep = '\t', index = False)
 
         elif event == "Save...":
-            action.session_save(
-                fract_paths,
-                fract_tables,
-                fract_pos,
-                fract_indata,
-                fract_data,
-                fract_std,
-                fract_intermediate,
-                fract_identifiers,
-                fract_info,
-                fract_preparams,
-                tp_paths,
-                tp_tables,
-                tp_pos,
-                tp_indata,
-                tp_data,
-                tp_intermediate,
-                tp_identifiers,
-                tp_info,
-                tp_preparams,
-                marker_sets,
-                marker_params,
-                marker_conv,
-                fract_conditions,
-                fract_full,
-                fract_full_up,
-                fract_marker,
-                fract_marker_vis,
-                fract_marker_up,
-                fract_mixed_up,
-                fract_test,
-                svm_marker,
-                svm_test,
-                svm_metrics,
-                marker_list,
-                learning_xyz,
-                NN_params,
-                results,
-                comparison,
+            session_save(
+                model.fract_paths,
+                model.fract_tables,
+                model.fract_pos,
+                model.fract_indata,
+                model.fract_data,
+                model.fract_std,
+                model.fract_intermediate,
+                model.fract_identifiers,
+                model.fract_info,
+                model.fract_preparams,
+                model.tp_paths,
+                model.tp_tables,
+                model.tp_pos,
+                model.tp_indata,
+                model.tp_data,
+                model.tp_intermediate,
+                model.tp_identifiers,
+                model.tp_info,
+                model.tp_preparams,
+                model.marker_sets,
+                model.marker_params,
+                model.marker_conv,
+                model.fract_conditions,
+                model.fract_full,
+                model.fract_full_up,
+                model.fract_marker,
+                model.fract_marker_vis,
+                model.fract_marker_up,
+                model.fract_mixed_up,
+                model.fract_test,
+                model.svm_marker,
+                model.svm_test,
+                model.svm_metrics,
+                model.marker_list,
+                model.learning_xyz,
+                model.NN_params,
+                model.results,
+                model.comparison,
                 values_CCMPS["-marker_fractkey-"],
-                status,
+                model.status,
             )
         elif event == "Open...":
             filename = sg.popup_get_file(
@@ -1775,96 +1942,45 @@ def main():
                 file_types=(("Numpy", "*.npy"),),
             )
             if filename:
-                (
-                    fract_paths,
-                    fract_tables,
-                    fract_pos,
-                    fract_indata,
-                    fract_data,
-                    fract_std,
-                    fract_intermediate,
-                    fract_identifiers,
-                    fract_info,
-                    fract_preparams,
-                    tp_paths,
-                    tp_tables,
-                    tp_pos,
-                    tp_indata,
-                    tp_data,
-                    tp_intermediate,
-                    tp_identifiers,
-                    tp_info,
-                    tp_preparams,
-                    marker_sets,
-                    marker_params,
-                    marker_conv,
-                    fract_conditions,
-                    svm_marker,
-                    svm_test,
-                    svm_metrics,
-                    fract_full,
-                    fract_full_up,
-                    fract_marker,
-                    fract_marker_up,
-                    fract_marker_vis,
-                    fract_mixed_up,
-                    fract_test,
-                    marker_list,
-                    learning_xyz,
-                    results,
-                    NN_params,
-                    comparison,
-                    marker_fractkey,
-                    status,
-                ) = action.session_open(main_window, values_CCMPS, filename)
+                session_open(main_window, values_CCMPS, filename, model=model)
                 # window_CCMPS['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
                 main_window["-marker_fractkey-"].Update(
-                    values=["[IDENTIFIER]"] + list(fract_info),
-                    value=marker_fractkey,
+                    values=["[IDENTIFIER]"] + list(model.fract_info),
+                    value=model.marker_fractkey,
                 )
         elif event == "New":
             sure = sg.popup_yes_no(
                 "Are you sure to close the session and start a new one?"
             )
             if sure == "Yes":
-                fract_paths, fract_tables, fract_data, fract_pos = (
-                    action.resetinput()
-                )
-                action.fract_clearinput(main_window)
-                action.tp_clearinput(main_window)
-                fract_indata, fract_identifiers = action.reset_infract()
-                (
-                    fract_data,
-                    fract_std,
-                    fract_intermediate,
-                    fract_info,
-                    fract_conditions,
-                ) = action.reset_fract()
-                tp_paths, tp_tables, tp_data, tp_pos = action.resetinput()
-                tp_indata, tp_identifiers = action.reset_intp()
-                tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
-                    action.reset_tp()
-                )
-                fract_preparams = PPMS.fract_default()
-                tp_preparams = PPMS.tp_default()
-                marker_sets = marker_conv = fract_full = fract_full_up = (
-                    fract_marker
-                ) = fract_marker_vis = fract_marker_up = fract_mixed_up = (
-                    fract_test
-                ) = svm_marker = svm_test = svm_metrics = learning_xyz = (
-                    results
-                ) = comparison = {}
+                model.reset_input_fract()
+                fract_clearinput(main_window)
+                tp_clearinput(main_window)
+                model.reset_infract()
+                model.reset_fract()
+                model.reset_input_tp()
+                model.reset_intp()
+                model.reset_tp()
+
+                model.fract_preparams = PPMS.fract_default()
+                model.tp_preparams = PPMS.tp_default()
+
+                model.marker_sets = {}
+                model.marker_conv = {}
+                model.fract_full_up = {}
+                model.fract_marker_up = {}
+                model.fract_mixed_up = {}
+                model.reset_marker()
                 main_window["-marker_list-"].Update(values=[])
                 main_window["-marker_key-"].Update(values=[])
                 main_window["-marker_class-"].Update(values=[])
-                marker_params = {"how": "exclude", "what": "unite"}
-                marker_list = pd.DataFrame
-                NN_params = PPMS.NN_default()
+                model.marker_params = {"how": "exclude", "what": "unite"}
+                model.NN_params = PPMS.NN_default()
 
-                status = action.default_status()
+                model.status = default_status()
 
                 main_window["-marker_fractkey-"].Update(
-                    values=["[IDENTIFIER]"] + list(fract_info)
+                    values=["[IDENTIFIER]"] + list(model.fract_info)
                 )
             else:
                 pass
@@ -1874,7 +1990,7 @@ def main():
         elif event == sg.WIN_CLOSED or event == "Exit":
             break
 
-        action.refresh_window(main_window, status)
+        refresh_window(main_window, model.status)
 
     main_window.close()
 
@@ -1882,3 +1998,1793 @@ def main():
     # filepath = 'session.pkl'
     # dill.dump_session(filepath) # Save the session
     # dill.load_session(filepath) # Load the session
+
+
+def fract_refreshtable(window, table):
+    window["-fractionation_table-"].Update(values=table)
+    return
+
+
+def tp_refreshtable(window, table):
+    window["-tp_table-"].Update(values=table)
+    return
+
+
+def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
+    if values["-fractionation_table-"]:
+        path = values["-fractionation_path-"]
+        table = fract_tables[path]
+        if ask == "integer":
+            value = simpledialog.askinteger(title, prompt)
+            p = 0
+            if value:
+                for i in values["-fractionation_table-"]:
+                    table[i][pos] = value + p
+                    p = p + q
+                fract_tables[path] = table
+        elif ask == "string":
+            value = simpledialog.askstring(title, prompt)
+            if value:
+                for i in values["-fractionation_table-"]:
+                    table[i][pos] = value
+                fract_tables[path] = table
+    else:
+        messagebox.showerror("Error", "Select (a) sample(s).")
+    return (values, fract_tables)
+
+
+def fract_buttons(window, status):
+    active = [
+        "-fractionation_add-",
+        "-fractionation_remove-",
+        "-fractionation_edit_remove-",
+        "-fractionation_edit_keep-",
+        "-fractionation_edit_condition-",
+        "-fractionation_edit_replicate-",
+        "-fractionation_edit_fractions-",
+        "-fractionation_edit_identifier-",
+        "-fractionation_parameters-",
+        "-fractionation_start-",
+    ]
+    inactive = [
+        "-fractionation_reset-",
+        "-fractionation_summary-",
+    ]
+    for button in active:
+        window[button].Update(disabled=status)
+    for button in inactive:
+        window[button].Update(disabled=not status)
+    if status:
+        window["-fractionation_status-"].Update(
+            value="done!", text_color="dark green"
+        )
+    else:
+        window["-fractionation_status-"].Update(
+            value="...ready!", text_color="white"
+        )
+    return
+
+
+def tp_buttons(window, status):
+    active = [
+        "-tp_add-",
+        "-tp_remove-",
+        "-tp_edit_remove-",
+        "-tp_edit_keep-",
+        "-tp_edit_condition-",
+        "-tp_edit_identifier-",
+        "-tp_start-",
+        "-tp_parameters-",
+    ]
+    inactive = ["-tp_reset-", "-tp_summary-", "-tp_export-"]
+    for button in active:
+        window[button].Update(disabled=status)
+    for button in inactive:
+        window[button].Update(disabled=not status)
+    if status:
+        window["-tp_status-"].Update(value="done!", text_color="dark green")
+    else:
+        window["-tp_status-"].Update(value="...ready!", text_color="white")
+
+
+def fract_clearinput(window):
+    window["-fractionation_path-"].Update(values=[])
+    window["-fractionation_table-"].Update(values=[])
+    return
+
+
+def tp_clearinput(window):
+    window["-tp_path-"].Update(values=[])
+    window["-tp_table-"].Update(values=[])
+    return
+
+
+def fract_add(
+    values,
+    window,
+    model: SessionModel,
+):
+    filename = sg.popup_get_file(
+        "Chose dataset",
+        no_window=True,
+        file_types=(
+            ("Tab Separated Values", "*.tsv"),
+            ("Text (tab delimited)", "*.txt"),
+        ),
+    )
+    if filename:
+        model.fract_paths.append(filename)
+        window["-fractionation_path-"].Update(
+            values=model.fract_paths, value=filename
+        )
+        data = pd.read_csv(filename, sep="\t", header=0)
+        data = data.replace("NaN", np.nan)
+        data = data.replace("Filtered", np.nan)
+        colnames = data.columns.values.tolist()
+        table = []
+        for name in colnames:
+            namelist = [name, "", "", ""]
+            table.append(namelist)
+        model.fract_tables[filename] = table
+        model.fract_indata[filename] = data
+        model.fract_pos[filename] = []
+        model.fract_identifiers[filename] = []
+
+        fract_refreshtable(window, table)
+    return
+
+
+def fract_rem(values, window, model: SessionModel):
+    sure = sg.popup_yes_no("Remove data from list?")
+    if sure == "Yes":
+        model.fract_paths.remove(values["-fractionation_path-"])
+        del model.fract_tables[values["-fractionation_path-"]]
+        if model.fract_paths:
+            curr = model.fract_paths[0]
+            fract_refreshtable(window, model.fract_tables[curr])
+        else:
+            curr = []
+            fract_refreshtable(window, curr)
+        window["-fractionation_path-"].Update(
+            values=model.fract_paths, value=curr
+        )
+    else:
+        pass
+    return
+
+
+def fract_defrem(values, window, fract_tables):
+    path = values["-fractionation_path-"]
+    selected = values["-fractionation_table-"]
+    table = fract_tables[path]
+    for index in sorted(selected, reverse=True):
+        del table[index]
+    fract_tables[path] = table
+    window["-fractionation_table-"].Update(values=fract_tables[path])
+    return
+
+
+def fract_defkeep(values, window, fract_tables):
+    path = values["-fractionation_path-"]
+    table = fract_tables[path]
+    for pos in values["-fractionation_table-"]:
+        table[pos][1] = "[KEEP]"
+        table[pos][2] = "-"
+        table[pos][3] = "-"
+    fract_tables[path] = table
+    window["-fractionation_table-"].Update(values=fract_tables[path])
+    return
+
+
+def fract_defcon(values, window, fract_tables):
+    values, fract_tables = fract_modifytable(
+        "Set Condition",
+        "Condition Name:",
+        values,
+        fract_tables,
+        1,
+        0,
+        "string",
+    )
+    window["-fractionation_table-"].Update(
+        values=fract_tables[values["-fractionation_path-"]]
+    )
+    return
+
+
+def fract_defrep(values, window, fract_tables):
+    values, fract_tables = fract_modifytable(
+        "Set Replicate",
+        "Replicate Number:",
+        values,
+        fract_tables,
+        2,
+        0,
+        "integer",
+    )
+    window["-fractionation_table-"].Update(
+        values=fract_tables[values["-fractionation_path-"]]
+    )
+    return
+
+
+def fract_deffract(values, window, fract_tables):
+    values, fract_tables = fract_modifytable(
+        "Set Fractions",
+        "FIRST Fraction Number:",
+        values,
+        fract_tables,
+        3,
+        1,
+        "integer",
+    )
+    window["-fractionation_table-"].Update(
+        values=fract_tables[values["-fractionation_path-"]]
+    )
+    return
+
+
+def fract_defident(values, window, input_tables, ident_pos, identifiers):
+    pos = values["-fractionation_table-"]
+    if pos:
+        if len(pos) > 1:
+            messagebox.showerror("Error", "Please set only one Identifier!")
+        elif len(pos) == 1:
+            path = values["-fractionation_path-"]
+            table = input_tables[path]
+            if ident_pos[path]:
+                table[ident_pos[path][0]][1] = ""
+                table[ident_pos[path][0]][2] = ""
+                table[ident_pos[path][0]][3] = ""
+            identifiers[path] = table[pos[0]][0]
+            ident_pos[path] = pos
+            table[pos[0]][1] = "[IDENTIFIER]"
+            table[pos[0]][2] = "-"
+            table[pos[0]][3] = "-"
+            input_tables[path] = table
+            window["-fractionation_table-"].Update(
+                values=input_tables[values["-fractionation_path-"]]
+            )
+        else:
+            messagebox.showerror("Error", "No sample selected.")
+    return identifiers
+
+
+def fract_export(values, data, protein_info):
+    export_folder = sg.popup_get_folder("Export Folder")
+    if export_folder:
+        experiment = simpledialog.askstring("Export", "Experiment Name: ")
+        now = datetime.now()
+        time = now.strftime("%Y%m%d%H%M%S")
+        # export_full = {'class' : pd.DataFrame(),
+        #                'vis' : pd.DataFrame()}
+        for way in data:
+            data_way = pd.DataFrame()
+            for condition in data[way]:
+                path = (
+                    export_folder
+                    + "/"
+                    + time
+                    + "_"
+                    + experiment
+                    + "_"
+                    + way
+                    + "_"
+                    + condition
+                    + ".txt"
+                )
+                export_data = data[way][condition]
+                for info in protein_info:
+                    export_data = pd.merge(
+                        export_data,
+                        protein_info[info],
+                        left_index=True,
+                        right_index=True,
+                        how="left",
+                    )
+                export_data.to_csv(
+                    path,
+                    header=True,
+                    index=True,
+                    index_label="Identifier",
+                    sep="\t",
+                    mode="a",
+                )
+
+                data_way = pd.merge(
+                    data_way,
+                    data[way][condition],
+                    left_index=True,
+                    right_index=True,
+                    how="outer",
+                )
+
+                # for replicate in data[way][condition]:
+                #     path = export_folder + '/' + time + '_' + experiment + '_' + way + '_' + condition + '_' + replicate + '.txt'
+                #     data[way][condition][replicate].to_csv(path, header = True, index = True, index_label = 'Identifier', sep = '\t', mode = 'a')
+                #     export_full[way] = pd.merge(export_full[way], data[way][condition][replicate], left_index = True, right_index = True, how = 'outer')
+
+            # for info in protein_info:
+            #     export_full[way] = pd.merge(export_full[way], protein_info[info], left_index = True, right_index = True, how = 'left')
+
+            for info in protein_info:
+                data_way = pd.merge(
+                    data_way,
+                    protein_info[info],
+                    left_index=True,
+                    right_index=True,
+                    how="left",
+                )
+
+            path = (
+                export_folder
+                + "/"
+                + time
+                + "_"
+                + experiment
+                + "_"
+                + way
+                + "_"
+                + "COMBINED"
+                + ".txt"
+            )
+            data_way.to_csv(
+                path,
+                header=True,
+                index=True,
+                index_label="Identifier",
+                sep="\t",
+                mode="a",
+            )
+    return
+
+
+# ------------------------------------------------------------------------------
+
+
+def is_float(element):
+    try:
+        float(element)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def convert_to_float(x):
+    try:
+        return float(x)
+    except ValueError:
+        return x
+
+
+def tp_add(
+    values, window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
+):
+    filename = sg.popup_get_file(
+        "Chose dataset",
+        no_window=True,
+        file_types=(
+            ("Tab Separated Values", "*.tsv"),
+            ("Text (tab delimited)", "*.txt"),
+        ),
+    )
+    if filename:
+        tp_paths.append(filename)
+        window["-tp_path-"].Update(values=tp_paths, value=filename)
+        data = pd.read_csv(filename, sep="\t", header=0)
+        data = data.replace("NaN", np.nan)
+        data = data.replace("Filtered", np.nan)
+        data = data.applymap(convert_to_float)
+
+        rows_with_float = data.applymap(is_float).any(axis=1)
+        data = data[rows_with_float]
+
+        colnames = data.columns.values.tolist()
+        table = []
+        for name in colnames:
+            namelist = [name, ""]
+            table.append(namelist)
+        tp_tables[filename] = table
+        tp_indata[filename] = data
+        tp_pos[filename] = []
+        tp_identifiers[filename] = []
+        tp_refreshtable(window, table)
+    return
+
+
+def tp_rem(values, window, tp_paths, tp_tables):
+    sure = sg.popup_yes_no("Remove data from list?")
+    if sure == "Yes":
+        tp_paths.remove(values["-tp_path-"])
+        del tp_tables[values["-tp_path-"]]
+        # del tp_data[values['-tp_path-']]
+        if tp_paths:
+            curr = tp_paths[0]
+            tp_refreshtable(window, tp_tables[curr])
+        else:
+            curr = []
+            tp_refreshtable(window, curr)
+        window["-tp_path-"].Update(values=tp_paths, value=curr)
+    else:
+        pass
+    return
+
+
+def tp_defrem(values, window, tp_tables):
+    path = values["-tp_path-"]
+    selected = values["-tp_table-"]
+    table = tp_tables[path]
+    for index in sorted(selected, reverse=True):
+        del table[index]
+    tp_tables[path] = table
+    window["-tp_table-"].Update(values=tp_tables[path])
+    return
+
+
+def tp_defkeep(values, window, tp_tables):
+    path = values["-tp_path-"]
+    table = tp_tables[path]
+    for pos in values["-tp_table-"]:
+        table[pos][1] = "[KEEP]"
+    tp_tables[path] = table
+    window["-tp_table-"].Update(values=tp_tables[path])
+    return
+
+
+def tp_defcon(values, window, tp_tables):
+    if values["-tp_table-"]:
+        path = values["-tp_path-"]
+        table = tp_tables[path]
+        value = simpledialog.askstring("Set Condition", "Condition Name")
+        if value:
+            for i in values["-tp_table-"]:
+                table[i][1] = value
+            tp_tables[path] = table
+    else:
+        messagebox.showerror("Error", "Select (a) sample(s).")
+    window["-tp_table-"].Update(values=tp_tables[values["-tp_path-"]])
+    return
+
+
+def tp_defident(values, window, tp_tables, tp_pos, tp_identifiers):
+    pos = values["-tp_table-"]
+    if pos:
+        if len(pos) > 1:
+            messagebox.showerror("Error", "Please set only one Identifier!")
+        elif len(pos) == 1:
+            path = values["-tp_path-"]
+            table = tp_tables[path]
+            if tp_pos[path]:
+                table[tp_pos[path][0]][1] = ""
+            tp_identifiers[path] = table[pos[0]][0]
+            tp_pos[path] = pos
+            table[pos[0]][1] = "[IDENTIFIER]"
+            tp_tables[path] = table
+            window["-tp_table-"].Update(values=tp_tables[values["-tp_path-"]])
+        else:
+            messagebox.showerror("Error", "No sample selected.")
+    return tp_identifiers
+
+
+def tp_export(tp_data, tp_info):
+    export_folder = sg.popup_get_folder("Export Folder")
+    if export_folder:
+        experiment = simpledialog.askstring("Export", "Experiment Name: ")
+        now = datetime.now()
+        time = now.strftime("%Y%m%d%H%M%S")
+        export_full = pd.DataFrame()
+        for condition in tp_data:
+            path = (
+                export_folder
+                + "/"
+                + time
+                + "_"
+                + experiment
+                + "_"
+                + condition
+                + ".txt"
+            )
+            tp_data[condition].to_csv(
+                path,
+                header=True,
+                index=True,
+                index_label="Identifier",
+                sep="\t",
+                mode="a",
+            )
+            export_full = pd.merge(
+                export_full,
+                tp_data[condition],
+                left_index=True,
+                right_index=True,
+                how="outer",
+            )
+        for info in tp_info:
+            export_full = pd.merge(
+                export_full,
+                tp_info[info],
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+        path = (
+            export_folder
+            + "/"
+            + time
+            + "_"
+            + experiment
+            + "_"
+            + "combined"
+            + ".txt"
+        )
+        export_full.to_csv(
+            path,
+            header=True,
+            index=True,
+            index_label="Identifier",
+            sep="\t",
+            mode="a",
+        )
+    return
+
+
+# ------------------------------------------------------------------------------
+
+
+def check_markers(marker_sets):
+    is_markers = True
+
+    if marker_sets:
+        for file in marker_sets:
+            if (
+                marker_sets[file]["identifier_col"] == "-"
+                or marker_sets[file]["class_col"] == "-"
+            ):
+                is_markers = False
+    else:
+        is_markers = False
+
+    # print(marker_sets[file])
+    return is_markers
+
+
+def refresh_markertable(window, values, marker_sets):
+    file_list = []
+    for markerfile in marker_sets:
+        file_list.append(markerfile)
+    window["-marker_list-"].Update(values=file_list)
+    if file_list:
+        window["-marker_list-"].Update(set_to_index=0)
+        window["-marker_key-"].Update(
+            values=marker_sets[file_list[0]]["table"].columns.tolist(),
+            value=marker_sets[file_list[0]]["identifier_col"],
+        )
+        window["-marker_class-"].Update(
+            values=marker_sets[file_list[0]]["table"].columns.tolist(),
+            value=marker_sets[file_list[0]]["class_col"],
+        )
+    return
+
+
+def refresh_markercols(window, values, marker_sets):
+    try:
+        window["-marker_key-"].Update(
+            values=marker_sets[values["-marker_list-"][0]][
+                "table"
+            ].columns.tolist(),
+            value=marker_sets[values["-marker_list-"][0]]["identifier_col"],
+        )
+        window["-marker_class-"].Update(
+            values=marker_sets[values["-marker_list-"][0]][
+                "table"
+            ].columns.tolist(),
+            value=marker_sets[values["-marker_list-"][0]]["class_col"],
+        )
+    except Exception:
+        window["-marker_key-"].Update(values=[], value="-")
+        window["-marker_class-"].Update(values=[], value="-")
+    return
+
+
+def marker_add(window, values, marker_sets):
+    filename = sg.popup_get_file(
+        "Select a new Marker List!",
+        no_window=True,
+        file_types=(
+            ("Tab delimited Text", "*.txt"),
+            ("Tab Separated Values", "*.tsv"),
+        ),
+    )
+    if filename:
+        marker_sets[filename] = {}
+        # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
+        marker_sets[filename]["table"] = pd.read_csv(
+            filename, sep="\t", header=0
+        ).apply(lambda x: x.astype(str).str.upper())
+        marker_sets[filename]["identifier_col"] = "-"
+        marker_sets[filename]["class_col"] = "-"
+        marker_sets[filename]["classes"] = []
+        refresh_markertable(window, values, marker_sets)
+
+        # window['-marker_test-'].Update(disabled = False)
+        # window['-marker_profiles-'].Update(disabled = False)
+        # window['-marker_remove-'].Update(disabled = False)
+    return
+
+
+def marker_remove(window, values, marker_sets):
+    del marker_sets[values["-marker_list-"][0]]
+    refresh_markertable(window, values, marker_sets)
+    if not len(marker_sets) > 0:
+        window["-marker_test-"].Update(disabled=True)
+        window["-marker_profiles-"].Update(disabled=True)
+        window["-marker_remove-"].Update(disabled=True)
+    return marker_sets
+
+
+def marker_setkey(values, marker_sets):
+    marker_sets[values["-marker_list-"][0]]["identifier_col"] = values[
+        "-marker_key-"
+    ]
+    return
+
+
+def marker_setclass(values, marker_sets):
+    marker_sets[values["-marker_list-"][0]]["class_col"] = values[
+        "-marker_class-"
+    ]
+    marker_sets[values["-marker_list-"][0]]["classes"] = list(
+        set(
+            marker_sets[values["-marker_list-"][0]]["table"][
+                values["-marker_class-"]
+            ]
+        )
+    )
+    marker_conv = create_conversion(marker_sets)
+    return marker_conv
+
+
+def create_conversion(marker_sets):
+    marker_conv = {}
+    for path in marker_sets:
+        for classname in marker_sets[path]["classes"]:
+            marker_conv[classname] = classname
+    return marker_conv
+
+
+def create_markerlist(marker_sets, marker_conv, marker_params):
+    markerset = pd.DataFrame(columns=["name"])
+    counter = 1
+    for path in marker_sets:
+        mset = marker_sets[path]["table"][
+            [
+                marker_sets[path]["identifier_col"],
+                marker_sets[path]["class_col"],
+            ]
+        ]
+        mset.rename(
+            columns={
+                marker_sets[path]["identifier_col"]: "name",
+                marker_sets[path]["class_col"]: "class" + str(counter),
+            },
+            inplace=True,
+        )
+        for classname in marker_conv:
+            mset["class" + str(counter)].replace(
+                {classname: marker_conv[classname]}, inplace=True
+            )
+            mset["class" + str(counter)].replace(
+                r"^\s*$", np.nan, regex=True, inplace=True
+            )
+            mset = mset[mset["class" + str(counter)].notna()]
+        markerset = pd.merge(markerset, mset, on="name", how="outer")
+        counter += 1
+    markerset.set_index("name", inplace=True)
+    if marker_params["what"] == "unite":
+        pass
+    elif marker_params["what"] == "intersect":
+        markerset.dropna(inplace=True)
+    if marker_params["how"] == "majority":
+        markerset_final = pd.DataFrame(
+            markerset.mode(axis=1, dropna=True)[0]
+        ).rename(columns={0: "class"})
+    elif marker_params["how"] == "exclude":
+        markerset_final = markerset.mode(axis=1, dropna=True).fillna(np.nan)
+        if 1 in markerset_final.columns:
+            markerset_final = pd.DataFrame(
+                markerset_final[markerset_final[1].isnull()][0]
+            ).rename(columns={0: "class"})
+        else:
+            markerset_final.rename(columns={0: "class"}, inplace=True)
+    return markerset_final
+
+
+def session_save(
+    fract_paths,
+    fract_tables,
+    fract_pos,
+    fract_indata,
+    fract_data,
+    fract_std,
+    fract_intermediate,
+    fract_identifiers,
+    fract_info,
+    fract_preparams,
+    tp_paths,
+    tp_tables,
+    tp_pos,
+    tp_indata,
+    tp_data,
+    tp_intermediate,
+    tp_identifiers,
+    tp_info,
+    tp_preparams,
+    marker_sets,
+    marker_params,
+    marker_conv,
+    fract_conditions,
+    fract_full,
+    fract_full_up,
+    fract_marker,
+    fract_marker_vis,
+    fract_marker_up,
+    fract_mixed_up,
+    fract_test,
+    svm_marker,
+    svm_test,
+    svm_metrics,
+    marker_list,
+    learning_xyz,
+    NN_params,
+    results,
+    comparison,
+    marker_fractkey,
+    status,
+):
+    filename = sg.popup_get_file(
+        "Save Session",
+        no_window=True,
+        file_types=(("Numpy", "*.npy"),),
+        save_as=True,
+    )
+    if filename:
+        file = {
+            "fract_paths": fract_paths,
+            "fract_tables": fract_tables,
+            "fract_pos": fract_pos,
+            "fract_indata": fract_indata,
+            "fract_data": fract_data,
+            "fract_std": fract_std,
+            "fract_intermediate": fract_intermediate,
+            "fract_identifiers": fract_identifiers,
+            "fract_info": fract_info,
+            "fract_preparams": fract_preparams,
+            "fract_full": fract_full,
+            "fract_full_up": fract_full_up,
+            "fract_marker": fract_marker,
+            "fract_marker_up": fract_marker_up,
+            "fract_marker_vis": fract_marker_vis,
+            "fract_mixed_up": fract_mixed_up,
+            "fract_test": fract_test,
+            "tp_paths": tp_paths,
+            "tp_tables": tp_tables,
+            "tp_pos": tp_pos,
+            "tp_indata": tp_indata,
+            "tp_data": tp_data,
+            "tp_intermediate": tp_intermediate,
+            "tp_identifiers": tp_identifiers,
+            "tp_info": tp_info,
+            "tp_preparams": tp_preparams,
+            "svm_marker": svm_marker,
+            "svm_test": svm_test,
+            "svm_metrics": svm_metrics,
+            "marker_sets": marker_sets,
+            "marker_params": marker_params,
+            "marker_conv": marker_conv,
+            "marker_list": marker_list,
+            "marker_fractkey": marker_fractkey,
+            "fract_conditions": fract_conditions,
+            #'learning_wxyz' : learning_wxyz,
+            "learning_xyz": learning_xyz,
+            "results": results,
+            "comparison": comparison,
+            "NN_params": NN_params,
+            "status": status,
+        }
+        np.save(filename, file)
+    return
+
+
+def session_open(window, values, filename, model: SessionModel):
+    # filename = sg.popup_get_file('Open Session', no_window=True, file_types=(('Numpy', '*.npy'),))
+    # if filename:
+    file = np.load(filename, allow_pickle="TRUE").item()
+    model.fract_paths = file["fract_paths"]
+    model.fract_tables = file["fract_tables"]
+    model.fract_pos = file["fract_pos"]
+    model.fract_indata = file["fract_indata"]
+    model.fract_data = file["fract_data"]
+    model.fract_std = file["fract_std"]
+    model.fract_intermediate = file["fract_intermediate"]
+    model.fract_identifiers = file["fract_identifiers"]
+    model.fract_info = file["fract_info"]
+    model.fract_preparams = file["fract_preparams"]
+
+    model.svm_marker = file["svm_marker"]
+    model.svm_test = file["svm_test"]
+    model.svm_metrics = file["svm_metrics"]
+
+    model.fract_full = file["fract_full"]
+    model.fract_full_up = file["fract_full_up"]
+    model.fract_marker = file["fract_marker"]
+    model.fract_marker_up = file["fract_marker_up"]
+    model.fract_marker_vis = file["fract_marker_vis"]
+    model.fract_mixed_up = file["fract_mixed_up"]
+    model.fract_test = file["fract_test"]
+
+    model.tp_paths = file["tp_paths"]
+    model.tp_tables = file["tp_tables"]
+    model.tp_pos = file["tp_pos"]
+    model.tp_indata = file["tp_indata"]
+    model.tp_data = file["tp_data"]
+    model.tp_intermediate = file["tp_intermediate"]
+    model.tp_identifiers = file["tp_identifiers"]
+    model.tp_info = file["tp_info"]
+    model.tp_preparams = file["tp_preparams"]
+
+    model.marker_sets = file["marker_sets"]
+    model.marker_params = file["marker_params"]
+    model.marker_conv = file["marker_conv"]
+    model.marker_list = file["marker_list"]
+    model.marker_fractkey = file["marker_fractkey"]
+
+    model.fract_conditions = file["fract_conditions"]
+
+    model.learning_xyz = file["learning_xyz"]
+    model.results = file["results"]
+    model.comparison = file["comparison"]
+    model.NN_params = file["NN_params"]
+
+    # learning_wxyz = file['learning_wxyz']
+
+    model.status = file["status"]
+
+    if model.fract_paths:
+        fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
+        window["-fractionation_path-"].Update(
+            values=model.fract_paths, value=model.fract_paths[0]
+        )
+    else:
+        fract_refreshtable(window, [])
+        window["-fractionation_path-"].Update(
+            values=model.fract_paths, value=""
+        )
+    if model.fract_data["class"]:
+        fract_buttons(window, True)
+    else:
+        fract_buttons(window, False)
+    if model.tp_paths:
+        tp_refreshtable(window, model.tp_tables[model.tp_paths[0]])
+        window["-tp_path-"].Update(
+            values=model.tp_paths, value=model.tp_paths[0]
+        )
+    else:
+        tp_refreshtable(window, [])
+        window["-tp_path-"].Update(values=model.tp_paths, value="")
+    if model.tp_data:
+        tp_buttons(window, True)
+    else:
+        tp_buttons(window, False)
+
+    if model.marker_sets:
+        refresh_markertable(window, values, model.marker_sets)
+
+        event, values = window.read(timeout=50)
+        # marker_setkey(values, marker_sets)
+        # marker_setclass(values, marker_sets)
+        refresh_markercols(window, values, model.marker_sets)
+
+    # if marker_list.empty:
+    #     CCMPS_actions.enable_markersettings(window, True)
+    #     window['-marker_test-'].Update(disabled = False)
+    #     window['-marker_profiles-'].Update(disabled = False)
+    #     window['-marker_remove-'].Update(disabled = False)
+    # else:
+    #     CCMPS_actions.enable_markersettings(window, False)
+    #     window['-marker_test-'].Update(disabled = True)
+    #     window['-marker_profiles-'].Update(disabled = True)
+    #     window['-marker_remove-'].Update(disabled = True)
+
+    # if fract_data['class'] and not marker_list.empty:
+    #     # print('positive')
+    #     window['-classification_MOP-'].Update(disabled = False)
+    #     #window['-classification_SVM-'].Update(disabled = False)
+    # else:
+    #     # print('negative')
+    #     window['-classification_MOP-'].Update(disabled = True)
+    # window['-classification_SVM-'].Update(disabled = True)
+
+    # window['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
+
+    # if fract_data['class']:
+    #     window['-classification_MOP-'].Update(disabled = False)
+    # else:
+    #     window['-classification_MOP-'].Update(disabled = True)
+
+    # if learning_xyz:
+    #     window['-classification_statistics-'].Update(disabled = False)
+    # else:
+    #     window['-classification_statistics-'].Update(disabled = True)
+
+    # if results:
+    #     #window['-classification_comparison-'].Update(disabled = False)
+    #     window['-status_statistics-'].Update('done!')
+    #     window['-export_statistics-'].Update(disabled = False)
+    # else:
+    #     #window['-classification_comparison-'].Update(disabled = True)
+    #     window['-status_statistics-'].Update('missing')
+    #     window['-export_statistics-'].Update(disabled = True)
+
+    # if comparison:
+    #     window['-status_comparison-'].Update('done!')
+    #     window['-export_comparison-'].Update(disabled = False)
+    # else:
+    #     window['-status_comparison-'].Update('missing')
+    #     window['-export_comparison-'].Update(disabled = True)
+
+
+# ------------------------------------------------------------------------------
+
+
+# def convert_markers(markers, conversion, mode):
+#     markerset = pd.DataFrame(columns = ['name'])
+#     counter = 1
+#     for path in markers:
+#         mset = markers[path]['table'][[ markers[path]['identifier_col'] , markers[path]['class_col']         ]]
+#         mset.rename(columns = {markers[path]['identifier_col'] : 'name'  , markers[path]['class_col'] : 'class'+str(counter)}, inplace = True)
+#         for classname in conversion:
+#             mset['class'+str(counter)].replace({classname : conversion[classname]}, inplace = True)
+#             mset['class'+str(counter)].replace(r'^\s*$', np.nan, regex=True, inplace = True)
+#             mset = mset[mset['class'+str(counter)].notna()]
+#         markerset = pd.merge(markerset, mset, on = 'name', how = 'outer')
+#         counter +=1
+#     markerset.set_index('name', inplace = True)
+#     if mode[0] == 'unite':
+#         pass
+#     elif mode[0] == 'intersect':
+#         markerset.dropna(inplace = True)
+#     if mode [1] == 'majority':
+#         markerset_final = pd.DataFrame(markerset.mode(axis = 1, dropna = True)[0]).rename(columns = {0 : 'class'})
+#     if mode [1] == 'exclude':
+#         markerset_final = markerset.mode(axis = 1, dropna = True).fillna(np.nan)
+#         if 1 in markerset_final.columns:
+#             markerset_final = pd.DataFrame(markerset_final[markerset_final[1].isnull()][0]).rename(columns = {0 : 'class'})
+#         else:
+#             markerset_final.rename(columns = {0 : 'class'}, inplace = True)
+#     return markerset_final
+
+
+def create_markerprofiles(fract_data, key, fract_info, marker_list):
+    profiles = {}
+    profiles_vis = {}
+    for condition in fract_data["class"]:
+        profiles[condition] = copy.deepcopy(fract_data["class"][condition])
+    for condition in fract_data["vis"]:
+        profiles_vis[condition] = copy.deepcopy(fract_data["vis"][condition])
+
+    fract_marker = {}
+    fract_marker_vis = {}
+    fract_test = {}
+
+    if key == "[IDENTIFIER]":
+        for condition in profiles:
+            fract_marker[condition] = pd.merge(
+                profiles[condition],
+                marker_list,
+                left_index=True,
+                right_index=True,
+                how="left",
+            ).dropna(subset=["class"])
+            fract_test[condition] = pd.merge(
+                profiles[condition],
+                marker_list,
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+            fract_test[condition] = fract_test[condition][
+                fract_test[condition]["class"].isna()
+            ]
+        for condition in profiles_vis:
+            fract_marker_vis[condition] = pd.merge(
+                profiles_vis[condition],
+                marker_list,
+                left_index=True,
+                right_index=True,
+            )
+
+            # profiles_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_index = True, right_index = True)
+            # fract_marker_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_index = True, right_index = True, how = 'left').dropna(subset = ['class'])
+
+    else:
+        for condition in profiles:
+            profiles[condition] = pd.merge(
+                profiles[condition],
+                fract_info[key].astype(str).applymap(str.upper),
+                left_index=True,
+                right_index=True,
+            )
+            # profiles[condition] = pd.merge(profiles[condition], fract_info[key].applymap(str.upper), left_index = True, right_index = True)
+
+            # fract_info_upper = fract_info[key].applymap(str.upper)
+            fract_marker[condition] = (
+                pd.merge(
+                    profiles[condition],
+                    marker_list,
+                    left_on=key,
+                    right_index=True,
+                    how="left",
+                )
+                .drop(key, axis=1)
+                .dropna(subset=["class"])
+            )
+            fract_test[condition] = pd.merge(
+                profiles[condition],
+                marker_list,
+                left_on=key,
+                right_index=True,
+                how="left",
+            ).drop(key, axis=1)
+            fract_test[condition] = fract_test[condition][
+                fract_test[condition]["class"].isna()
+            ]
+        for condition in profiles_vis:
+            profiles_vis[condition] = pd.merge(
+                profiles_vis[condition],
+                fract_info[key],
+                left_index=True,
+                right_index=True,
+            )
+            fract_marker_vis[condition] = (
+                pd.merge(
+                    profiles_vis[condition],
+                    marker_list,
+                    left_on=key,
+                    right_index=True,
+                    how="left",
+                )
+                .drop(key, axis=1)
+                .dropna(subset=["class"])
+            )
+
+        # for condition in profiles:
+        #     print('check1')
+        #     profiles[condition] = pd.merge(profiles[condition], fract_info[key], left_index = True, right_index = True)
+        #     print('check2')
+        #     profiles_vis[condition] = pd.merge(profiles_vis[condition], fract_info[key], left_index = True, right_index = True)
+        #     print('check3')
+        #     #print(profiles_vis[condition])
+        #     fract_marker[condition] = pd.merge(profiles[condition], marker_list, left_on = key, right_index = True, how = 'left').drop(key, axis = 1).dropna(subset = ['class'])
+        #     print('check4')
+        #     fract_marker_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_on = key, right_index = True, how = 'left').drop(key, axis = 1).dropna(subset = ['class'])
+        #     print('check5')
+        #     fract_test[condition] = pd.merge(profiles[condition], marker_list, left_on = key, right_index = True, how = 'left'). drop(key, axis = 1)
+        #     print('check6')
+        #     fract_test[condition] = fract_test[condition][fract_test[condition]['class'].isna()]
+
+    classnames = {}
+    for condition in profiles:
+        classnames[condition] = []
+        for classname in list(set(fract_marker[condition]["class"].tolist())):
+            classnames[condition].append(classname)
+
+    return fract_marker, fract_marker_vis, fract_test, classnames
+
+
+# def create_markerprofiles (fract_data, key, fract_info, marker_list):
+#     profiles = {}
+
+#     if key == '[IDENTIFIER]':
+#         for condition in fract_data['class']:
+#             profiles[condition] = fract_data['class'][condition]
+#     else:
+#         for condition in fract_data['class']:
+#             profiles[condition] = pd.merge(fract_data['class'][condition], fract_info[key], left_index = True, right_index = True, how = 'left').set_index(key)
+
+#     fract_marker = {}
+#     fract_test = {}
+#     for condition in profiles:
+#         fract_marker[condition] = pd.merge(profiles[condition], marker_list, left_index = True, right_index = True, how = 'left').dropna(subset = ['class'])
+#         fract_test[condition] = pd.merge(profiles[condition], marker_list, left_index = True, right_index = True, how = 'left')
+#         fract_test[condition] = fract_test[condition][fract_test[condition]['class'].isna()]
+
+
+#     # for condition in fract_data['class']:
+#     #     fract_profiles[condition] = fract_data['class'][condition].set_index(key)
+
+
+#     return fract_marker, fract_test
+
+
+def upscale(fract_marker, fract_std, key, fract_info, mode):
+    stds = {}
+    if not key == "[IDENTIFIER]":
+        for condition in fract_std["class"]:
+            stds[condition] = pd.merge(
+                fract_std["class"][condition],
+                fract_info[key],
+                left_index=True,
+                right_index=True,
+                how="left",
+            ).set_index(key)
+
+    fract_marker_up = {}
+    for condition in fract_marker:
+        print("condition", condition)
+
+        class_sizes = {}
+        for classname in list(set(fract_marker[condition]["class"])):
+            class_sizes[classname] = list(
+                fract_marker[condition]["class"]
+            ).count(classname)
+        class_maxsize = max(class_sizes.values())
+
+        fract_marker_up[condition] = fract_marker[condition]
+        k = 1
+        for classname in list(set(fract_marker[condition]["class"])):
+            print("class", classname)
+
+            data_class_temp = fract_marker[condition].loc[
+                fract_marker[condition]["class"] == classname
+            ]
+            data_class = data_class_temp.drop(columns=["class"])
+
+            class_difference = abs(class_maxsize - class_sizes[classname])
+            # print('maxsize:', class_maxsize)
+            # print('class size:', class_sizes[classname])
+            # print('difference:', class_difference)
+
+            if class_sizes[classname] > class_maxsize:
+                ID_rnd = random.sample(
+                    list(data_class.index), class_difference - 1
+                )
+                fract_marker_up[condition].drop(ID_rnd, inplace=True)
+
+            if class_sizes[classname] < class_maxsize:
+                class_up = pd.DataFrame(columns=data_class.columns)
+
+                class_std = data_class.std(axis=0).to_frame().transpose()
+                class_std_flat = class_std.values.flatten()
+                # print(class_std)
+
+                if mode == "noised":
+                    for i in range(class_difference):
+                        ID_rnd = random.choice(list(data_class.index))
+                        name_up = "up_" + str(k) + "_" + ID_rnd
+                        k += 1
+
+                        std_rnd = stds[condition].loc[[ID_rnd]]
+                        std_rnd = std_rnd[
+                            ~std_rnd.index.duplicated(keep="first")
+                        ]
+
+                        profile_rnd = data_class.loc[[ID_rnd]]
+                        profile_rnd = profile_rnd[
+                            ~profile_rnd.index.duplicated(keep="first")
+                        ]
+
+                        list_noised = []
+
+                        for j in range(len(profile_rnd.columns)):
+                            col_val = profile_rnd.columns[j]
+                            suffix = profile_rnd.columns[j][
+                                profile_rnd.columns[j].rfind("_") + 1 :
+                            ]
+                            col_std = std_rnd.columns[
+                                std_rnd.columns.str.endswith(suffix)
+                            ]
+                            sigma = 2 * std_rnd[col_std].iloc[0]
+                            nv = np.random.normal(
+                                profile_rnd[col_val][0], sigma
+                            )
+                            nv = 0.0 if nv < 0 else 1.0 if nv > 1 else nv[0]
+                            list_noised.append(nv)
+
+                        profile_noised = pd.DataFrame(
+                            [list_noised], columns=list(profile_rnd.columns)
+                        )
+                        profile_noised.index = [name_up]
+                        profile_noised["class"] = [classname]
+                        class_up = class_up.append(profile_noised)
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
+
+                if mode == "average":
+                    for i in range(class_difference):
+                        ID_rnd_1 = random.choice(list(data_class.index))
+                        ID_rnd_2 = random.choice(list(data_class.index))
+                        ID_rnd_3 = random.choice(list(data_class.index))
+                        name_up = (
+                            "up_"
+                            + str(k)
+                            + "_"
+                            + ID_rnd_1
+                            + "_"
+                            + ID_rnd_2
+                            + "_"
+                            + ID_rnd_3
+                        )
+                        k += 1
+
+                        profile_rnd_1 = data_class.loc[[ID_rnd_1]]
+                        profile_rnd_1 = profile_rnd_1[
+                            ~profile_rnd_1.index.duplicated(keep="first")
+                        ]
+                        profile_rnd_2 = data_class.loc[[ID_rnd_2]]
+                        profile_rnd_2 = profile_rnd_2[
+                            ~profile_rnd_2.index.duplicated(keep="first")
+                        ]
+                        profile_rnd_3 = data_class.loc[[ID_rnd_3]]
+                        profile_rnd_3 = profile_rnd_3[
+                            ~profile_rnd_3.index.duplicated(keep="first")
+                        ]
+
+                        profile_av = (
+                            pd.concat(
+                                [profile_rnd_1, profile_rnd_2, profile_rnd_3]
+                            )
+                            .median(axis=0)
+                            .to_frame()
+                            .transpose()
+                        )
+
+                        profile_av.index = [name_up]
+                        profile_av["class"] = [classname]
+                        class_up = class_up.append(profile_av)
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
+
+                if mode == "noisedaverage":
+                    for i in range(class_difference):
+                        # print(i)
+                        ID_rnd_1 = random.choice(list(data_class.index))
+                        ID_rnd_2 = random.choice(list(data_class.index))
+                        ID_rnd_3 = random.choice(list(data_class.index))
+                        name_up = (
+                            "up_"
+                            + str(k)
+                            + "_"
+                            + ID_rnd_1
+                            + "_"
+                            + ID_rnd_2
+                            + "_"
+                            + ID_rnd_3
+                        )
+                        k += 1
+
+                        # class_std = data_class.std(axis = 1).to_frame().transpose()
+
+                        profile_rnd_1 = data_class.loc[[ID_rnd_1]]
+                        profile_rnd_1 = profile_rnd_1[
+                            ~profile_rnd_1.index.duplicated(keep="first")
+                        ]
+                        profile_rnd_2 = data_class.loc[[ID_rnd_2]]
+                        profile_rnd_2 = profile_rnd_2[
+                            ~profile_rnd_2.index.duplicated(keep="first")
+                        ]
+                        profile_rnd_3 = data_class.loc[[ID_rnd_3]]
+                        profile_rnd_3 = profile_rnd_3[
+                            ~profile_rnd_3.index.duplicated(keep="first")
+                        ]
+
+                        profile_av = (
+                            pd.concat(
+                                [profile_rnd_1, profile_rnd_2, profile_rnd_3]
+                            )
+                            .median(axis=0)
+                            .to_frame()
+                            .transpose()
+                        )
+                        # print(len(profile_av))
+                        profile_av_flat = profile_av.values.flatten()
+
+                        list_noised = []
+
+                        # print(class_std)
+                        #
+                        # for j in range(len(class_std.columns)):
+                        #     # sigma = 2*class_std[class_std.columns[j]]
+                        #     nv = np.random.normal(profile_av_flat, 2* class_std_flat, size = profile_av.shape)
+                        #     nv = 0. if nv < 0 else 1. if nv > 1 else nv[0]
+                        #     # print(sigma)
+                        nv = np.random.normal(
+                            profile_av_flat,
+                            2 * class_std_flat,
+                            size=profile_av.shape,
+                        )
+                        nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
+
+                        # print(nv)
+
+                        # values = np.where(values > 1, 1, np.where(values < 0, 0, values))
+
+                        profile_noised = pd.DataFrame(
+                            nv, columns=profile_av.columns
+                        )
+                        profile_noised.index = [name_up]
+                        profile_noised["class"] = [classname]
+                        class_up = class_up.append(profile_noised)
+
+                        # profile_av.index = [name_up]
+                        # profile_av['class'] = [classname]
+                        # class_up = class_up.append(profile_av)
+                    fract_marker_up[condition] = fract_marker_up[
+                        condition
+                    ].append(class_up)
+
+        # noised_df = pd.DataFrame([noised_values], columns=df_mean.columns)
+
+    return fract_marker_up, class_maxsize
+
+
+def marker_mix(fract_marker_up):
+    fract_mixed_up = {}
+
+    for condition in fract_marker_up:
+        class_list = list(set(list(fract_marker_up[condition]["class"])))
+        combinations = [
+            (a, b)
+            for idx, a in enumerate(class_list)
+            for b in class_list[idx + 1 :]
+        ]
+
+        fract_mixed_up[condition] = pd.DataFrame(
+            columns=fract_marker_up[condition].drop(columns=["class"]).columns
+        )
+        for classname in class_list:
+            fract_mixed_up[condition][classname] = 0.0
+
+        cur = 1
+        for comb in combinations:
+            profiles_own = (
+                fract_marker_up[condition]
+                .copy()
+                .loc[fract_marker_up[condition]["class"] == comb[0]]
+                .drop(columns=["class"])
+            )
+            profiles_other = (
+                fract_marker_up[condition]
+                .copy()
+                .loc[fract_marker_up[condition]["class"] == comb[1]]
+                .drop(columns=["class"])
+            )
+
+            new_index = [
+                f"{i}_{j}"
+                for i, j in zip(profiles_own.index, profiles_other.index)
+            ]
+            mix_steps = [i / 10 for i in range(0, 11)]
+
+            for part in mix_steps:
+                new_index_part = [
+                    f"{i + cur}_{value}" for i, value in enumerate(new_index)
+                ]
+                own_part = profiles_own.multiply(part)
+                other_part = profiles_other.multiply((1 - part))
+
+                own_part.index = new_index_part
+                other_part.index = new_index_part
+
+                # profiles_mixed = profiles_own.add(profiles_other, fill_value = 0)
+                profiles_mixed = own_part + other_part
+
+                for classname in class_list:
+                    if classname == comb[0]:
+                        profiles_mixed[classname] = part
+                    elif classname == comb[1]:
+                        profiles_mixed[classname] = 1 - part
+                    else:
+                        profiles_mixed[classname] = 0.0
+
+                fract_mixed_up[condition] = pd.concat(
+                    [fract_mixed_up[condition], profiles_mixed]
+                )
+
+                cur += len(profiles_mixed)
+
+        # fract_marker_dummies = pd.get_dummies(fract_marker_up['Class'])
+        # fract_mixed_up = pd.concat([])
+
+        # df = pd.concat([df, class_dummies], axis=1).drop(columns=['Class'])
+
+        # fract_mixed_up[condition] = pd.concat([fract_mixed_up[condition], fract_marker_up[condition]])
+    return fract_mixed_up
+
+
+# res = [(a, b) for idx, a in enumerate(test_list) for b in test_list[idx + 1:]]
+
+
+# df_add = df1.add(df2, fill_value=0)
+
+# df.loc[df['column_name'] == some_value]
+
+# def marker_mix (fract_marker, class_maxsize):
+#     mix_steps = [i/5 for i in range(1, 5)]
+#     mix_steps_reverse = [1-i for i in mix_steps]
+
+#     fract_marker_mixed = {}
+
+#     for condition in fract_marker:
+#         # print('mixing classes for', condition)
+
+#         fract_marker_mixed[condition] = pd.DataFrame(columns = fract_marker[condition].columns)
+#         classlist = list(set(fract_marker[condition]['class']))
+#         for newclass in classlist:
+#             fract_marker_mixed[condition][newclass] = 0
+
+#         k = 1
+#         for class_own in list(set(fract_marker[condition]['class'])):
+#             classlist.remove(class_own)
+#             data_class_temp_own = fract_marker[condition].loc[fract_marker[condition]['class'] == class_own]
+#             data_class_own = data_class_temp_own.drop(columns = ['class'])
+
+#             for class_other in classlist:
+#                 data_class_temp_other = fract_marker[condition].loc[fract_marker[condition]['class'] == class_other]
+#                 data_class_other = data_class_temp_other.drop(columns = ['class'])
+
+#                 print('mixing classes for', condition, class_own, class_other)
+
+#                 for i in range(int(0.1*class_maxsize)):
+#                     ID_rnd_own = random.choice(list(data_class_own.index))
+#                     ID_rnd_other = random.choice(list(data_class_other.index))
+#                     # print('own ID:', ID_rnd_own)
+#                     # print('other ID:', ID_rnd_other)
+
+#                     profile_rnd_own = data_class_own.loc[[ID_rnd_own]]
+#                     profile_rnd_own = profile_rnd_own[~profile_rnd_own.index.duplicated(keep = 'first')]
+#                     profile_rnd_other = data_class_other.loc[[ID_rnd_other]]
+#                     profile_rnd_other = profile_rnd_other[~profile_rnd_other.index.duplicated(keep = 'first')]
+
+#                     for r in range(len(mix_steps)):
+#                         ID_mixed = 'mixed_' + str(k) + '_' + str(mix_steps[r]) + '*' + ID_rnd_own + '_' + str(mix_steps_reverse[r]) + '*' + ID_rnd_other
+
+#                         profile_rnd_own *= mix_steps[r]
+#                         profile_rnd_other *= mix_steps_reverse[r]
+
+#                         profile_rnd_own.index = [ID_mixed]
+#                         profile_rnd_other.index = [ID_mixed]
+
+#                         profile_rnd_combined = profile_rnd_own.add(profile_rnd_other, fill_value = 0)
+#                         # profile_rnd_combined = profile_rnd_combined.div(profile_rnd_combined.sum(axis = 1), axis = 0)
+
+#                         for newclass in list(set(fract_marker[condition]['class'])):
+#                             profile_rnd_combined[newclass] = 0.
+
+#                         # print(profile_rnd_combined)
+#                         profile_rnd_combined[class_own] = [mix_steps[r]]
+#                         profile_rnd_combined[class_other] = [mix_steps_reverse[r]]
+#                         profile_rnd_combined.index = [ID_mixed]
+
+#                         fract_marker_mixed[condition] = pd.merge(fract_marker_mixed[condition], profile_rnd_combined, left_index = True, right_index = True, how = 'outer')
+
+#                         k +=1
+
+
+#     return fract_marker_mixed
+
+
+# concatenated_df = pd.concat([df1, df2, df3])
+
+# # Calculate the median for each column
+# median_values = concatenated_df.median()
+
+# # Create a new dataframe with the median values
+# median_df = pd.DataFrame(median_values).transpose()
+
+
+def create_fullprofiles(fract_marker, fract_test, fract_marker_up):
+    fract_full = {}
+    fract_full_up = {}
+    for condition in fract_test:
+        fract_full[condition] = pd.concat(
+            [fract_test[condition], fract_marker[condition]]
+        )
+        fract_full_up[condition] = pd.concat(
+            [fract_test[condition], fract_marker_up[condition]]
+        )
+
+    # fract_full = pd.concat([fract_test, fract_marker])
+    # fract_full_up = pd.concat([fract_test, fract_marker_up])
+
+    return fract_full, fract_full_up
+
+
+# suffix = sample[sample.rfind('_')+1:]
+
+# df.columns[df.columns.str.endswith("_Emp")]
+
+
+def enable_markersettings(window, is_enabled):
+    for element in [
+        "-marker_add-",
+        "-marker_remove-",
+        "-marker_key-",
+        "-marker_class-",
+        "-marker_fractkey-",
+        "-marker_parameters-",
+        "-marker_manage-",
+        "-marker_accept-",
+        "-marker_profiles-",
+        "-marker_test-",
+    ]:
+        window[element].Update(disabled=not is_enabled)
+
+    for element in ["-marker_reset-"]:
+        window[element].Update(disabled=is_enabled)
+
+    # window['-marker_reset-'].Update(disabled = is_enabled)
+    if is_enabled:
+        window["-status_marker-"].Update(value="missing", text_color="white")
+    else:
+        window["-status_marker-"].Update(
+            value="ready!", text_color="dark green"
+        )
+    return
+
+
+# data_up = data_learning
+# n = 1
+# for organelle in list(set(data_learning['class'])):
+#     data_class_temp = data_learning.loc[data_learning['class'] == organelle]
+#     data_class = data_class_temp.drop(columns=['class'])
+
+
+#     #data_class = data_learning.loc[data_learning['class'] == organelle].drop(columns=['class'])
+
+
+#     class_difference = abs(batch_target - class_sizes[organelle])
+#     print(class_difference)
+
+#     if class_sizes[organelle] > batch_target:
+#         ID_rnd = random.sample(list(data_class.index), class_difference-1)
+#         data_up.drop(ID_rnd, inplace = True)
+
+#     if class_sizes[organelle] < batch_target:
+#         class_up = pd.DataFrame(columns = data_class.columns)
+#         for i in range(class_difference):
+#             ID_rnd = random.choice(list(data_class.index))
+#             name_up = 'up_' + str(n) + '_' + ID_rnd
+#             n = n +1
+
+#             std_rnd = data_std.loc[[ID_rnd]]
+
+#             profile_rnd = data_class.loc[[ID_rnd]]
+#             profile_rnd = profile_rnd[~profile_rnd.index.duplicated(keep='first')]
+
+#             list_noised = []
+
+#             for j in range(len(profile_rnd.columns)):
+#                 col_val = profile_rnd.columns[j]
+#                 col_std = std_rnd.columns[j]
+#                 sigma = 0.5* std_rnd[col_std][0]
+#                 nv = np.random.normal(profile_rnd[col_val][0], sigma)
+#                 nv = 0. if nv < 0 else 1. if nv > 1 else nv
+#                 list_noised.append(nv)
+
+#             profile_noised = pd.DataFrame([list_noised], columns= list(profile_rnd.columns))
+#             profile_noised.index = [name_up]
+#             profile_noised['class'] = [organelle]
+#             class_up = class_up.append(profile_noised)
+
+#         data_up = data_up.append(class_up)
+
+# class_sizes = {}
+# for organelle in list(set(data_learning['class'])):
+#     class_sizes[organelle] = list(data_learning['class']).count(organelle)
+# class_maxsize = max(class_sizes.values())
+
+
+def refresh_window(window: sg.Window, status: dict[str, bool]):
+    for element in ["-fractionation_reset-", "-fractionation_summary-"]:
+        window[element].Update(disabled=not status["fractionation_data"])
+    for element in [
+        "-fractionation_add-",
+        "-fractionation_remove-",
+        "-fractionation_edit_remove-",
+        "-fractionation_edit_keep-",
+        "-fractionation_edit_condition-",
+        "-fractionation_edit_replicate-",
+        "-fractionation_edit_fractions-",
+        "-fractionation_edit_identifier-",
+        "-fractionation_parameters-",
+        "-fractionation_start-",
+    ]:
+        window[element].Update(disabled=status["fractionation_data"])
+
+    for element in ["-tp_reset-", "-tp_summary-", "-tp_export-"]:
+        window[element].Update(disabled=not status["tp_data"])
+    for element in [
+        "-tp_add-",
+        "-tp_remove-",
+        "-tp_edit_remove-",
+        "-tp_edit_keep-",
+        "-tp_edit_condition-",
+        "-tp_edit_identifier-",
+        "-tp_parameters-",
+        "-tp_start-",
+    ]:
+        window[element].Update(disabled=status["tp_data"])
+
+    for element in ["-marker_remove-", "-marker_manage-", "-marker_accept-"]:
+        if status["marker_matched"]:
+            window[element].Update(disabled=True)
+        else:
+            window[element].Update(disabled=not status["marker_file"])
+    for element in ["-marker_test-", "-marker_profiles-"]:
+        window[element].Update(disabled=not status["marker_file"])
+    for element in ["-marker_reset-"]:
+        window[element].Update(disabled=not status["marker_matched"])
+    for element in ["-marker_add-", "-marker_parameters-", "-marker_preset-"]:
+        window[element].Update(disabled=status["marker_matched"])
+
+    for element in ["-statistic_import-"]:
+        window[element].Update(disabled=status["comparison_global"])
+
+    if status["fractionation_data"]:
+        window["-status_fract-"].Update("ready", text_color="dark green")
+    else:
+        window["-status_fract-"].Update("none", text_color="black")
+    if status["tp_data"]:
+        window["-status_tp-"].Update("ready", text_color="dark green")
+    else:
+        window["-status_tp-"].Update("none", text_color="black")
+    if status["lipidome_data"]:
+        window["-status_fract_lipid-"].Update("ready", text_color="dark green")
+    else:
+        window["-status_fract_lipid-"].Update("none", text_color="black")
+    if status["marker_matched"]:
+        window["-status_marker-"].Update("ready", text_color="dark green")
+    else:
+        window["-status_marker-"].Update("none", text_color="black")
+    if status["lipidome_total"]:
+        window["-status_total_lipid-"].Update("ready", text_color="dark green")
+    else:
+        window["-status_total_lipid-"].Update("none", text_color="black")
+
+    for element in ["-classification_MOP-"]:
+        if status["fractionation_data"] and status["marker_matched"]:
+            window[element].Update(disabled=status["training"])
+        else:
+            window[element].Update(disabled=True)
+
+    for element in ["-classification_validation-", "-classification_reset-"]:
+        window[element].Update(disabled=not status["training"])
+
+    if status["training"]:
+        for element in ["-statistic_predict-"]:
+            window[element].Update(disabled=status["proteome_prediction"])
+        for element in [
+            "-statistic_export-",
+            "-statistic_report-",
+            "-statistic_reset-",
+            "-statistic_heatmap-",
+            "-statistic_distribution-",
+        ]:
+            window[element].Update(disabled=not status["proteome_prediction"])
+
+        if status["proteome_prediction"]:
+            for element in ["-global_run-"]:
+                window[element].Update(disabled=status["comparison_global"])
+            for element in [
+                "-global_heatmap-",
+                "-global_distance-",
+                "-global_report-",
+                "-global_reset-",
+            ]:
+                window[element].Update(
+                    disabled=not status["comparison_global"]
+                )
+
+            if status["comparison_global"] and status["tp_data"]:
+                for element in ["-class_run-"]:
+                    window[element].Update(disabled=status["comparison_class"])
+                for element in [
+                    "-class_heatmap-",
+                    "-class_reorganization-",
+                    "-class_report-",
+                    "-class_reset-",
+                ]:
+                    window[element].Update(
+                        disabled=not status["comparison_class"]
+                    )
+            else:
+                for element in [
+                    "-class_run-",
+                    "-class_heatmap-",
+                    "-class_reorganization-",
+                    "-class_report-",
+                    "-class_reset-",
+                ]:
+                    window[element].Update(disabled=True)
+
+                if status["lipidome_data"]:
+                    for element in ["-lipidome_predict-"]:
+                        window[element].Update(
+                            disabled=status["lipidome_prediction"]
+                        )
+                    for element in [
+                        "-lipidome_report-",
+                        "-lipidome_reset-",
+                        "-lipidome_heatmap-",
+                        "-lipidome_reorganization-",
+                        "-lipidome_density-",
+                        "-lipidome_composition-",
+                    ]:
+                        window[element].Update(
+                            disabled=not status["lipidome_prediction"]
+                        )
+                else:
+                    for element in [
+                        "-lipidome_predict-",
+                        "-lipidome_report-",
+                        "-lipidome_reset-",
+                        "-lipidome_heatmap-",
+                        "-lipidome_reorganization-",
+                        "-lipidome_density-",
+                        "-lipidome_composition-",
+                    ]:
+                        window[element].Update(disabled=True)
+
+        else:
+            for element in [
+                "-lipidome_predict-",
+                "-lipidome_report-",
+                "-lipidome_reset-",
+                "-lipidome_heatmap-",
+                "-lipidome_reorganization-",
+                "-lipidome_density-",
+                "-lipidome_composition-",
+                "-global_run-",
+                "-global_heatmap-",
+                "-global_distance-",
+                "-global_report-",
+                "-global_reset-",
+                "-class_run-",
+                "-class_heatmap-",
+                "-class_reorganization-",
+                "-class_report-",
+                "-class_reset-",
+            ]:
+                window[element].Update(disabled=True)
+
+    else:
+        for element in [
+            "-statistic_predict-",
+            "-statistic_export-",
+            "-statistic_report-",
+            "-statistic_reset-",
+            "-statistic_heatmap-",
+            "-statistic_distribution-",
+            "-lipidome_predict-",
+            "-lipidome_report-",
+            "-lipidome_reset-",
+            "-lipidome_heatmap-",
+            "-lipidome_reorganization-",
+            "-lipidome_density-",
+            "-lipidome_composition-",
+            "-global_run-",
+            "-global_heatmap-",
+            "-global_distance-",
+            "-global_report-",
+            "-global_reset-",
+            "-class_run-",
+            "-class_heatmap-",
+            "-class_reorganization-",
+            "-class_report-",
+            "-class_reset-",
+        ]:
+            window[element].Update(disabled=True)
+
+    return
