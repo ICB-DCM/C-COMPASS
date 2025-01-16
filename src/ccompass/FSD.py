@@ -9,7 +9,6 @@ def FSD_exec(preparams, data_ways):
         class_string = class_string + condition + ", "
     class_string = class_string[:-2]
 
-    sg.theme("Dark Blue 3")
     layout_SD = [
         [
             sg.Frame(

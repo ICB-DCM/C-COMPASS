@@ -109,7 +109,6 @@ def NPC(data_con_in, data_keep_in, params_in, stats_in, data_con_std_in):
     input_list = []
     ident_pos = {}
     identifier = {}
-    sg.theme("Dark Blue 3")
 
     layout_NPC = [
         [

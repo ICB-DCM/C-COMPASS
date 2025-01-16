@@ -87,8 +87,6 @@ def SM_exec(fract_data, fract_info, marker_list, key):
         )
         distinct_profiles_dict[condition] = distinct_profiles
 
-    sg.theme("DarkTeal11")
-
     condition = list(profiles_dict.keys())[0]
     layout_SM = [
         [

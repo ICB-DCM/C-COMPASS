@@ -15,7 +15,6 @@ def refresh_conversion(conversion, values):
 
 
 def CM_exec(markers, marker_conv):
-    sg.theme("DarkTeal11")
     conv_old = marker_conv
 
     num_names = 0
