@@ -2627,38 +2627,48 @@ def create_conversion(marker_sets):
     return marker_conv
 
 
-def create_markerlist(marker_sets, marker_conv, marker_params):
+def create_markerlist(
+    marker_sets: dict[str, dict[str, Any]],
+    marker_conv: dict[str, str | float],
+    marker_params: dict[str, Any],
+) -> pd.DataFrame:
     markerset = pd.DataFrame(columns=["name"])
     counter = 1
     for path in marker_sets:
-        mset = marker_sets[path]["table"][
-            [
-                marker_sets[path]["identifier_col"],
-                marker_sets[path]["class_col"],
-            ]
-        ]
+        id_col = marker_sets[path]["identifier_col"]
+        class_col = marker_sets[path]["class_col"]
+        mset = marker_sets[path]["table"][[id_col, class_col]]
         mset.rename(
             columns={
-                marker_sets[path]["identifier_col"]: "name",
-                marker_sets[path]["class_col"]: "class" + str(counter),
+                id_col: "name",
+                class_col: f"class{counter}",
             },
             inplace=True,
         )
         for classname in marker_conv:
-            mset["class" + str(counter)].replace(
-                {classname: marker_conv[classname]}, inplace=True
+            mset.replace(
+                {f"class{counter}": {classname: marker_conv[classname]}},
+                inplace=True,
             )
-            mset["class" + str(counter)].replace(
-                r"^\s*$", np.nan, regex=True, inplace=True
+            mset.replace(
+                {f"class{counter}": {r"^\s*$": np.nan}},
+                regex=True,
+                inplace=True,
             )
-            mset = mset[mset["class" + str(counter)].notna()]
+            mset = mset[mset[f"class{counter}"].notna()]
+
         markerset = pd.merge(markerset, mset, on="name", how="outer")
         counter += 1
+
     markerset.set_index("name", inplace=True)
+
     if marker_params["what"] == "unite":
         pass
     elif marker_params["what"] == "intersect":
         markerset.dropna(inplace=True)
+    else:
+        raise ValueError("Invalid marker parameter")
+
     if marker_params["how"] == "majority":
         markerset_final = pd.DataFrame(
             markerset.mode(axis=1, dropna=True)[0]
@@ -2671,6 +2681,8 @@ def create_markerlist(marker_sets, marker_conv, marker_params):
             ).rename(columns={0: "class"})
         else:
             markerset_final.rename(columns={0: "class"}, inplace=True)
+    else:
+        raise ValueError("Invalid marker parameter")
     return markerset_final
 
 
