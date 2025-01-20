@@ -5,13 +5,10 @@ import logging
 import random
 from datetime import datetime
 
-import keras.backend as K
 import keras_tuner as kt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import tensorflow.keras
-from keras import ops
 from scipy import stats
 from sklearn import svm
 from sklearn.metrics import (
@@ -22,6 +19,8 @@ from sklearn.metrics import (
     recall_score,
 )
 from tensorflow import keras
+from tensorflow.keras import ops
+from tensorflow.keras.backend import epsilon
 
 from ._utils import get_ccmps_data_directory
 from .core import NeuralNetworkParametersModel
@@ -29,6 +28,7 @@ from .core import NeuralNetworkParametersModel
 logger = logging.getLogger(__package__)
 
 
+#: mapping of optimizer names to optimizer classes
 optimizer_classes = {
     "adam": tf.keras.optimizers.Adam,
     "rmsprop": tf.keras.optimizers.RMSprop,
@@ -339,15 +339,11 @@ def create_fullprofiles(
 
 def sum1_normalization(x):
     """Normalize the input to sum to 1."""
-    return x / (ops.sum(x, axis=1, keepdims=True) + K.epsilon())
+    return x / (ops.sum(x, axis=1, keepdims=True) + epsilon())
 
 
 def combine_rounds(data):
-    dfs = []
-    for roundn in data:
-        dfs.append(data[roundn])
-
-    concatenated_df = pd.concat(dfs, axis=0)
+    concatenated_df = pd.concat(list(data.values()), axis=0)
 
     mean_df = concatenated_df.groupby(level=0).mean()
     std_df = concatenated_df.groupby(level=0).std()
@@ -566,6 +562,8 @@ def MOP_exec(
             )
 
         if NN_params.svm_filter:
+            # Remove the markers that are not predicted correctly by the SVM
+            #  and upsample the rest
             fract_full_up = {}
             fract_marker_up = {}
             fract_marker_filtered = {}
@@ -1050,13 +1048,18 @@ def create_learninglist(
 
 
 def mix_profiles(
-    mix_steps,
+    mix_steps: list[float],
     NN_params: NeuralNetworkParametersModel,
     fract_marker_up,
     fract_unmixed_up,
     fract_mixed_up,
-    condition,
+    condition: str,
 ):
+    """Create mixed profiles.
+
+    Create pairwise combinations of profiles and mix them according to the
+    `mix_steps`. Return a random sample of the mixed profiles.
+    """
     class_list = list(set(list(fract_marker_up[condition]["class"])))
     combinations = [
         (a, b)
@@ -1127,6 +1130,9 @@ def single_prediction(
     roundn: int,
 ):
     """Perform single prediction.
+
+    Train Support Vector Machine (SVM) classifier and predict the classes.
+
 
     :param learning_xyz: The learning data. This will be updated in place.
     """

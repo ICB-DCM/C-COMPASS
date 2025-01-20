@@ -74,7 +74,7 @@ class NeuralNetworkParametersModel(BaseModel):
     #: ...
     # FIXME: can be "none"; == 0?!
     mixed_part: int | str = 4
-    #: ...
+    #: The fraction of the mixed batch to use (0-1)
     mixed_batch: float = 0.05
     #: Long or short optimization?
     NN_optimization: Literal["short", "long"] = "long"
