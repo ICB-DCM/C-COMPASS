@@ -1023,20 +1023,6 @@ def create_main_window(model: SessionModel) -> sg.Window:
     return main_window
 
 
-def main():
-    """The entry point for the C-COMPASS application."""
-    sg.theme("Dark Blue 3")
-
-    model = SessionModel()
-    controller = MainController(model=model)
-    controller.run()
-
-    # import dill
-    # filepath = 'session.pkl'
-    # dill.dump_session(filepath) # Save the session
-    # dill.load_session(filepath) # Load the session
-
-
 class MainController:
     """The main controller for the C-COMPASS application."""
 

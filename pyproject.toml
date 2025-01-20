@@ -28,7 +28,7 @@ dependencies = [
 requires-python = ">=3.10"
 
 [project.scripts]
-ccompass = "ccompass.CCMPS:main"
+ccompass = "ccompass.__main__:main"
 
 [project.optional-dependencies]
 dev = ["pre-commit>=3", "pytest", "tox"]
