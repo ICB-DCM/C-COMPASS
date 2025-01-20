@@ -24,21 +24,20 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 config_filepath: Path = get_ccmps_data_directory() / "settings.yaml"
 
 
-def default_status():
-    status = {
-        "fractionation_data": False,
-        "tp_data": False,
-        "lipidome_data": False,
-        "lipidome_total": False,
-        "marker_file": False,
-        "marker_matched": False,
-        "training": False,
-        "proteome_prediction": False,
-        "lipidome_prediction": False,
-        "comparison_global": False,
-        "comparison_class": False,
-    }
-    return status
+class SessionStatusModel(BaseModel):
+    """Keeps track of the different analysis steps that have been completed."""
+
+    fractionation_data: bool = False
+    tp_data: bool = False
+    lipidome_data: bool = False
+    lipidome_total: bool = False
+    marker_file: bool = False
+    marker_matched: bool = False
+    training: bool = False
+    proteome_prediction: bool = False
+    lipidome_prediction: bool = False
+    comparison_global: bool = False
+    comparison_class: bool = False
 
 
 class AppSettings(BaseModel):
@@ -221,18 +220,18 @@ class SessionModel(BaseModel):
     comparison: dict = {}
     #: Indicates which of the individual analysis steps
     #  have already been performed or not
-    status: dict[str, bool] = default_status()
+    status: SessionStatusModel = SessionStatusModel()
 
     def reset_global_changes(self):
         self.comparison = {}
-        self.status["comparison_global"] = False
-        self.status["comparison_class"] = False
+        self.status.comparison_global = False
+        self.status.comparison_class = False
 
     def reset_static_statistics(self):
         self.reset_global_changes()
         self.results = {}
-        self.status["proteome_prediction"] = False
-        self.status["lipidome_prediction"] = False
+        self.status.proteome_prediction = False
+        self.status.lipidome_prediction = False
 
     def reset_input_tp(self):
         self.tp_paths = []
@@ -271,7 +270,7 @@ class SessionModel(BaseModel):
     def reset_fractionation(self):
         self.reset_fract()
         self.reset_marker()
-        self.status["fractionation_data"] = False
+        self.status.fractionation_data = False
 
     def reset_classification(self):
         self.reset_static_statistics()
@@ -282,7 +281,7 @@ class SessionModel(BaseModel):
         self.svm_metrics = {}
         self.learning_xyz = {}
 
-        self.status["training"] = False
+        self.status.training = False
 
     def reset_marker(self):
         self.marker_list = pd.DataFrame()
@@ -291,15 +290,15 @@ class SessionModel(BaseModel):
         self.fract_test = {}
         self.fract_full = {}
         self.reset_classification()
-        self.status["marker_matched"] = False
+        self.status.marker_matched = False
 
     def reset(self, other: "SessionModel" = None):
         """Reset to default values or copy from another session."""
         if other is None:
             other = SessionModel()
 
-        for key, value in other.model_dump().items():
-            setattr(self, key, value)
+        for field_name, field_value in other:
+            setattr(self, field_name, field_value)
 
     def to_numpy(self, filepath: Path | str):
         """Serialize using np.save."""
@@ -1464,7 +1463,7 @@ class MainController:
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
                     if self.model.fract_data["class"]:
-                        self.model.status["fractionation_data"] = True
+                        self.model.status.fractionation_data = True
                     #     fract_buttons(window_CCMPS, True)
                 else:
                     messagebox.showerror(
@@ -1534,14 +1533,14 @@ class MainController:
                 if sure == "Yes":
                     self.model.reset_tp()
 
-                    self.model.status["tp_data"] = False
-                    if self.model.status["comparison_class"]:
+                    self.model.status.tp_data = False
+                    if self.model.status.comparison_class:
                         self.model.results, self.model.comparison = (
                             MOA.class_reset(
                                 self.model.results, self.model.comparison
                             )
                         )
-                        self.model.status["comparison_class"] = False
+                        self.model.status.comparison_class = False
             elif event == "-tp_start-":
                 if self.model.tp_paths:
                     from .TPP import TPP_exec
@@ -1566,7 +1565,7 @@ class MainController:
                     )
 
                     if self.model.tp_data:
-                        self.model.status["tp_data"] = True
+                        self.model.status.tp_data = True
                         # tp_buttons(window_CCMPS, True)
                 else:
                     messagebox.showerror(
@@ -1577,7 +1576,7 @@ class MainController:
 
             elif event == "-marker_add-":
                 marker_add(self.main_window, values, self.model.marker_sets)
-                self.model.status["marker_file"] = bool(self.model.marker_sets)
+                self.model.status.marker_file = bool(self.model.marker_sets)
             elif event == "-marker_remove-":
                 try:
                     marker_remove(
@@ -1585,7 +1584,7 @@ class MainController:
                     )
                 except Exception:
                     pass
-                self.model.status["marker_file"] = bool(self.model.marker_sets)
+                self.model.status.marker_file = bool(self.model.marker_sets)
             elif event == "-marker_list-":
                 refresh_markercols(
                     self.main_window, values, self.model.marker_sets
@@ -1646,7 +1645,7 @@ class MainController:
                     self.model.fract_data,
                     self.model.fract_conditions,
                 )
-                self.model.status["proteome_prediction"] = True
+                self.model.status.proteome_prediction = True
 
             elif event == "-statistic_export-":
                 filename = sg.popup_get_file(
@@ -1694,7 +1693,7 @@ class MainController:
                 self.model.comparison = MOA.global_comparison(
                     self.model.results
                 )
-                self.model.status["comparison_global"] = True
+                self.model.status.comparison_global = True
 
             elif event == "-global_reset-":
                 self.model.reset_global_changes()
@@ -1706,13 +1705,13 @@ class MainController:
                     self.model.results,
                     self.model.comparison,
                 )
-                self.model.status["comparison_class"] = True
+                self.model.status.comparison_class = True
 
             elif event == "-class_reset-":
                 self.model.results, self.model.comparison = MOA.class_reset(
                     self.model.results, self.model.comparison
                 )
-                self.model.status["comparison_class"] = False
+                self.model.status.comparison_class = False
 
             # if event_CCMPS == '-classification_comparison-':
             #     # results = MOP_stats.comp_exec(learning_xyz, results)
@@ -1897,7 +1896,7 @@ class MainController:
             self.model.fract_full = create_fullprofiles(
                 self.model.fract_marker, self.model.fract_test
             )
-            self.model.status["marker_matched"] = True
+            self.model.status.marker_matched = True
             # print('check3: full profiles created')
             # enable_markersettings(window_CCMPS, False)
             # print('check4: marker settings enabled')
@@ -1937,7 +1936,7 @@ class MainController:
         )
         # window_CCMPS['-classification_statistics-'].Update(disabled = False)
         # window_CCMPS['-status_comparison-'].Update('done!')
-        self.model.status["training"] = True
+        self.model.status.training = True
 
     def _handle_import_prediction(self):
         filename = sg.popup_get_file(
@@ -1963,9 +1962,9 @@ class MainController:
                     self.model.results[condition] = copy.deepcopy(
                         results_new[condition]
                     )
-            self.model.status["proteome_prediction"] = self.model.status[
-                "training"
-            ] = True
+            self.model.status.proteome_prediction = (
+                self.model.status.training
+            ) = True
         except Exception:
             messagebox.showerror("Error", "Incompatible file type!")
 
@@ -3581,9 +3580,9 @@ def enable_markersettings(window, is_enabled):
 # class_maxsize = max(class_sizes.values())
 
 
-def refresh_window(window: sg.Window, status: dict[str, bool]):
+def refresh_window(window: sg.Window, status: SessionStatusModel):
     for element in ["-fractionation_reset-", "-fractionation_summary-"]:
-        window[element].Update(disabled=not status["fractionation_data"])
+        window[element].Update(disabled=not status.fractionation_data)
     for element in [
         "-fractionation_add-",
         "-fractionation_remove-",
@@ -3596,10 +3595,10 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
         "-fractionation_parameters-",
         "-fractionation_start-",
     ]:
-        window[element].Update(disabled=status["fractionation_data"])
+        window[element].Update(disabled=status.fractionation_data)
 
     for element in ["-tp_reset-", "-tp_summary-", "-tp_export-"]:
-        window[element].Update(disabled=not status["tp_data"])
+        window[element].Update(disabled=not status.tp_data)
     for element in [
         "-tp_add-",
         "-tp_remove-",
@@ -3610,56 +3609,56 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
         "-tp_parameters-",
         "-tp_start-",
     ]:
-        window[element].Update(disabled=status["tp_data"])
+        window[element].Update(disabled=status.tp_data)
 
     for element in ["-marker_remove-", "-marker_manage-", "-marker_accept-"]:
-        if status["marker_matched"]:
+        if status.marker_matched:
             window[element].Update(disabled=True)
         else:
-            window[element].Update(disabled=not status["marker_file"])
+            window[element].Update(disabled=not status.marker_file)
     for element in ["-marker_test-", "-marker_profiles-"]:
-        window[element].Update(disabled=not status["marker_file"])
+        window[element].Update(disabled=not status.marker_file)
     for element in ["-marker_reset-"]:
-        window[element].Update(disabled=not status["marker_matched"])
+        window[element].Update(disabled=not status.marker_matched)
     for element in ["-marker_add-", "-marker_parameters-", "-marker_preset-"]:
-        window[element].Update(disabled=status["marker_matched"])
+        window[element].Update(disabled=status.marker_matched)
 
     for element in ["-statistic_import-"]:
-        window[element].Update(disabled=status["comparison_global"])
+        window[element].Update(disabled=status.comparison_global)
 
-    if status["fractionation_data"]:
+    if status.fractionation_data:
         window["-status_fract-"].Update("ready", text_color="dark green")
     else:
         window["-status_fract-"].Update("none", text_color="black")
-    if status["tp_data"]:
+    if status.tp_data:
         window["-status_tp-"].Update("ready", text_color="dark green")
     else:
         window["-status_tp-"].Update("none", text_color="black")
-    if status["lipidome_data"]:
+    if status.lipidome_data:
         window["-status_fract_lipid-"].Update("ready", text_color="dark green")
     else:
         window["-status_fract_lipid-"].Update("none", text_color="black")
-    if status["marker_matched"]:
+    if status.marker_matched:
         window["-status_marker-"].Update("ready", text_color="dark green")
     else:
         window["-status_marker-"].Update("none", text_color="black")
-    if status["lipidome_total"]:
+    if status.lipidome_total:
         window["-status_total_lipid-"].Update("ready", text_color="dark green")
     else:
         window["-status_total_lipid-"].Update("none", text_color="black")
 
     for element in ["-classification_MOP-"]:
-        if status["fractionation_data"] and status["marker_matched"]:
-            window[element].Update(disabled=status["training"])
+        if status.fractionation_data and status.marker_matched:
+            window[element].Update(disabled=status.training)
         else:
             window[element].Update(disabled=True)
 
     for element in ["-classification_validation-", "-classification_reset-"]:
-        window[element].Update(disabled=not status["training"])
+        window[element].Update(disabled=not status.training)
 
-    if status["training"]:
+    if status.training:
         for element in ["-statistic_predict-"]:
-            window[element].Update(disabled=status["proteome_prediction"])
+            window[element].Update(disabled=status.proteome_prediction)
         for element in [
             "-statistic_export-",
             "-statistic_report-",
@@ -3667,24 +3666,22 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
             "-statistic_heatmap-",
             "-statistic_distribution-",
         ]:
-            window[element].Update(disabled=not status["proteome_prediction"])
+            window[element].Update(disabled=not status.proteome_prediction)
 
-        if status["proteome_prediction"]:
+        if status.proteome_prediction:
             for element in ["-global_run-"]:
-                window[element].Update(disabled=status["comparison_global"])
+                window[element].Update(disabled=status.comparison_global)
             for element in [
                 "-global_heatmap-",
                 "-global_distance-",
                 "-global_report-",
                 "-global_reset-",
             ]:
-                window[element].Update(
-                    disabled=not status["comparison_global"]
-                )
+                window[element].Update(disabled=not status.comparison_global)
 
-            if status["comparison_global"] and status["tp_data"]:
+            if status.comparison_global and status.tp_data:
                 for element in ["-class_run-"]:
-                    window[element].Update(disabled=status["comparison_class"])
+                    window[element].Update(disabled=status.comparison_class)
                 for element in [
                     "-class_heatmap-",
                     "-class_reorganization-",
@@ -3692,7 +3689,7 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
                     "-class_reset-",
                 ]:
                     window[element].Update(
-                        disabled=not status["comparison_class"]
+                        disabled=not status.comparison_class
                     )
             else:
                 for element in [
@@ -3704,10 +3701,10 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
                 ]:
                     window[element].Update(disabled=True)
 
-                if status["lipidome_data"]:
+                if status.lipidome_data:
                     for element in ["-lipidome_predict-"]:
                         window[element].Update(
-                            disabled=status["lipidome_prediction"]
+                            disabled=status.lipidome_prediction
                         )
                     for element in [
                         "-lipidome_report-",
@@ -3718,7 +3715,7 @@ def refresh_window(window: sg.Window, status: dict[str, bool]):
                         "-lipidome_composition-",
                     ]:
                         window[element].Update(
-                            disabled=not status["lipidome_prediction"]
+                            disabled=not status.lipidome_prediction
                         )
                 else:
                     for element in [
