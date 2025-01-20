@@ -49,47 +49,49 @@ On Ubuntu linux, installing the `python3-tk` package is required:
 sudo apt-get install python3-tk
 ```
 
+### Troubleshooting
+
+If you encounter any issues during installation, please refer to the
+[troubleshooting guide](https://c-compass.readthedocs.io/en/latest/troubleshooting.html).
+
 ## Usage
 
 See also https://c-compass.readthedocs.io/en/latest/usage.html.
 
 ### Graphical User Interface (GUI)
 
-* The GUI will guide you through the process of loading and analyzing your proteomics dataset, including fractionation samples and Total Proteome samples.
-*Follow the on-screen instructions to perform the analysis and configure settings only if required
+* The GUI will guide you through the process of loading and analyzing your
+  proteomics dataset, including fractionation samples and Total Proteome
+  samples.
+* Follow the on-screen instructions to perform the analysis and configure
+  settings only if required
 * Standard parameters should fit for the majority of experiments.
   You **don't need to change the default settings!**
 
-### Command-Line Usage (Optional)
-You can also run the software via the command line:
-> python CCMPS.py
-
 ### Computation time (on a standard desktop computer)
-- Preprocessing of Gradient and TotalProteome Data takes only up to a few minutes.
-- Neural Network training for a dataset with three conditions and four replicates needs around 1-2h.
-- Calculation of static predictions (per condition) takes a few minutes.
-- Calculation of conditional comparisons (global comparison) takes up to 30 min. (for the above-mentioned dataset)
-- Calculation of class-centric statistics and comparison takes up to 10 min. (for the above-mentioned dataset)
 
-### Status:
-- The appearance of the GUI will be improved in the near future. Progress bars will be included, as well as some help sections.
-- Computation time will be optimized in the near future.
-- Principal analysis steps and calculations will be kept as they are in version 1.0 unless changes are suggested by the reviewers.
+* Preprocessing of Gradient and TotalProteome Data takes only up to a few
+  minutes.
+* Neural Network training for a dataset with three conditions and four
+  replicates takes around 1-2h.
+* Calculation of static predictions (per condition) takes a few minutes.
+* Calculation of conditional comparisons (global comparison) takes up to
+  30min. (for the above-mentioned dataset)
+* Calculation of class-centric statistics and comparison takes up to 10 min.
+  (for the above-mentioned dataset)
 
-### Contributing
+## Contributing
 
-Contributions to C-COMPASS are welcome! To contribute:
+Contributions to C-COMPASS are welcome!
 
-1. **Fork the repository** on GitHub.
-2. **Create a new branch** for your changes.
-3. **Commit your changes**.
-4. **Submit a pull request**.
+For further information, please refer to
+[https://c-compass.readthedocs.io/en/latest/contributing.html](https://c-compass.readthedocs.io/en/latest/contributing.html).
 
-### License
+## License
 
 C-COMPASS is licensed under the BSD 3-Clause License.
 
-### Citation
+## Citation
 
 If you use C-COMPASS in your research, please cite the following publication:
 
@@ -107,12 +109,7 @@ If you use C-COMPASS in your research, please cite the following publication:
 }
 ```
 
-### Trouble-Shooting
-
-* **SmartScreen Warning**: If Windows blocks the application via SmartScreen, this is due to the software being unsigned. Please consult your IT department to bypass this restriction if necessary.
-* **Long Path Issues on Windows**: If your system encounters long path errors, you can activate them in your registry under 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem' by setting the value for **LongPathsEnabled* from 0 to 1.
-
-### Contact
+## Contact
 
 For any questions, contact `daniel.haas@helmholtz-munich.de` or post an
 issue at https://github.com/ICB-DCM/C-COMPASS/issues/.
