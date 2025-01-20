@@ -1090,14 +1090,14 @@ class MainController:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_fractions-":
                 if values["-fractionation_table-"]:
-                    fract_deffract(
+                    fract_handle_set_fraction(
                         values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_identifier-":
                 if values["-fractionation_table-"]:
-                    self.model.fract_identifiers = fract_defident(
+                    self.model.fract_identifiers = fract_handle_set_identifier(
                         values,
                         self.main_window,
                         self.model.fract_tables,
@@ -1176,7 +1176,7 @@ class MainController:
                 )
             elif event == "-tp_remove-":
                 if values["-tp_path-"]:
-                    tp_rem(
+                    tp_remove(
                         values,
                         self.main_window,
                         self.model.tp_paths,
@@ -1199,12 +1199,14 @@ class MainController:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_condition-":
                 if values["-tp_table-"]:
-                    tp_defcon(values, self.main_window, self.model.tp_tables)
+                    tp_set_condition(
+                        values, self.main_window, self.model.tp_tables
+                    )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_identifier-":
                 if values["-tp_table-"]:
-                    self.model.tp_identifiers = tp_defident(
+                    self.model.tp_identifiers = tp_set_identifier(
                         values,
                         self.main_window,
                         self.model.tp_tables,
@@ -1262,7 +1264,18 @@ class MainController:
                         "No dataset!", "Please import a TP dataset."
                     )
             elif event == "-tp_export-":
-                tp_export(self.model.tp_data, self.model.tp_info)
+                export_folder = sg.popup_get_folder("Export Folder")
+                if export_folder:
+                    experiment = simpledialog.askstring(
+                        "Export", "Experiment Name: "
+                    )
+
+                    tp_export(
+                        export_folder,
+                        experiment,
+                        self.model.tp_data,
+                        self.model.tp_info,
+                    )
 
             elif event == "-marker_add-":
                 marker_add(self.main_window, values, self.model.marker_sets)
@@ -1830,12 +1843,10 @@ class MainController:
 
 def fract_refreshtable(window, table):
     window["-fractionation_table-"].Update(values=table)
-    return
 
 
 def tp_refreshtable(window, table):
     window["-tp_table-"].Update(values=table)
-    return
 
 
 def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
@@ -1890,7 +1901,6 @@ def fract_buttons(window, status):
         window["-fractionation_status-"].Update(
             value="...ready!", text_color="white"
         )
-    return
 
 
 def tp_buttons(window, status):
@@ -1918,13 +1928,11 @@ def tp_buttons(window, status):
 def fract_clearinput(window):
     window["-fractionation_path-"].Update(values=[])
     window["-fractionation_table-"].Update(values=[])
-    return
 
 
 def tp_clearinput(window):
     window["-tp_path-"].Update(values=[])
     window["-tp_table-"].Update(values=[])
-    return
 
 
 def fract_add(
@@ -2029,7 +2037,7 @@ def fract_defrep(values, window, fract_tables):
     )
 
 
-def fract_deffract(values, window, fract_tables):
+def fract_handle_set_fraction(values, window, fract_tables):
     values, fract_tables = fract_modifytable(
         "Set Fractions",
         "FIRST Fraction Number:",
@@ -2044,7 +2052,9 @@ def fract_deffract(values, window, fract_tables):
     )
 
 
-def fract_defident(values, window, input_tables, ident_pos, identifiers):
+def fract_handle_set_identifier(
+    values, window, input_tables, ident_pos, identifiers
+):
     pos = values["-fractionation_table-"]
     if pos:
         if len(pos) > 1:
@@ -2156,7 +2166,6 @@ def fract_export(data, protein_info):
                 sep="\t",
                 mode="a",
             )
-    return
 
 
 def is_float(element):
@@ -2204,25 +2213,23 @@ def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
         tp_pos[filename] = []
         tp_identifiers[filename] = []
         tp_refreshtable(window, table)
-    return
 
 
-def tp_rem(values, window, tp_paths, tp_tables):
+def tp_remove(values, window, tp_paths, tp_tables):
     sure = sg.popup_yes_no("Remove data from list?")
-    if sure == "Yes":
-        tp_paths.remove(values["-tp_path-"])
-        del tp_tables[values["-tp_path-"]]
-        # del tp_data[values['-tp_path-']]
-        if tp_paths:
-            curr = tp_paths[0]
-            tp_refreshtable(window, tp_tables[curr])
-        else:
-            curr = []
-            tp_refreshtable(window, curr)
-        window["-tp_path-"].Update(values=tp_paths, value=curr)
+    if sure != "Yes":
+        return
+
+    tp_paths.remove(values["-tp_path-"])
+    del tp_tables[values["-tp_path-"]]
+    # del tp_data[values['-tp_path-']]
+    if tp_paths:
+        curr = tp_paths[0]
+        tp_refreshtable(window, tp_tables[curr])
     else:
-        pass
-    return
+        curr = []
+        tp_refreshtable(window, curr)
+    window["-tp_path-"].Update(values=tp_paths, value=curr)
 
 
 def tp_defrem(values, window, tp_tables):
@@ -2246,7 +2253,7 @@ def tp_defkeep(values, window, tp_tables):
     return
 
 
-def tp_defcon(values, window, tp_tables):
+def tp_set_condition(values, window, tp_tables):
     if values["-tp_table-"]:
         path = values["-tp_path-"]
         table = tp_tables[path]
@@ -2258,10 +2265,9 @@ def tp_defcon(values, window, tp_tables):
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
     window["-tp_table-"].Update(values=tp_tables[values["-tp_path-"]])
-    return
 
 
-def tp_defident(values, window, tp_tables, tp_pos, tp_identifiers):
+def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
     pos = values["-tp_table-"]
     if pos:
         if len(pos) > 1:
@@ -2281,58 +2287,16 @@ def tp_defident(values, window, tp_tables, tp_pos, tp_identifiers):
     return tp_identifiers
 
 
-def tp_export(tp_data, tp_info):
-    export_folder = sg.popup_get_folder("Export Folder")
-    if export_folder:
-        experiment = simpledialog.askstring("Export", "Experiment Name: ")
-        now = datetime.now()
-        time = now.strftime("%Y%m%d%H%M%S")
-        export_full = pd.DataFrame()
-        for condition in tp_data:
-            path = (
-                export_folder
-                + "/"
-                + time
-                + "_"
-                + experiment
-                + "_"
-                + condition
-                + ".txt"
-            )
-            tp_data[condition].to_csv(
-                path,
-                header=True,
-                index=True,
-                index_label="Identifier",
-                sep="\t",
-                mode="a",
-            )
-            export_full = pd.merge(
-                export_full,
-                tp_data[condition],
-                left_index=True,
-                right_index=True,
-                how="outer",
-            )
-        for info in tp_info:
-            export_full = pd.merge(
-                export_full,
-                tp_info[info],
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-        path = (
-            export_folder
-            + "/"
-            + time
-            + "_"
-            + experiment
-            + "_"
-            + "combined"
-            + ".txt"
-        )
-        export_full.to_csv(
+def tp_export(export_folder: str | Path, experiment: str, tp_data, tp_info):
+    """Export total proteome data."""
+    export_folder = Path(export_folder)
+    now = datetime.now()
+    time = now.strftime("%Y%m%d%H%M%S")
+
+    export_full = pd.DataFrame()
+    for condition in tp_data:
+        path = export_folder / f"{time}_{experiment}_{condition}.txt"
+        tp_data[condition].to_csv(
             path,
             header=True,
             index=True,
@@ -2340,27 +2304,50 @@ def tp_export(tp_data, tp_info):
             sep="\t",
             mode="a",
         )
-    return
+
+        export_full = pd.merge(
+            export_full,
+            tp_data[condition],
+            left_index=True,
+            right_index=True,
+            how="outer",
+        )
+
+    for info in tp_info:
+        export_full = pd.merge(
+            export_full,
+            tp_info[info],
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+
+    path = export_folder / f"{time}_{experiment}_combined.txt"
+    export_full.to_csv(
+        path,
+        header=True,
+        index=True,
+        index_label="Identifier",
+        sep="\t",
+        mode="a",
+    )
 
 
-# ------------------------------------------------------------------------------
+def check_markers(marker_sets: dict[str, dict[str, Any]]) -> bool:
+    """Check if identifier and class columns are set for all marker sets.
 
+    :return: True if all marker sets have identifier and class columns set.
+    """
+    if not marker_sets:
+        return False
 
-def check_markers(marker_sets):
-    is_markers = True
-
-    if marker_sets:
-        for file in marker_sets:
-            if (
-                marker_sets[file]["identifier_col"] == "-"
-                or marker_sets[file]["class_col"] == "-"
-            ):
-                is_markers = False
-    else:
-        is_markers = False
-
-    # print(marker_sets[file])
-    return is_markers
+    for file in marker_sets:
+        if (
+            marker_sets[file]["identifier_col"] == "-"
+            or marker_sets[file]["class_col"] == "-"
+        ):
+            return False
+    return True
 
 
 def refresh_markertable(window, values, marker_sets):
@@ -2457,7 +2444,9 @@ def marker_setclass(values, marker_sets):
     return marker_conv
 
 
-def create_conversion(marker_sets):
+def create_conversion(
+    marker_sets: dict[str, dict[str, Any]],
+) -> dict[str, str]:
     marker_conv = {}
     for path in marker_sets:
         for classname in marker_sets[path]["classes"]:
@@ -2520,14 +2509,12 @@ def create_markerlist(
         else:
             markerset_final.rename(columns={0: "class"}, inplace=True)
     else:
-        raise ValueError("Invalid marker parameter")
+        raise ValueError(f"Invalid marker parameter: {marker_params['how']}")
     return markerset_final
 
 
 def session_open(window, values, filename, model: SessionModel):
-    # filename = sg.popup_get_file('Open Session', no_window=True, file_types=(('Numpy', '*.npy'),))
-    # if filename:
-
+    """Read session data from file and update the window."""
     # Update session data
     tmp_session = SessionModel.from_numpy(filename)
     model.reset(tmp_session)
@@ -2542,10 +2529,9 @@ def session_open(window, values, filename, model: SessionModel):
         window["-fractionation_path-"].Update(
             values=model.fract_paths, value=""
         )
-    if model.fract_data["class"]:
-        fract_buttons(window, True)
-    else:
-        fract_buttons(window, False)
+
+    fract_buttons(window, bool(model.fract_data["class"]))
+
     if model.tp_paths:
         tp_refreshtable(window, model.tp_tables[model.tp_paths[0]])
         window["-tp_path-"].Update(
@@ -2554,10 +2540,8 @@ def session_open(window, values, filename, model: SessionModel):
     else:
         tp_refreshtable(window, [])
         window["-tp_path-"].Update(values=model.tp_paths, value="")
-    if model.tp_data:
-        tp_buttons(window, True)
-    else:
-        tp_buttons(window, False)
+
+    tp_buttons(window, bool(model.tp_data))
 
     if model.marker_sets:
         refresh_markertable(window, values, model.marker_sets)
@@ -2614,9 +2598,6 @@ def session_open(window, values, filename, model: SessionModel):
     # else:
     #     window['-status_comparison-'].Update('missing')
     #     window['-export_comparison-'].Update(disabled = True)
-
-
-# ------------------------------------------------------------------------------
 
 
 # def convert_markers(markers, conversion, mode):
