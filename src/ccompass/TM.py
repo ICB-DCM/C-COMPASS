@@ -108,7 +108,7 @@ def TM_exec(fract_data, fract_info, marker_list, key):
             ),
         ],
         [
-            sg.Canvas(key="-CANVAS-"),
+            sg.Canvas(key="-CANVAS-", expand_x=True, expand_y=True),
             sg.Table(
                 values=class_info_dict[condition],
                 headings=["Class", "n"],
@@ -128,7 +128,8 @@ def TM_exec(fract_data, fract_info, marker_list, key):
         finalize=True,
         size=(900, 650),
         modal=True,
-    )  # Increase window width
+        resizable=True,
+    )
 
     # Initial drawing
     fig = create_heatmap(correlation_matrices[condition], title=condition)
