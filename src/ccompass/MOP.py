@@ -9,7 +9,7 @@ import keras_tuner as kt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import tf.keras
+import tensorflow.keras
 from keras import ops
 from scipy import stats
 from sklearn import svm
