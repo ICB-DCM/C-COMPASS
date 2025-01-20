@@ -34,7 +34,7 @@ libraries before ([further information](ttps://learn.microsoft.com/en-us/cpp/win
 # install
 pip install ccompass
 # launch the GUI
-ccompass
+ccompass    # or alternatively: `python -m ccompass`
 ```
 
 Note that C-COMPASS currently requires Python>=3.10, and due to its
