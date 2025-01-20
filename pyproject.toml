@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=64", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ccompass"
-version = "1.0.0"
+dynamic = ["version"]
 description = "C-COMPASS (Cellular COMPartmentclASSifier) is an advanced open-source software tool designed for the quantitative analysis of fractionated proteomics samples."
 authors = [
     { name = "Daniel Haas", email = "daniel.haas@helmholtz-munich.de" }
@@ -34,6 +34,8 @@ ccompass = "ccompass.__main__:main"
 dev = ["pre-commit>=3", "pytest", "tox"]
 doc = ["sphinx", "sphinx-rtd-theme"]
 test = ["pytest"]
+
+[tool.setuptools_scm]
 
 [tool.ruff]
 line-length = 79
