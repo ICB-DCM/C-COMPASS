@@ -46,19 +46,20 @@ def _create_classifier_hypermodel(
 
         def build(self, hp):
             model = keras.Sequential()
-            # units_init = np.shape(y_train_mixed_up)[1]
+            # Input layer, size is the number of fractions
             model.add(
                 tf.keras.Input(
                     (self.set_shapes[0],),
                 )
             )
+            # units_init = np.shape(y_train_mixed_up)[1]
             # model.add(tf.keras.Input(units_init,))
 
+            # fixed or tunable hyperparameters
             if self.fixed_hp:
                 optimizer_choice = self.fixed_hp["optimizer"]
                 learning_rate = self.fixed_hp["learning_rate"]
                 units = self.fixed_hp["units"]
-
             else:
                 optimizer_choice = hp.Choice("optimizer", NN_params.optimizers)
                 learning_rate = hp.Float(
@@ -93,7 +94,7 @@ def _create_classifier_hypermodel(
                     raise ValueError(
                         f"Unknown optimization: {NN_params.NN_optimization}"
                     )
-
+            # dense layer 1 with tunable size
             if NN_params.NN_activation == "relu":
                 model.add(keras.layers.Dense(units, activation="relu"))
             elif NN_params.NN_activation == "leakyrelu":
@@ -103,6 +104,7 @@ def _create_classifier_hypermodel(
                 model.add(keras.layers.Dense(units))
                 model.add(keras.layers.LeakyReLU(hp_alpha))
 
+            # dense layer 2 with size according to the number of compartments
             model.add(
                 keras.layers.Dense(
                     self.set_shapes[1],
@@ -110,6 +112,8 @@ def _create_classifier_hypermodel(
                 )
             )
             model.add(keras.layers.ReLU())
+
+            # normalization layer
             model.add(keras.layers.Lambda(sum1_normalization))
 
             optimizer = optimizer_classes[optimizer_choice](
@@ -499,7 +503,7 @@ def MOP_exec(
 
         fract_marker = copy.deepcopy(fract_marker_old)
 
-        if NN_params.upsampling == True:
+        if NN_params.upsampling:
             for condition in conditions:
                 fract_marker_up, fract_full_up = upsampling(
                     NN_params,
