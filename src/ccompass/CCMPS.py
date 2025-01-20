@@ -1465,12 +1465,26 @@ class MainController:
                     file_types=(("Numpy", "*.npy"),),
                 )
                 if filename:
-                    session_open(
-                        self.main_window,
-                        values,
-                        filename,
-                        model=self.model,
-                    )
+                    try:
+                        session_open(
+                            self.main_window,
+                            values,
+                            filename,
+                            model=self.model,
+                        )
+                    except Exception as e:
+                        print(f"An error occurred: {e}")
+                        import traceback
+
+                        # show error dialog with traceback
+                        traceback = traceback.format_exc()
+                        print(traceback)
+                        messagebox.showerror(
+                            "Error",
+                            "An error occurred while opening the session:\n\n"
+                            + str(e),
+                        )
+
                     # window_CCMPS['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
                     self.main_window["-marker_fractkey-"].Update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
