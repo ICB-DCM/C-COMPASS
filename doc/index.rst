@@ -20,6 +20,7 @@ With C-COMPASS, users can perform comprehensive quantitative analyses of compart
    installation.rst
    usage.rst
    faq.rst
+   citation.rst
    contributing.rst
    license.rst
    changelog.rst
