@@ -1,4 +1,4 @@
-"""Total proteome profiling."""
+"""Total proteome data processing."""
 
 import copy
 import math
@@ -345,8 +345,7 @@ def start_total_proteome_processing(
     return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
 
 
-def TPP_exec(
-    window: sg.Window,
+def total_proteome_processing_dialog(
     tp_data: dict[str, pd.DataFrame],
     tp_tables: dict[str, list[tuple[str, str]]],
     tp_preparams: dict[str, Any],
@@ -357,19 +356,19 @@ def TPP_exec(
     tp_indata: dict[str, pd.DataFrame],
     tp_conditions: list,
 ):
-    window_TPP = create_window()
+    """Show the total proteome processing dialog."""
+    window = create_window()
 
     while True:
-        event_TPP, values_TPP = window_TPP.read()
+        event, values = window.read()
 
-        if event_TPP == "--cancel--" or event_TPP == sg.WIN_CLOSED:
-            window_TPP.close()
+        if event == "--cancel--" or event == sg.WIN_CLOSED:
             break
 
-        if event_TPP == "--start--":
+        if event == "--start--":
             tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
                 start_total_proteome_processing(
-                    window_TPP,
+                    window,
                     tp_data,
                     tp_tables,
                     tp_preparams,
@@ -381,9 +380,8 @@ def TPP_exec(
                     tp_conditions,
                 )
             )
-            window_TPP.close()
-            window.read(timeout=50)
-            print("done!")
             break
+
+    window.close()
 
     return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
