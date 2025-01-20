@@ -22,7 +22,7 @@ from sklearn.metrics import (
 )
 from tensorflow import keras
 
-from ._utils import get_data_directory
+from ._utils import get_ccmps_data_directory
 
 # from tensorflow.keras.models import Model
 
@@ -792,7 +792,7 @@ def multi_predictions(
     set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
 
     # Define the path to the 'Classifier_Models' folder within the user's data directory
-    classifier_directory = get_data_directory() / "CCOMPASS_Models"
+    classifier_directory = get_ccmps_data_directory()
     classifier_directory.mkdir(exist_ok=True, parents=True)
 
     now = datetime.now()
