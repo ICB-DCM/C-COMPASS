@@ -1,5 +1,6 @@
 """Fractionation summary display."""
 
+# FIXME: this module is currently unused
 import FreeSimpleGUI as sg
 
 

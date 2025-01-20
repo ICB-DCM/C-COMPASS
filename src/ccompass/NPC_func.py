@@ -1,3 +1,4 @@
+# FIXME: this module is currently unused
 from collections import Counter
 
 import numpy as np

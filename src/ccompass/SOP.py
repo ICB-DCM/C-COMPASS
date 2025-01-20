@@ -1,4 +1,5 @@
 """Single organelle prediction."""
+# FIXME: this module is currently unused
 
 import copy
 
