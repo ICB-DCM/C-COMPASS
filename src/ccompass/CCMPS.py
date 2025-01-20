@@ -1235,7 +1235,7 @@ class MainController:
                         self.model.status.comparison_class = False
             elif event == "-tp_start-":
                 if self.model.tp_paths:
-                    from .TPP import TPP_exec
+                    from .TPP import total_proteome_processing_dialog
 
                     (
                         self.model.tp_data,
@@ -1243,8 +1243,7 @@ class MainController:
                         self.model.tp_info,
                         self.model.tp_conditions,
                         self.model.tp_icorr,
-                    ) = TPP_exec(
-                        self.main_window,
+                    ) = total_proteome_processing_dialog(
                         self.model.tp_data,
                         self.model.tp_tables,
                         self.model.tp_preparams,
