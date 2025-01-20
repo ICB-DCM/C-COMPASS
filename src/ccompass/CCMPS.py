@@ -12,7 +12,7 @@ import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
 
-from . import MOA, RP
+from . import MOA, RP, readthedocs_url, repository_url
 from .core import (
     AppSettings,
     SessionModel,
@@ -1490,6 +1490,23 @@ class MainController:
                     self.main_window["-marker_fractkey-"].Update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
+            elif event == "About...":
+                from importlib.metadata import version
+
+                messagebox.showinfo(
+                    "About C-COMPASS",
+                    "C-COMPASS\n\n"
+                    f"Version: {version('ccompass')}\n"
+                    f"Website: {repository_url}",
+                )
+            elif event == "Open Website":
+                import webbrowser
+
+                webbrowser.open(repository_url)
+            elif event == "Manual":
+                import webbrowser
+
+                webbrowser.open(readthedocs_url)
 
             refresh_window(self.main_window, self.model.status)
 
