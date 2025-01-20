@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 
 from . import MOA, PPMS, RP
 from ._utils import get_ccmps_data_directory
+from .core import NeuralNetworkParametersModel
 
 # tensorflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -207,7 +208,7 @@ class SessionModel(BaseModel):
     # )
     learning_xyz: dict[str, dict[str, Any]] = {}
     #: Nerural network hyperparameters
-    NN_params: dict[str, Any] = PPMS.NN_default()
+    NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
     #: SVM results (?)
     # "{condition}" => dict(
