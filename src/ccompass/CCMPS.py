@@ -12,7 +12,7 @@ import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
 
-from . import MOA, RP, readthedocs_url, repository_url
+from . import MOA, RP, app_name, readthedocs_url, repository_url
 from .core import (
     AppSettings,
     SessionModel,
@@ -429,7 +429,7 @@ def get_spatial_prediction_frame() -> sg.Frame:
                     button_color="black",
                 ),
                 sg.Button(
-                    "Train C-COMPASS!",
+                    f"Train {app_name}!",
                     size=(25, 1),
                     key="-classification_MOP-",
                     disabled=True,
@@ -1018,7 +1018,10 @@ def create_main_window(model: SessionModel) -> sg.Window:
     ]
 
     main_window = sg.Window(
-        "C-COMPASS", layout_CCMPS, size=(1260, 720), resizable=True
+        app_name,
+        layout_CCMPS,
+        size=(1260, 720),
+        resizable=True,
     )
     return main_window
 
@@ -1494,8 +1497,8 @@ class MainController:
                 from importlib.metadata import version
 
                 messagebox.showinfo(
-                    "About C-COMPASS",
-                    "C-COMPASS\n\n"
+                    f"About {app_name}",
+                    f"{app_name}\n\n"
                     f"Version: {version('ccompass')}\n"
                     f"Website: {repository_url}",
                 )

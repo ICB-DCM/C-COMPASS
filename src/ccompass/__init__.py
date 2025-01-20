@@ -17,3 +17,6 @@ config_filepath: Path = get_ccmps_data_directory() / "settings.yaml"
 repository_url = "https://github.com/ICB-DCM/C-COMPASS/"
 # the ReadTheDocs URL
 readthedocs_url = "https://c-compass.readthedocs.io/en/latest/"
+
+# name of the application
+app_name = "C-COMPASS"
