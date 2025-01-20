@@ -18,6 +18,7 @@ dependencies = [
     "openpyxl",
     "pandas",
     "pydantic",
+    "pyyaml",
     "tensorflow",
     "scikit-learn",
     "scipy",
