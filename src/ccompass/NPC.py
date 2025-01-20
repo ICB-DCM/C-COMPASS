@@ -1,4 +1,5 @@
 """Normalized profile creation"""
+# FIXME: this module is currently unused
 
 import copy
 from datetime import datetime
