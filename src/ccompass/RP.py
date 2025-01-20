@@ -40,6 +40,7 @@ def RP_gradient_heatmap(fract_data):
         layout,
         finalize=True,
         resizable=True,
+        modal=True,
     )
 
     # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
@@ -174,6 +175,7 @@ def RP_stats_heatmap(results):
         layout,
         resizable=True,
         finalize=True,
+        modal=True,
     )
 
     # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
@@ -320,7 +322,11 @@ def RP_stats_distribution(results):
 
     # Create the window with a static size
     window = sg.Window(
-        "Class Distribution Pie Chart", layout, resizable=True, finalize=True
+        "Class Distribution Pie Chart",
+        layout,
+        resizable=True,
+        finalize=True,
+        modal=True,
     )
 
     # Function to plot pie chart and return as a PIL image
@@ -450,7 +456,11 @@ def RP_global_heatmap(comparison):
 
     # Create the window with a static size
     window = sg.Window(
-        "Global Heatmap (Comparisons)", layout, resizable=True, finalize=True
+        "Global Heatmap (Comparisons)",
+        layout,
+        resizable=True,
+        finalize=True,
+        modal=True,
     )
 
     # Custom colormap: from #730000 (for -1) to #f1f2f2 (for 0) to #1a0099 (for 1)
@@ -623,6 +633,7 @@ def RP_global_distance(comparison):
         layout,
         resizable=True,
         finalize=True,
+        modal=True,
     )
 
     # Function to filter the data before plotting
@@ -777,7 +788,11 @@ def RP_class_heatmap(results):
 
     # Create the window with a static size
     window = sg.Window(
-        "Class Clustering Heatmap", layout, resizable=True, finalize=True
+        "Class Clustering Heatmap",
+        layout,
+        resizable=True,
+        finalize=True,
+        modal=True,
     )
 
     # Function to compute row-wise z-score

@@ -404,7 +404,10 @@ def _create_window(params_old) -> sg.Window:
     ]
 
     return sg.Window(
-        "Parameters for Pre-Processing", layout_PPMS, size=(800, 250)
+        "Parameters for Pre-Processing",
+        layout_PPMS,
+        size=(800, 250),
+        modal=True,
     )
 
 

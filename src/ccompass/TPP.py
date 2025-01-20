@@ -230,7 +230,7 @@ def create_window() -> sg.Window:
             ),
         ]
     ]
-    return sg.Window("Processing...", layout_TPP, size=(600, 110))
+    return sg.Window("Processing...", layout_TPP, size=(600, 110), modal=True)
 
 
 def start_total_proteome_processing(

@@ -64,7 +64,7 @@ def _create_window(params_old) -> sg.Window:
         ],
     ]
 
-    return sg.Window("TP Parameters", layout_TPPM, size=(500, 100))
+    return sg.Window("TP Parameters", layout_TPPM, size=(500, 100), modal=True)
 
 
 def show_dialog(params_old) -> dict:

@@ -123,7 +123,11 @@ def TM_exec(fract_data, fract_info, marker_list, key):
     ]
 
     window_TM = sg.Window(
-        "Marker correlations", layout_TM, finalize=True, size=(900, 650)
+        "Marker correlations",
+        layout_TM,
+        finalize=True,
+        size=(900, 650),
+        modal=True,
     )  # Increase window width
 
     # Initial drawing
