@@ -1532,7 +1532,9 @@ class MainController:
     def _open_marker_correlations(self, key: str):
         """Open the marker correlation window."""
         if check_markers(self.model.marker_sets):
-            from .TM import TM_exec
+            from .marker_correlation_dialog import (
+                show_marker_correlation_dialog,
+            )
 
             try:
                 self.model.marker_list = create_markerlist(
@@ -1540,7 +1542,7 @@ class MainController:
                     self.model.marker_conv,
                     self.model.marker_params,
                 )
-                TM_exec(
+                show_marker_correlation_dialog(
                     self.model.fract_data,
                     self.model.fract_info,
                     self.model.marker_list,
@@ -1564,7 +1566,7 @@ class MainController:
             )
             return
 
-        from .SM import SM_exec
+        from .marker_profiles_dialog import show_marker_profiles_dialog
 
         try:
             self.model.marker_list = create_markerlist(
@@ -1572,7 +1574,7 @@ class MainController:
                 self.model.marker_conv,
                 self.model.marker_params,
             )
-            SM_exec(
+            show_marker_profiles_dialog(
                 self.model.fract_data,
                 self.model.fract_info,
                 self.model.marker_list,

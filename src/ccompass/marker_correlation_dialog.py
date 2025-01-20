@@ -9,20 +9,25 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-def draw_figure(canvas, figure):
+def draw_figure(canvas: sg.Canvas, figure: plt.Figure) -> FigureCanvasTkAgg:
+    """Draw a figure on a canvas."""
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack(side="top", fill="both", expand=1)
     return figure_canvas_agg
 
 
-def update_figure(canvas, figure_agg, figure):
+def update_figure(
+    canvas: sg.Canvas, figure_agg: FigureCanvasTkAgg, figure: plt.Figure
+) -> FigureCanvasTkAgg:
+    """Update a figure on a canvas."""
     figure_agg.get_tk_widget().forget()
     plt.close("all")
     return draw_figure(canvas, figure)
 
 
-def create_heatmap(dataframe, title=None):
+def create_heatmap(dataframe: pd.DataFrame, title: str = None) -> plt.Figure:
+    """Create correlation heatmap."""
     fig, ax = plt.subplots(figsize=(8, 8))  # Adjust the figure size as needed
     cax = ax.matshow(dataframe, cmap="coolwarm", vmin=-1, vmax=1)
     fig.colorbar(cax)
@@ -40,7 +45,10 @@ def create_heatmap(dataframe, title=None):
     return fig
 
 
-def update_class_info(marker_list, classnames, data):
+def update_class_info(
+    marker_list: pd.DataFrame, classnames: list[str], data: pd.DataFrame
+) -> list[tuple[str, int]]:
+    """Compute the number of markers in each class."""
     class_info = []
     for classname in classnames:
         count = data[
@@ -48,11 +56,58 @@ def update_class_info(marker_list, classnames, data):
                 marker_list[marker_list["class"] == classname].index
             )
         ].shape[0]
-        class_info.append([classname, count])
+        class_info.append(
+            (classname, count),
+        )
     return class_info
 
 
-def TM_exec(fract_data, fract_info, marker_list, key):
+def _create_window(
+    condition: str, correlation_matrices, class_info_dict
+) -> sg.Window:
+    """Create the window for correlation plots."""
+    layout = [
+        [
+            sg.Text("Select Condition:"),
+            sg.Combo(
+                list(correlation_matrices.keys()),
+                key="-condition-",
+                enable_events=True,
+                default_value=condition,
+                readonly=True,
+                size=(25, 1),
+            ),
+        ],
+        [
+            sg.Canvas(key="-CANVAS-", expand_x=True, expand_y=True),
+            sg.Table(
+                values=class_info_dict[condition],
+                headings=["Class", "n"],
+                key="-CLASSINFO-",
+                col_widths=[20, 10],
+                auto_size_columns=False,
+                justification="left",
+                num_rows=35,
+            ),
+        ],
+        [sg.Button("Export all Conditions...", key="-EXPORT-", size=(20, 1))],
+    ]
+
+    window = sg.Window(
+        "Marker correlations",
+        layout,
+        finalize=True,
+        size=(900, 650),
+        modal=True,
+        resizable=True,
+    )
+
+    return window
+
+
+def compute_correlation_and_class_info(
+    fract_data, fract_info, marker_list, key
+) -> tuple[dict[str, pd.DataFrame], dict[str, list[tuple[str, int]]]]:
     correlation_matrices = {}
     class_info_dict = {}
 
@@ -94,62 +149,40 @@ def TM_exec(fract_data, fract_info, marker_list, key):
             marker_list, classnames, data
         )
 
-    condition = list(correlation_matrices.keys())[0]
-    layout_TM = [
-        [
-            sg.Text("Select Condition:"),
-            sg.Combo(
-                list(correlation_matrices.keys()),
-                key="-condition-",
-                enable_events=True,
-                default_value=condition,
-                readonly=True,
-                size=(25, 1),
-            ),
-        ],
-        [
-            sg.Canvas(key="-CANVAS-", expand_x=True, expand_y=True),
-            sg.Table(
-                values=class_info_dict[condition],
-                headings=["Class", "n"],
-                key="-CLASSINFO-",
-                col_widths=[20, 10],
-                auto_size_columns=False,
-                justification="left",
-                num_rows=35,
-            ),
-        ],
-        [sg.Button("Export all Conditions...", key="-EXPORT-", size=(20, 1))],
-    ]
+    return correlation_matrices, class_info_dict
 
-    window_TM = sg.Window(
-        "Marker correlations",
-        layout_TM,
-        finalize=True,
-        size=(900, 650),
-        modal=True,
-        resizable=True,
+
+def show_marker_correlation_dialog(
+    fract_data, fract_info, marker_list, key
+) -> None:
+    correlation_matrices, class_info_dict = compute_correlation_and_class_info(
+        fract_data, fract_info, marker_list, key
     )
+    # Initially selected condition
+    condition = list(correlation_matrices.keys())[0]
+
+    window = _create_window(condition, correlation_matrices, class_info_dict)
 
     # Initial drawing
     fig = create_heatmap(correlation_matrices[condition], title=condition)
-    figure_agg = draw_figure(window_TM["-CANVAS-"].TKCanvas, fig)
+    figure_agg = draw_figure(window["-CANVAS-"].TKCanvas, fig)
 
     while True:
-        event_TM, values_TM = window_TM.read()
+        event, values = window.read()
 
-        if event_TM == sg.WIN_CLOSED:
+        if event == sg.WIN_CLOSED:
             break
-        elif event_TM == "-condition-":
-            condition = values_TM["-condition-"]
+
+        if event == "-condition-":
+            condition = values["-condition-"]
             fig = create_heatmap(
                 correlation_matrices[condition], title=condition
             )
             figure_agg = update_figure(
-                window_TM["-CANVAS-"].TKCanvas, figure_agg, fig
+                window["-CANVAS-"].TKCanvas, figure_agg, fig
             )
-            window_TM["-CLASSINFO-"].update(values=class_info_dict[condition])
-        elif event_TM == "-EXPORT-":
+            window["-CLASSINFO-"].update(values=class_info_dict[condition])
+        elif event == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
                 for cond, df in correlation_matrices.items():
@@ -167,10 +200,4 @@ def TM_exec(fract_data, fract_info, marker_list, key):
                     for cond, df in correlation_matrices.items():
                         df.to_excel(writer, sheet_name=cond)
 
-    window_TM.close()
-    return
-
-
-# Example usage
-# fract_data, fract_info, marker_list, key = your data here
-# correlation_matrices = TM_exec(fract_data, fract_info, marker_list, key)
+    window.close()
