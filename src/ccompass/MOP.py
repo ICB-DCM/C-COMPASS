@@ -152,14 +152,14 @@ def upsampling(
     fract_marker_up,
     condition,
 ):
-    """Perform upsampling."""
+    """Perform upsampling for all conditions."""
     fract_full_up[condition] = fract_full[condition]
     fract_marker_up[condition] = fract_marker[condition]
 
     if NN_params.upsampling_method == "none":
         pass
     else:
-        print(condition + ":")
+        print(f"Upsampling condition {condition}:")
         class_sizes = {}
         for classname in list(set(fract_marker[condition]["class"])):
             class_sizes[classname] = list(
@@ -288,6 +288,10 @@ def upsampling(
                         profile_up = pd.DataFrame(
                             nv, columns=profile_av.columns
                         )
+                    else:
+                        raise ValueError(
+                            f"Unknown upsampling method: {NN_params.upsampling_method}"
+                        )
 
                     profile_up.index = [name_up]
                     profile_up["class"] = [classname]
@@ -327,6 +331,7 @@ def create_fullprofiles(
 
 
 def sum1_normalization(x):
+    """Normalize the input to sum to 1."""
     return x / (ops.sum(x, axis=1, keepdims=True) + K.epsilon())
 
 
@@ -680,8 +685,8 @@ def MOP_exec(
                         SR,
                     )
             else:
-                # ADD AUTOENCODER HERE
-                pass
+                # TODO ADD AUTOENCODER HERE
+                raise NotImplementedError("Autoencoder not implemented yet.")
 
         FNN_classifier = _create_classifier_hypermodel(NN_params)
         for condition in conditions:
@@ -745,10 +750,10 @@ def MOP_exec(
 
 
 def multi_predictions(
-    FNN_classifier,
+    FNN_classifier: type[kt.HyperModel],
     learning_xyz,
     NN_params: NeuralNetworkParametersModel,
-    condition,
+    condition: str,
     roundn: int,
 ):
     y_full = learning_xyz[condition]["y_full"][f"ROUND_{roundn}_0"]
@@ -764,7 +769,7 @@ def multi_predictions(
     ]
     set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
 
-    # Define the path to the 'Classifier_Models' folder within the user's data directory
+    # Tune the hyperparameters
     classifier_directory = get_ccmps_data_directory()
     classifier_directory.mkdir(exist_ok=True, parents=True)
 
@@ -777,7 +782,7 @@ def multi_predictions(
         max_epochs=NN_params.NN_epochs,
         factor=3,
         directory=str(classifier_directory),
-        project_name=time + "_Classifier_" + condition + "_" + str(roundn),
+        project_name=f"{time}_Classifier_{condition}_{roundn}",
     )
 
     stop_early = tf.keras.callbacks.EarlyStopping(
@@ -795,8 +800,7 @@ def multi_predictions(
     FNN_best = FNN_tuner.get_best_models(num_models=1)[0]
     best_hp = FNN_tuner.get_best_hyperparameters(num_trials=1)[0].values
 
-    FNN_ens = []
-    FNN_ens.append(FNN_best)
+    FNN_ens = [FNN_best]
     # FNN_ens[0] = copy.deepcopy(FNN_best)
     # FNN_best.build(y_train_mixed_up.shape)
 

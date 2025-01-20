@@ -1,5 +1,7 @@
 """Core classes and functions for the ccompass package."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Literal
 
@@ -59,7 +61,7 @@ class NeuralNetworkParametersModel(BaseModel):
     ] = "noisedaverage"
     #: Noise level for upsampling (standard deviations)
     upsampling_noise: float = 2
-    # FIXME: unused
+    #: Auto-encoder type
     AE: Literal["none", "lite", "full", "full_lite"] = "none"
     # FIXME: unused
     AE_activation: Literal["relu", "leakyrelu"] = "leakyrelu"
@@ -150,26 +152,39 @@ def fract_default():
     return params_default
 
 
+# type annotations
+
+# A condition ID
+ConditionId = str
+# Path to a file
+Filepath = str
+# Condition + replicate ID: "{condition}_Rep.{replicate}"
+ConditionReplicate = str
+
+
 class SessionModel(BaseModel):
     """Data for a C-COMPASS session."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     #: Filepaths for fractionation data
-    fract_paths: list[str] = []
+    fract_paths: list[Filepath] = []
     #: Fractionation column assignments
     #  filepath => [column ID, condition, replicate, fraction]
     fract_tables: dict[
-        str, list[tuple[str, int | str, int | str, int | str]]
+        Filepath, list[tuple[str, int | ConditionId, int | str, int | str]]
     ] = {}
     #: ??
-    fract_pos: dict[str, list[int]] = {}
+    fract_pos: dict[Filepath, list[int]] = {}
     #: Fractionation input files: filepath => DataFrame
-    fract_indata: dict[str, pd.DataFrame] = {}
+    fract_indata: dict[Filepath, pd.DataFrame] = {}
     #: Fractionation data for classification and visualization
     #  One DataFrame for each condition x replicate
     #  ("{condition}_Rep.{replicate}")
-    fract_data: dict[str, dict[str, pd.DataFrame]] = {"class": {}, "vis": {}}
+    fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]] = {
+        "class": {},
+        "vis": {},
+    }
     #: ??
     #  for visualization and classification, each containing one DataFrame
     #  per condition with columns "{condition}_std_Fr.{fraction}"
@@ -190,39 +205,39 @@ class SessionModel(BaseModel):
     fract_conditions: list[str] = []
     #: Fractionation data for the different conditions x replicates
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_full: dict[str, pd.DataFrame] = {}
+    fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
     #: Fractionation data after upsampling
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_full_up: dict[str, pd.DataFrame] = {}
+    fract_full_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: Marker abundance in the different fractions
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_marker: dict[str, pd.DataFrame] = {}
+    fract_marker: dict[ConditionReplicate, pd.DataFrame] = {}
     #: Marker abundance in the different fractions for visualization
     #  "{condition}_median" => DataFrame
     fract_marker_vis: dict[str, pd.DataFrame] = {}
     #: Marker abundance in the different fractions after upsampling
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_marker_up: dict[str, pd.DataFrame] = {}
+    fract_marker_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_mixed_up: dict[str, pd.DataFrame] = {}
+    fract_mixed_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_test: dict[str, pd.DataFrame] = {}
+    fract_test: dict[ConditionReplicate, pd.DataFrame] = {}
 
     #: Filepaths for total proteome data
-    tp_paths: list[str] = []
+    tp_paths: list[Filepath] = []
     #: Total proteome column assignments
     #  filepath => [column ID, condition]
-    tp_tables: dict[str, list[tuple[str, str]]] = {}
+    tp_tables: dict[Filepath, list[tuple[str, str]]] = {}
     #: ??
-    tp_pos: dict[str, list[int]] = {}
+    tp_pos: dict[Filepath, list[int]] = {}
     #: Total proteome input files: filepath => DataFrame
-    tp_indata: dict[str, pd.DataFrame] = {}
+    tp_indata: dict[Filepath, pd.DataFrame] = {}
     #: Total proteome data for the different conditions
     #  One DataFrame for each condition containing all replicates
     #  (column names are "{condition}_Rep.{replicate}")
-    tp_data: dict[str, pd.DataFrame] = {}
+    tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     #  *something* => "{condition}" => DataFrame
     tp_intermediate: dict[str, dict[str, pd.DataFrame]] = {}
@@ -277,7 +292,7 @@ class SessionModel(BaseModel):
     # "{condition}_Rep.{replicate}" => dict(
     #  {w,W,x,X,y,Y,z,Z}_... => ...
     # )
-    learning_xyz: dict[str, dict[str, Any]] = {}
+    learning_xyz: dict[ConditionReplicate, dict[str, Any]] = {}
     #: Nerural network hyperparameters
     NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
@@ -286,10 +301,22 @@ class SessionModel(BaseModel):
     #  "metrics" -> DataFrame,
     #  "SVM" -> dict("winner_combined" => DataFrame,
     #                "prob_combined" => DataFrame),
+    #  "classnames" -> list[str],
+    #  "class_abundance -> dict[class_id, dict(CA:float, count: int)]
     # )
-    results: dict[str, dict[str, Any]] = {}
-    #: ??
-    comparison: dict = {}
+    results: dict[ConditionId, dict[str, Any]] = {}
+    #: Pairwise comparisons of conditions
+    # (condition1, condition2) => dict(
+    #  "intersection_data",
+    #  "metrics",
+    #  "RLS_results", (RLS = Relocalization Score)
+    #  "RLS_null",
+    #  "nRLS_results",
+    #  "nRLS_null",
+    #  )
+    comparison: dict[
+        tuple[ConditionId, ConditionId], dict[str, pd.Series | pd.DataFrame]
+    ] = {}
     #: Indicates which of the individual analysis steps
     #  have already been performed or not
     status: SessionStatusModel = SessionStatusModel()
@@ -364,7 +391,7 @@ class SessionModel(BaseModel):
         self.reset_classification()
         self.status.marker_matched = False
 
-    def reset(self, other: "SessionModel" = None):
+    def reset(self, other: SessionModel = None):
         """Reset to default values or copy from another session."""
         if other is None:
             other = SessionModel()
