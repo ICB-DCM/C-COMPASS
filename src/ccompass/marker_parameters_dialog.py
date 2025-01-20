@@ -74,7 +74,7 @@ def _create_window(marker_params: dict[str, Any]) -> sg.Window:
         ],
     ]
 
-    return sg.Window("Marker Parameters", layout, size=(400, 100))
+    return sg.Window("Marker Parameters", layout, size=(400, 100), modal=True)
 
 
 def show_dialog(params_old: dict[str, Any]) -> dict[str, Any]:

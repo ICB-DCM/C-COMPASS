@@ -96,7 +96,7 @@ def _create_class_manager_window(
         ]
     ]
 
-    return sg.Window("Classes", layout_CM, size=(600, 400))
+    return sg.Window("Classes", layout_CM, size=(600, 400), modal=True)
 
 
 def show_class_manager_dialog(

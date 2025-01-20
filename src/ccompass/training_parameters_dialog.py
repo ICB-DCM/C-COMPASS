@@ -220,7 +220,7 @@ def _create_window(nn_params: NeuralNetworkParametersModel) -> sg.Window:
         ],
     ]
 
-    return sg.Window("NN Parameters", layout, size=(470, 420))
+    return sg.Window("NN Parameters", layout, size=(470, 420), modal=True)
 
 
 def show_dialog(

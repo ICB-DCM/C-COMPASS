@@ -542,7 +542,12 @@ def create_fract_processing_window() -> sg.Window:
             ),
         ]
     ]
-    return sg.Window("Processing...", layout_FDP, size=(600, 120))
+    return sg.Window(
+        "Processing...",
+        layout_FDP,
+        size=(600, 120),
+        modal=True,
+    )
 
 
 def start_fract_data_processing(
