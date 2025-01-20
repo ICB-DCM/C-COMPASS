@@ -12,12 +12,16 @@ from typing import Any
 import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 from . import MOA, PPMS, RP
+from ._utils import get_ccmps_data_directory
 
 # tensorflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+# the application settings file
+config_filepath: Path = get_ccmps_data_directory() / "settings.yaml"
 
 
 def default_status():
@@ -35,6 +39,44 @@ def default_status():
         "comparison_class": False,
     }
     return status
+
+
+class AppSettings(BaseModel):
+    """Settings for the C-COMPASS application"""
+
+    #: The directory that was last used to load/save a session
+    last_session_dir: Path = Path.home()
+
+    @field_serializer("last_session_dir")
+    def serialize_last_session_dir(self, value: Path) -> str:
+        return str(value)
+
+    @classmethod
+    def load(cls, filepath: Path = None):
+        """Load the settings from a file."""
+        import yaml
+
+        if filepath is None:
+            filepath = config_filepath
+
+        if not filepath.exists():
+            return cls()
+
+        with open(filepath) as f:
+            data = yaml.safe_load(f) or {}
+            return cls(**data)
+
+    def save(self, filepath: Path = None):
+        """Save the settings to a file."""
+        import yaml
+
+        if filepath is None:
+            filepath = config_filepath
+
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filepath, "w") as f:
+            yaml.safe_dump(self.model_dump(), f)
 
 
 class SessionModel(BaseModel):
@@ -1301,6 +1343,7 @@ class MainController:
 
     def run(self):
         """Run the C-COMPASS application."""
+        app_settings = AppSettings.load()
 
         # The event loop
         while True:
@@ -1696,10 +1739,22 @@ class MainController:
             #         df_export_part.to_csv(full_path, sep = '\t', index = False)
 
             elif event == "Save...":
-                session_save(self.model)
+                filename = sg.popup_get_file(
+                    "Save Session",
+                    no_window=True,
+                    file_types=(("Numpy", "*.npy"),),
+                    save_as=True,
+                    initial_folder=str(app_settings.last_session_dir),
+                )
+                if filename:
+                    app_settings.last_session_dir = Path(filename).parent
+                    app_settings.save()
+                    self.model.to_numpy(filename)
+
             elif event == "Open...":
                 filename = sg.popup_get_file(
                     "Open Session",
+                    initial_folder=str(app_settings.last_session_dir),
                     no_window=True,
                     file_types=(("Numpy", "*.npy"),),
                 )
@@ -1715,6 +1770,8 @@ class MainController:
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
                         value=self.model.marker_fractkey,
                     )
+                    app_settings.last_session_dir = Path(filename).parent
+                    app_settings.save()
             elif event == "New":
                 sure = sg.popup_yes_no(
                     "Are you sure to close the session and start a new one?"
@@ -2775,17 +2832,6 @@ def create_markerlist(
     else:
         raise ValueError("Invalid marker parameter")
     return markerset_final
-
-
-def session_save(session: SessionModel):
-    filename = sg.popup_get_file(
-        "Save Session",
-        no_window=True,
-        file_types=(("Numpy", "*.npy"),),
-        save_as=True,
-    )
-    if filename:
-        session.to_numpy(filename)
 
 
 def session_open(window, values, filename, model: SessionModel):
