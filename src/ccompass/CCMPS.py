@@ -1523,9 +1523,9 @@ class MainController:
                         self.model.tp_identifiers,
                     )
             elif event == "-tp_parameters-":
-                self.model.tp_preparams = PPMS.PPMS_exec_TP(
-                    self.model.tp_preparams
-                )
+                from .total_proteome_parameters_dialog import show_dialog
+
+                self.model.tp_preparams = show_dialog(self.model.tp_preparams)
             elif event == "-tp_reset-":
                 sure = sg.popup_yes_no(
                     "Reset TotalProteome Pre-Processing? "
