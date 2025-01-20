@@ -7,7 +7,7 @@ data processing.
 
 import FreeSimpleGUI as sg
 
-from .PPMS import fract_default
+from .core import fract_default
 
 
 def _set_combinations(params):
