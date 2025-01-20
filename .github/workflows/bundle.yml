@@ -130,3 +130,12 @@ jobs:
       with:
         name: ccompass_bundle_onefile_macos
         path: dist/ccompass_bundle_onefile
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    needs: [linux_bundle, windows_bundle, macos_bundle]
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
