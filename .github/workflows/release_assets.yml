@@ -1,9 +1,15 @@
 name: Deploy
 on:
-  release:
-    types:
-      - published
-      - created
+#  release:
+#    types:
+#      - published
+#      - created
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   upload_release_assets:
@@ -14,8 +20,8 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v4
 
-    - name: Upload release asset
-      uses: AButler/upload-release-assets@v3.0
-      with:
-        files: "ccompass_bundle_onefile_*"
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+#    - name: Upload release asset
+#      uses: AButler/upload-release-assets@v3.0
+#      with:
+#        files: "ccompass_bundle_onefile_*"
+#        repo-token: ${{ secrets.GITHUB_TOKEN }}
