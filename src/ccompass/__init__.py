@@ -12,3 +12,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 # the application settings file
 config_filepath: Path = get_ccmps_data_directory() / "settings.yaml"
+
+# the repository URL
+repository_url = "https://github.com/ICB-DCM/C-COMPASS/"
+# the ReadTheDocs URL
+readthedocs_url = "https://c-compass.readthedocs.io/en/latest/"
