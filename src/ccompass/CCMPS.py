@@ -1523,9 +1523,9 @@ class MainController:
                         self.model.tp_identifiers,
                     )
             elif event == "-tp_parameters-":
-                self.model.tp_preparams = PPMS.PPMS_exec_TP(
-                    self.model.tp_preparams
-                )
+                from .total_proteome_parameters_dialog import show_dialog
+
+                self.model.tp_preparams = show_dialog(self.model.tp_preparams)
             elif event == "-tp_reset-":
                 sure = sg.popup_yes_no(
                     "Reset TotalProteome Pre-Processing? "
@@ -1630,7 +1630,9 @@ class MainController:
                 # window_CCMPS['-classification_SVM-'].Update(disabled = True)
 
             elif event == "-classification_parameters-":
-                self.model.NN_params = PPMS.PPMS_exec_NN(self.model.NN_params)
+                from .training_parameters_dialog import show_dialog
+
+                self.model.NN_params = show_dialog(self.model.NN_params)
 
             elif event == "-classification_MOP-":
                 self._handle_training(key=values["-marker_fractkey-"])
