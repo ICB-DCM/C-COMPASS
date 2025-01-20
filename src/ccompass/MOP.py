@@ -25,14 +25,122 @@ from tensorflow import keras
 from ._utils import get_ccmps_data_directory
 from .core import NeuralNetworkParametersModel
 
-# from tensorflow.keras.models import Model
-
-
 optimizer_classes = {
     "adam": tf.keras.optimizers.Adam,
     "rmsprop": tf.keras.optimizers.RMSprop,
     "sgd": tf.keras.optimizers.SGD,
 }
+
+
+def _create_classifier_hypermodel(
+    NN_params: NeuralNetworkParametersModel,
+) -> type[kt.HyperModel]:
+    """Create a hypermodel for the classifier."""
+
+    class FNN_classifier(kt.HyperModel):
+        def __init__(self, fixed_hp=None, set_shapes=None):
+            super().__init__()
+            self.fixed_hp = fixed_hp
+            self.set_shapes = set_shapes
+            self.chosen_hp = {}
+
+        def build(self, hp):
+            model = keras.Sequential()
+            # Input layer, size is the number of fractions
+            model.add(
+                tf.keras.Input(
+                    (self.set_shapes[0],),
+                )
+            )
+            # units_init = np.shape(y_train_mixed_up)[1]
+            # model.add(tf.keras.Input(units_init,))
+
+            # fixed or tunable hyperparameters
+            if self.fixed_hp:
+                optimizer_choice = self.fixed_hp["optimizer"]
+                learning_rate = self.fixed_hp["learning_rate"]
+                units = self.fixed_hp["units"]
+            else:
+                optimizer_choice = hp.Choice("optimizer", NN_params.optimizers)
+                learning_rate = hp.Float(
+                    "learning_rate",
+                    min_value=1e-4,
+                    max_value=1e-1,
+                    sampling="log",
+                )
+                if NN_params.NN_optimization == "short":
+                    units = hp.Int(
+                        "units",
+                        min_value=int(
+                            min(self.set_shapes)
+                            + 0.4
+                            * (max(self.set_shapes) - min(self.set_shapes))
+                        ),
+                        max_value=int(
+                            min(self.set_shapes)
+                            + 0.6
+                            * (max(self.set_shapes) - min(self.set_shapes))
+                        ),
+                        step=2,
+                    )
+                elif NN_params.NN_optimization == "long":
+                    units = hp.Int(
+                        "units",
+                        min_value=min(self.set_shapes),
+                        max_value=max(self.set_shapes),
+                        step=2,
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown optimization: {NN_params.NN_optimization}"
+                    )
+            # dense layer 1 with tunable size
+            if NN_params.NN_activation == "relu":
+                model.add(keras.layers.Dense(units, activation="relu"))
+            elif NN_params.NN_activation == "leakyrelu":
+                hp_alpha = hp.Float(
+                    "alpha", min_value=0.05, max_value=0.3, step=0.05
+                )
+                model.add(keras.layers.Dense(units))
+                model.add(keras.layers.LeakyReLU(hp_alpha))
+
+            # dense layer 2 with size according to the number of compartments
+            model.add(
+                keras.layers.Dense(
+                    self.set_shapes[1],
+                    activation=NN_params.class_activation,
+                )
+            )
+            model.add(keras.layers.ReLU())
+
+            # normalization layer
+            model.add(keras.layers.Lambda(sum1_normalization))
+
+            optimizer = optimizer_classes[optimizer_choice](
+                learning_rate=learning_rate
+            )
+            model.compile(
+                loss=NN_params.class_loss,
+                optimizer=optimizer,
+                metrics=[
+                    tf.keras.metrics.MeanSquaredError(),
+                    tf.keras.metrics.MeanAbsoluteError(),
+                ],
+            )
+
+            if not self.fixed_hp:
+                self.chosen_hp = {
+                    "optimizer": optimizer_choice,
+                    "learning_rate": learning_rate,
+                    "units": units,
+                }
+
+            return model
+
+        def get_chosen_hyperparameters(self):
+            return self.chosen_hp
+
+    return FNN_classifier
 
 
 def upsampling(
@@ -44,6 +152,7 @@ def upsampling(
     fract_marker_up,
     condition,
 ):
+    """Perform upsampling."""
     fract_full_up[condition] = fract_full[condition]
     fract_marker_up[condition] = fract_marker[condition]
 
@@ -307,100 +416,7 @@ def MOP_exec(
     key,
     NN_params: NeuralNetworkParametersModel,
 ):
-    class FNN_classifier(kt.HyperModel):
-        def __init__(self, fixed_hp=None, set_shapes=None):
-            self.fixed_hp = fixed_hp
-            self.set_shapes = set_shapes
-            self.chosen_hp = {}
-
-        def build(self, hp):
-            model = keras.Sequential()
-            # units_init = np.shape(y_train_mixed_up)[1]
-            model.add(
-                tf.keras.Input(
-                    (self.set_shapes[0],),
-                )
-            )
-            # model.add(tf.keras.Input(units_init,))
-
-            if self.fixed_hp:
-                optimizer_choice = self.fixed_hp["optimizer"]
-                learning_rate = self.fixed_hp["learning_rate"]
-                units = self.fixed_hp["units"]
-
-            else:
-                optimizer_choice = hp.Choice("optimizer", NN_params.optimizers)
-                learning_rate = hp.Float(
-                    "learning_rate",
-                    min_value=1e-4,
-                    max_value=1e-1,
-                    sampling="log",
-                )
-                if NN_params.NN_optimization == "short":
-                    units = hp.Int(
-                        "units",
-                        min_value=int(
-                            min(self.set_shapes)
-                            + 0.4
-                            * (max(self.set_shapes) - min(self.set_shapes))
-                        ),
-                        max_value=int(
-                            min(self.set_shapes)
-                            + 0.6
-                            * (max(self.set_shapes) - min(self.set_shapes))
-                        ),
-                        step=2,
-                    )
-                elif NN_params.NN_optimization == "long":
-                    units = hp.Int(
-                        "units",
-                        min_value=min(self.set_shapes),
-                        max_value=max(self.set_shapes),
-                        step=2,
-                    )
-
-            if NN_params.NN_activation == "relu":
-                model.add(keras.layers.Dense(units, activation="relu"))
-            elif NN_params.NN_activation == "leakyrelu":
-                hp_alpha = hp.Float(
-                    "alpha", min_value=0.05, max_value=0.3, step=0.05
-                )
-                model.add(keras.layers.Dense(units))
-                model.add(keras.layers.LeakyReLU(hp_alpha))
-
-            model.add(
-                keras.layers.Dense(
-                    self.set_shapes[1],
-                    activation=NN_params.class_activation,
-                )
-            )
-            model.add(keras.layers.ReLU())
-            model.add(keras.layers.Lambda(sum1_normalization))
-
-            optimizer = optimizer_classes[optimizer_choice](
-                learning_rate=learning_rate
-            )
-            model.compile(
-                loss=NN_params.class_loss,
-                optimizer=optimizer,
-                metrics=[
-                    tf.keras.metrics.MeanSquaredError(),
-                    tf.keras.metrics.MeanAbsoluteError(),
-                ],
-            )
-
-            if not self.fixed_hp:
-                self.chosen_hp = {
-                    "optimizer": optimizer_choice,
-                    "learning_rate": learning_rate,
-                    "units": units,
-                }
-
-            return model
-
-        def get_chosen_hyperparameters(self):
-            return self.chosen_hp
-
+    """Perform multi-organelle prediction."""
     conditions_std = [x for x in fract_conditions if x != "[KEEP]"]
     conditions = [x for x in fract_full]
 
@@ -414,8 +430,6 @@ def MOP_exec(
                 right_index=True,
                 how="left",
             ).set_index(key)
-
-    clf = svm.SVC(kernel="rbf", probability=True)
 
     # -------------------------
     ## UPSAMPLING START
@@ -489,7 +503,7 @@ def MOP_exec(
 
         fract_marker = copy.deepcopy(fract_marker_old)
 
-        if NN_params.upsampling == True:
+        if NN_params.upsampling:
             for condition in conditions:
                 fract_marker_up, fract_full_up = upsampling(
                     NN_params,
@@ -528,21 +542,21 @@ def MOP_exec(
         svm_marker = {}
         svm_test = {}
         for condition in conditions:
-            learning_xyz, svm_metrics, svm_marker, svm_test = (
-                single_prediction(
-                    learning_xyz,
-                    clf,
-                    svm_metrics,
-                    fract_marker,
-                    svm_marker,
-                    fract_test,
-                    svm_test,
-                    condition,
-                    R,
-                )
+            clf = svm.SVC(kernel="rbf", probability=True)
+
+            svm_metrics, svm_marker, svm_test = single_prediction(
+                learning_xyz[condition],
+                clf,
+                svm_metrics,
+                fract_marker,
+                svm_marker,
+                fract_test,
+                svm_test,
+                condition,
+                R,
             )
 
-        if NN_params.svm_filter == True:
+        if NN_params.svm_filter:
             fract_full_up = {}
             fract_marker_up = {}
             fract_marker_filtered = {}
@@ -583,7 +597,6 @@ def MOP_exec(
 
         if NN_params.mixed_part == "none":
             fract_mixed_up = copy.deepcopy(fract_unmixed_up)
-            pass
         else:
             fract_mixed_up = {}
             mix_steps = [
@@ -670,6 +683,7 @@ def MOP_exec(
                 # ADD AUTOENCODER HERE
                 pass
 
+        FNN_classifier = _create_classifier_hypermodel(NN_params)
         for condition in conditions:
             FNN_ens, learning_xyz = multi_predictions(
                 FNN_classifier, learning_xyz, NN_params, condition, R
@@ -720,7 +734,6 @@ def MOP_exec(
     # print(now.strftime("%Y%m%d%H%M%S"))
     return (
         learning_xyz,
-        NN_params,
         fract_full_up,
         fract_marker_up,
         fract_mixed_up,
@@ -732,7 +745,11 @@ def MOP_exec(
 
 
 def multi_predictions(
-    FNN_classifier, learning_xyz, NN_params, condition, roundn: int
+    FNN_classifier,
+    learning_xyz,
+    NN_params: NeuralNetworkParametersModel,
+    condition,
+    roundn: int,
 ):
     y_full = learning_xyz[condition]["y_full"][f"ROUND_{roundn}_0"]
     y_train = learning_xyz[condition]["y_train"][f"ROUND_{roundn}_0"]
@@ -1023,7 +1040,7 @@ def create_learninglist(
 
 def mix_profiles(
     mix_steps,
-    NN_params,
+    NN_params: NeuralNetworkParametersModel,
     fract_marker_up,
     fract_unmixed_up,
     fract_mixed_up,
@@ -1089,7 +1106,7 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz,
-    clf,
+    clf: svm.SVC,
     svm_metrics,
     fract_marker,
     svm_marker,
@@ -1098,15 +1115,19 @@ def single_prediction(
     condition,
     roundn: int,
 ):
+    """Perform single prediction.
+
+    :param learning_xyz: The learning data. This will be updated in place.
+    """
     print(condition)
     round_id = f"ROUND_{roundn}"
-    x_full = learning_xyz[condition]["x_full"]
-    x_train = learning_xyz[condition]["x_train"]
-    x_train_up = learning_xyz[condition]["x_train_up"][round_id]
-    x_test = learning_xyz[condition]["x_test"]
+    x_full = learning_xyz["x_full"]
+    x_train = learning_xyz["x_train"]
+    x_train_up = learning_xyz["x_train_up"][round_id]
+    x_test = learning_xyz["x_test"]
 
-    W_train = learning_xyz[condition]["W_train"]
-    W_train_up = learning_xyz[condition]["W_train_up"][round_id]
+    W_train = learning_xyz["W_train"]
+    W_train_up = learning_xyz["W_train_up"][round_id]
 
     clf.fit(x_train_up, W_train_up)
 
@@ -1114,11 +1135,9 @@ def single_prediction(
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
 
-    w_full_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_full))))
-    w_train_prob = list(
-        map(lambda x: max(x), list(clf.predict_proba(x_train)))
-    )
-    w_test_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_test))))
+    w_full_prob = list(map(max, list(clf.predict_proba(x_full))))
+    w_train_prob = list(map(max, list(clf.predict_proba(x_train))))
+    w_test_prob = list(map(max, list(clf.predict_proba(x_test))))
 
     confusion = pd.DataFrame(
         confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
@@ -1146,20 +1165,18 @@ def single_prediction(
         "f1": f1,
     }
 
-    learning_xyz[condition]["w_full"][round_id] = w_full
-    learning_xyz[condition]["w_full_prob"][round_id] = w_full_prob
-    learning_xyz[condition]["w_full_prob_df"][round_id] = copy.deepcopy(
-        learning_xyz[condition]["x_full_df"]
+    learning_xyz["w_full"][round_id] = w_full
+    learning_xyz["w_full_prob"][round_id] = w_full_prob
+    learning_xyz["w_full_prob_df"][round_id] = copy.deepcopy(
+        learning_xyz["x_full_df"]
     )
-    learning_xyz[condition]["w_full_prob_df"][round_id]["SVM_winner"] = w_full
-    learning_xyz[condition]["w_full_prob_df"][round_id]["SVM_prob"] = (
-        w_full_prob
-    )
+    learning_xyz["w_full_prob_df"][round_id]["SVM_winner"] = w_full
+    learning_xyz["w_full_prob_df"][round_id]["SVM_prob"] = w_full_prob
 
-    learning_xyz[condition]["w_train"][round_id] = w_train
-    # learning_xyz[condition]['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
+    learning_xyz["w_train"][round_id] = w_train
+    # learning_xyz['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
 
-    # learning_xyz[condition]['w_test']['ROUND_' + str(roundn)] = w_test
-    # learning_xyz[condition]['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
+    # learning_xyz['w_test']['ROUND_' + str(roundn)] = w_test
+    # learning_xyz['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
 
-    return learning_xyz, svm_metrics, svm_marker, svm_test
+    return svm_metrics, svm_marker, svm_test

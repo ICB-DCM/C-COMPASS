@@ -1917,7 +1917,6 @@ class MainController:
 
         (
             self.model.learning_xyz,
-            self.model.NN_params,
             self.model.fract_full_up,
             self.model.fract_marker_up,
             self.model.fract_mixed_up,
