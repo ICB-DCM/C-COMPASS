@@ -5,23 +5,15 @@ import os
 import FreeSimpleGUI as sg
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+from .marker_correlation_dialog import (
+    draw_figure,
+    update_class_info,
+    update_figure,
+)
 
 
-def draw_figure(canvas, figure):
-    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
-    figure_canvas_agg.draw()
-    figure_canvas_agg.get_tk_widget().pack(side="top", fill="both", expand=1)
-    return figure_canvas_agg
-
-
-def update_figure(canvas, figure_agg, figure):
-    figure_agg.get_tk_widget().forget()
-    plt.close("all")
-    return draw_figure(canvas, figure)
-
-
-def create_line_plot(data, title=None):
+def create_line_plot(data: pd.DataFrame, title=None) -> plt.Figure:
     fig, ax = plt.subplots(figsize=(8, 6))  # Adjust the figure size as needed
     for column in data.columns:
         ax.plot(data.index, data[column], label=column)
@@ -38,24 +30,12 @@ def create_line_plot(data, title=None):
         plt.title(title)
     plt.ylim(0, 1)
     fig.tight_layout(
-        rect=[0, 0, 1, 0.95]
+        rect=(0, 0, 1, 0.95)
     )  # Adjust layout to make room for the legend
     return fig
 
 
-def update_class_info(marker_list, classnames, data):
-    class_info = []
-    for classname in classnames:
-        count = data[
-            data.index.isin(
-                marker_list[marker_list["class"] == classname].index
-            )
-        ].shape[0]
-        class_info.append([classname, count])
-    return class_info
-
-
-def SM_exec(fract_data, fract_info, marker_list, key):
+def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
     profiles_dict = {}
     class_info_dict = {}
     distinct_profiles_dict = {}
@@ -88,7 +68,7 @@ def SM_exec(fract_data, fract_info, marker_list, key):
         distinct_profiles_dict[condition] = distinct_profiles
 
     condition = list(profiles_dict.keys())[0]
-    layout_SM = [
+    layout = [
         [
             sg.Text("Select Condition:"),
             sg.Combo(
@@ -115,9 +95,9 @@ def SM_exec(fract_data, fract_info, marker_list, key):
         [sg.Button("Export all Conditions...", key="-EXPORT-", size=(20, 1))],
     ]
 
-    window_SM = sg.Window(
+    window = sg.Window(
         "Marker profiles",
-        layout_SM,
+        layout,
         finalize=True,
         size=(920, 520),
         modal=True,
@@ -126,21 +106,22 @@ def SM_exec(fract_data, fract_info, marker_list, key):
 
     # Initial drawing
     fig = create_line_plot(profiles_dict[condition], title=condition)
-    figure_agg = draw_figure(window_SM["-CANVAS-"].TKCanvas, fig)
+    figure_agg = draw_figure(window["-CANVAS-"].TKCanvas, fig)
 
     while True:
-        event_SM, values_SM = window_SM.read()
+        event, values = window.read()
 
-        if event_SM == sg.WIN_CLOSED:
+        if event == sg.WIN_CLOSED:
             break
-        elif event_SM == "-condition-":
-            condition = values_SM["-condition-"]
+
+        if event == "-condition-":
+            condition = values["-condition-"]
             fig = create_line_plot(profiles_dict[condition], title=condition)
             figure_agg = update_figure(
-                window_SM["-CANVAS-"].TKCanvas, figure_agg, fig
+                window["-CANVAS-"].TKCanvas, figure_agg, fig
             )
-            window_SM["-CLASSINFO-"].update(values=class_info_dict[condition])
-        elif event_SM == "-EXPORT-":
+            window["-CLASSINFO-"].update(values=class_info_dict[condition])
+        elif event == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
                 # Save the main Excel file with all conditions and median profiles
@@ -171,10 +152,4 @@ def SM_exec(fract_data, fract_info, marker_list, key):
                     )
                     plt.close(fig)
 
-    window_SM.close()
-    return
-
-
-# Example usage
-# fract_data, fract_info, marker_list, key = your data here
-# profiles_dict = SM_exec(fract_data, fract_info, marker_list, key)
+    window.close()
