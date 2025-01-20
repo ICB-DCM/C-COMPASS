@@ -412,6 +412,7 @@ def MOP_exec(
     key,
     NN_params: NeuralNetworkParametersModel,
 ):
+    """Perform multi-organelle prediction."""
     conditions_std = [x for x in fract_conditions if x != "[KEEP]"]
     conditions = [x for x in fract_full]
 
@@ -425,8 +426,6 @@ def MOP_exec(
                 right_index=True,
                 how="left",
             ).set_index(key)
-
-    clf = svm.SVC(kernel="rbf", probability=True)
 
     # -------------------------
     ## UPSAMPLING START
@@ -539,18 +538,18 @@ def MOP_exec(
         svm_marker = {}
         svm_test = {}
         for condition in conditions:
-            learning_xyz, svm_metrics, svm_marker, svm_test = (
-                single_prediction(
-                    learning_xyz,
-                    clf,
-                    svm_metrics,
-                    fract_marker,
-                    svm_marker,
-                    fract_test,
-                    svm_test,
-                    condition,
-                    R,
-                )
+            clf = svm.SVC(kernel="rbf", probability=True)
+
+            svm_metrics, svm_marker, svm_test = single_prediction(
+                learning_xyz[condition],
+                clf,
+                svm_metrics,
+                fract_marker,
+                svm_marker,
+                fract_test,
+                svm_test,
+                condition,
+                R,
             )
 
         if NN_params.svm_filter:
@@ -1103,7 +1102,7 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz,
-    clf,
+    clf: svm.SVC,
     svm_metrics,
     fract_marker,
     svm_marker,
@@ -1112,15 +1111,19 @@ def single_prediction(
     condition,
     roundn: int,
 ):
+    """Perform single prediction.
+
+    :param learning_xyz: The learning data. This will be updated in place.
+    """
     print(condition)
     round_id = f"ROUND_{roundn}"
-    x_full = learning_xyz[condition]["x_full"]
-    x_train = learning_xyz[condition]["x_train"]
-    x_train_up = learning_xyz[condition]["x_train_up"][round_id]
-    x_test = learning_xyz[condition]["x_test"]
+    x_full = learning_xyz["x_full"]
+    x_train = learning_xyz["x_train"]
+    x_train_up = learning_xyz["x_train_up"][round_id]
+    x_test = learning_xyz["x_test"]
 
-    W_train = learning_xyz[condition]["W_train"]
-    W_train_up = learning_xyz[condition]["W_train_up"][round_id]
+    W_train = learning_xyz["W_train"]
+    W_train_up = learning_xyz["W_train_up"][round_id]
 
     clf.fit(x_train_up, W_train_up)
 
@@ -1128,11 +1131,9 @@ def single_prediction(
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
 
-    w_full_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_full))))
-    w_train_prob = list(
-        map(lambda x: max(x), list(clf.predict_proba(x_train)))
-    )
-    w_test_prob = list(map(lambda x: max(x), list(clf.predict_proba(x_test))))
+    w_full_prob = list(map(max, list(clf.predict_proba(x_full))))
+    w_train_prob = list(map(max, list(clf.predict_proba(x_train))))
+    w_test_prob = list(map(max, list(clf.predict_proba(x_test))))
 
     confusion = pd.DataFrame(
         confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
@@ -1160,20 +1161,18 @@ def single_prediction(
         "f1": f1,
     }
 
-    learning_xyz[condition]["w_full"][round_id] = w_full
-    learning_xyz[condition]["w_full_prob"][round_id] = w_full_prob
-    learning_xyz[condition]["w_full_prob_df"][round_id] = copy.deepcopy(
-        learning_xyz[condition]["x_full_df"]
+    learning_xyz["w_full"][round_id] = w_full
+    learning_xyz["w_full_prob"][round_id] = w_full_prob
+    learning_xyz["w_full_prob_df"][round_id] = copy.deepcopy(
+        learning_xyz["x_full_df"]
     )
-    learning_xyz[condition]["w_full_prob_df"][round_id]["SVM_winner"] = w_full
-    learning_xyz[condition]["w_full_prob_df"][round_id]["SVM_prob"] = (
-        w_full_prob
-    )
+    learning_xyz["w_full_prob_df"][round_id]["SVM_winner"] = w_full
+    learning_xyz["w_full_prob_df"][round_id]["SVM_prob"] = w_full_prob
 
-    learning_xyz[condition]["w_train"][round_id] = w_train
-    # learning_xyz[condition]['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
+    learning_xyz["w_train"][round_id] = w_train
+    # learning_xyz['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
 
-    # learning_xyz[condition]['w_test']['ROUND_' + str(roundn)] = w_test
-    # learning_xyz[condition]['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
+    # learning_xyz['w_test']['ROUND_' + str(roundn)] = w_test
+    # learning_xyz['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
 
-    return learning_xyz, svm_metrics, svm_marker, svm_test
+    return svm_metrics, svm_marker, svm_test
