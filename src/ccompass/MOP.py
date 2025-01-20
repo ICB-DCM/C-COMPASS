@@ -23,6 +23,7 @@ from sklearn.metrics import (
 from tensorflow import keras
 
 from ._utils import get_ccmps_data_directory
+from .core import NeuralNetworkParametersModel
 
 # from tensorflow.keras.models import Model
 
@@ -34,51 +35,8 @@ optimizer_classes = {
 }
 
 
-## 'upsampling_method' : ['noised', 'average', 'noisedaverage']
-## 'upsampling_noise' : [0.5, 1., 1.5, 2., 2.5]
-## 'AE' : ['none', 'lite', 'full', 'full_lite']
-## 'AE_activation' : ['relu', 'leakyrelu']
-## 'AE_out' : ['sigmoid', relu', 'softmax', 'leakyrelu']
-## 'svm_filter' : [True, False]
-## 'mixed_part' : ['none', 2, 4, 5, 10]
-## 'mixed_batch' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-## 'NN_optimization' : ['short', 'long']
-## 'NN_activation' : ['relu', 'leakyrelu']
-## 'class_activation' : ['sigmoid', 'softmax', 'linear']
-## 'class_loss' : ['binary_crossentropy', 'mean_squared_error']
-## 'regularization' : ['none', 'l1', 'l2', 'elastic']
-## 'optimizers' : ['adam', 'rmsprop', 'sgd']
-## 'NN_epochs' : [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-
-
-# def get_NNparams ():
-#     NN_params = {
-#         'upsampling' : True,
-#         'upsampling_method' : 'noisedaverage',
-#         'upsampling_noise' : 2,
-#         'AE' : 'none',
-#         'AE_activation' : 'leakyrelu',
-#         'AE_out' : 'sigmoid',
-#         'AE_epochs' : 20,
-#         'svm_filter' : False,
-#         'mixed_part' : 4,
-#         'mixed_batch' : 0.05,
-#         'NN_optimization' : 'long',
-#         'NN_activation' : 'relu',
-#         'class_activation' : 'linear',
-#         'class_loss' : 'mean_squared_error',
-#         'regularization' : 'none',
-#         'optimizers' : ['adam', 'rmsprop', 'sgd'],
-#         'NN_epochs' : 20,
-#         'rounds' : 3,
-#         'subrounds' : 10,
-#         'reliability' : 95
-#         }
-#     return NN_params
-
-
 def upsampling(
-    NN_params,
+    NN_params: NeuralNetworkParametersModel,
     stds,
     fract_full,
     fract_full_up,
@@ -89,7 +47,7 @@ def upsampling(
     fract_full_up[condition] = fract_full[condition]
     fract_marker_up[condition] = fract_marker[condition]
 
-    if NN_params["upsampling_method"] == "none":
+    if NN_params.upsampling_method == "none":
         pass
     else:
         print(condition + ":")
@@ -120,7 +78,7 @@ def upsampling(
                 class_std_flat = class_std.values.flatten()
 
                 for i in range(class_difference):
-                    if NN_params["upsampling_method"] == "noised":
+                    if NN_params.upsampling_method == "noised":
                         ID_rnd = random.choice(list(data_class.index))
                         name_up = f"up_{k}_{ID_rnd}"
                         k += 1
@@ -143,7 +101,7 @@ def upsampling(
 
                         nv = np.random.normal(
                             profile_rnd_flat,
-                            NN_params["upsampling_noise"] * std_rnd_flat,
+                            NN_params.upsampling_noise * std_rnd_flat,
                             size=profile_rnd.shape,
                         )
                         nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
@@ -152,7 +110,7 @@ def upsampling(
                             nv, columns=profile_rnd.columns
                         )
 
-                    elif NN_params["upsampling_method"] == "average":
+                    elif NN_params.upsampling_method == "average":
                         ID_rnd_1 = random.choice(list(data_class.index))
                         ID_rnd_2 = random.choice(list(data_class.index))
                         ID_rnd_3 = random.choice(list(data_class.index))
@@ -181,7 +139,7 @@ def upsampling(
                             .transpose()
                         )
 
-                    elif NN_params["upsampling_method"] == "noisedaverage":
+                    elif NN_params.upsampling_method == "noisedaverage":
                         ID_rnd_1 = random.choice(list(data_class.index))
                         ID_rnd_2 = random.choice(list(data_class.index))
                         ID_rnd_3 = random.choice(list(data_class.index))
@@ -213,7 +171,7 @@ def upsampling(
 
                         nv = np.random.normal(
                             profile_av_flat,
-                            NN_params["upsampling_noise"] * class_std_flat,
+                            NN_params.upsampling_noise * class_std_flat,
                             size=profile_av.shape,
                         )
                         nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
@@ -347,7 +305,7 @@ def MOP_exec(
     fract_std,
     fract_info,
     key,
-    NN_params,
+    NN_params: NeuralNetworkParametersModel,
 ):
     class FNN_classifier(kt.HyperModel):
         def __init__(self, fixed_hp=None, set_shapes=None):
@@ -371,16 +329,14 @@ def MOP_exec(
                 units = self.fixed_hp["units"]
 
             else:
-                optimizer_choice = hp.Choice(
-                    "optimizer", NN_params["optimizers"]
-                )
+                optimizer_choice = hp.Choice("optimizer", NN_params.optimizers)
                 learning_rate = hp.Float(
                     "learning_rate",
                     min_value=1e-4,
                     max_value=1e-1,
                     sampling="log",
                 )
-                if NN_params["NN_optimization"] == "short":
+                if NN_params.NN_optimization == "short":
                     units = hp.Int(
                         "units",
                         min_value=int(
@@ -395,7 +351,7 @@ def MOP_exec(
                         ),
                         step=2,
                     )
-                elif NN_params["NN_optimization"] == "long":
+                elif NN_params.NN_optimization == "long":
                     units = hp.Int(
                         "units",
                         min_value=min(self.set_shapes),
@@ -403,9 +359,9 @@ def MOP_exec(
                         step=2,
                     )
 
-            if NN_params["NN_activation"] == "relu":
+            if NN_params.NN_activation == "relu":
                 model.add(keras.layers.Dense(units, activation="relu"))
-            elif NN_params["NN_activation"] == "leakyrelu":
+            elif NN_params.NN_activation == "leakyrelu":
                 hp_alpha = hp.Float(
                     "alpha", min_value=0.05, max_value=0.3, step=0.05
                 )
@@ -415,7 +371,7 @@ def MOP_exec(
             model.add(
                 keras.layers.Dense(
                     self.set_shapes[1],
-                    activation=NN_params["class_activation"],
+                    activation=NN_params.class_activation,
                 )
             )
             model.add(keras.layers.ReLU())
@@ -425,7 +381,7 @@ def MOP_exec(
                 learning_rate=learning_rate
             )
             model.compile(
-                loss=NN_params["class_loss"],
+                loss=NN_params.class_loss,
                 optimizer=optimizer,
                 metrics=[
                     tf.keras.metrics.MeanSquaredError(),
@@ -522,7 +478,7 @@ def MOP_exec(
         # learning_xyz[condition]['z_test_df'] = {}
         # learning_xyz[condition]['z_test'] = {}
 
-    for R in range(1, NN_params["rounds"] + 1):
+    for R in range(1, NN_params.rounds + 1):
         # print('ROUND 0')
         print("upsampling...")
         # fract_full_up = copy.deepcopy(fract_full)
@@ -533,7 +489,7 @@ def MOP_exec(
 
         fract_marker = copy.deepcopy(fract_marker_old)
 
-        if NN_params["upsampling"] == True:
+        if NN_params.upsampling == True:
             for condition in conditions:
                 fract_marker_up, fract_full_up = upsampling(
                     NN_params,
@@ -586,7 +542,7 @@ def MOP_exec(
                 )
             )
 
-        if NN_params["svm_filter"] == True:
+        if NN_params.svm_filter == True:
             fract_full_up = {}
             fract_marker_up = {}
             fract_marker_filtered = {}
@@ -625,14 +581,14 @@ def MOP_exec(
                 axis=1,
             )
 
-        if NN_params["mixed_part"] == "none":
+        if NN_params.mixed_part == "none":
             fract_mixed_up = copy.deepcopy(fract_unmixed_up)
             pass
         else:
             fract_mixed_up = {}
             mix_steps = [
-                i / (NN_params["mixed_part"])
-                for i in range(1, (NN_params["mixed_part"]))
+                i / (NN_params.mixed_part)
+                for i in range(1, (NN_params.mixed_part))
             ]
             for condition in conditions:
                 fract_mixed_up = mix_profiles(
@@ -677,7 +633,7 @@ def MOP_exec(
             V_full_up = learning_xyz[condition]["x_full_up"][round_id]
             learning_xyz[condition]["V_full_up"][round_id] = V_full_up
 
-            if NN_params["AE"] == "none":
+            if NN_params.AE == "none":
                 y_full = x_full
                 y_full_up = x_full_up
                 y_train = x_train
@@ -697,7 +653,7 @@ def MOP_exec(
                     R,
                     0,
                 )
-                for SR in range(1, NN_params["subrounds"] + 1):
+                for SR in range(1, NN_params.subrounds + 1):
                     learning_xyz = add_Y(
                         learning_xyz,
                         y_full,
@@ -801,7 +757,7 @@ def multi_predictions(
         hypermodel=FNN_classifier(set_shapes=set_shapes),
         hyperparameters=kt.HyperParameters(),
         objective="val_mean_squared_error",
-        max_epochs=NN_params["NN_epochs"],
+        max_epochs=NN_params.NN_epochs,
         factor=3,
         directory=str(classifier_directory),
         project_name=time + "_Classifier_" + condition + "_" + str(roundn),
@@ -814,7 +770,7 @@ def multi_predictions(
     FNN_tuner.search(
         y_train_mixed_up,
         Z_train_mixed_up,
-        epochs=NN_params["NN_epochs"],
+        epochs=NN_params.NN_epochs,
         validation_split=0.2,
         callbacks=[stop_early],
     )
@@ -851,7 +807,7 @@ def multi_predictions(
         0,
     )
 
-    for subround in range(1, NN_params["subrounds"] + 1):
+    for subround in range(1, NN_params.subrounds + 1):
         # print(learning_xyz[condition]['y_full'])
         subround_id = f"ROUND_{roundn}_{subround}"
         y_full = learning_xyz[condition]["y_full"][subround_id]
@@ -868,7 +824,7 @@ def multi_predictions(
         fixed_model.fit(
             y_train_mixed_up,
             Z_train_mixed_up,
-            epochs=NN_params["NN_epochs"],
+            epochs=NN_params.NN_epochs,
             validation_split=0.2,
             callbacks=[stop_early],
         )
@@ -1123,9 +1079,7 @@ def mix_profiles(
                     profiles_mixed[classname] = 1 - part
                 else:
                     profiles_mixed[classname] = 0.0
-            profiles_mixed = profiles_mixed.sample(
-                frac=NN_params["mixed_batch"]
-            )
+            profiles_mixed = profiles_mixed.sample(frac=NN_params.mixed_batch)
             fract_mixed_up[condition] = pd.concat(
                 [fract_mixed_up[condition], profiles_mixed]
             ).sample(frac=1)

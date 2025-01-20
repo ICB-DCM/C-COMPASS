@@ -5,6 +5,8 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
+from .core import NeuralNetworkParametersModel
+
 
 def most_frequent_or_nan(row):
     counts = row.value_counts()
@@ -131,7 +133,12 @@ def impute_data(df, colname, newcol):
     return df
 
 
-def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
+def stats_proteome(
+    learning_xyz,
+    NN_params: NeuralNetworkParametersModel,
+    fract_data,
+    fract_conditions,
+):
     conditions = [x for x in fract_conditions if x != "[KEEP]"]
     results = {}
 
@@ -447,7 +454,7 @@ def stats_proteome(learning_xyz, NN_params, fract_data, fract_conditions):
             ][["CC_" + class_act]]
             thresh = np.percentile(
                 nonmarker_z["CC_" + class_act].tolist(),
-                NN_params["reliability"],
+                NN_params.reliability,
             )
             results[condition]["metrics"]["fCC_" + class_act] = results[
                 condition
