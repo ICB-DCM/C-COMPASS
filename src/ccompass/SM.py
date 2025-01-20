@@ -101,7 +101,7 @@ def SM_exec(fract_data, fract_info, marker_list, key):
             ),
         ],
         [
-            sg.Canvas(key="-CANVAS-"),
+            sg.Canvas(key="-CANVAS-", expand_x=True, expand_y=True),
             sg.Table(
                 values=class_info_dict[condition],
                 headings=["Class", "n"],
@@ -121,7 +121,8 @@ def SM_exec(fract_data, fract_info, marker_list, key):
         finalize=True,
         size=(920, 520),
         modal=True,
-    )  # Adjust window width
+        resizable=True,
+    )
 
     # Initial drawing
     fig = create_line_plot(profiles_dict[condition], title=condition)
