@@ -144,10 +144,20 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
 
+    - name: Verify artifact presence
+      run: pwd && ls -alhR
+
+    - name: Prepare assets
+      run: |
+        mkdir release_assets \
+          && mv ccompass_bundle_onefile_linux/ccompass_bundle_onefile release_assets/ccompass_bundle_onefile_linux \
+          && mv ccompass_bundle_onefile_windows/ccompass_bundle_onefile.exe release_assets/ccompass_bundle_onefile_windows.exe \
+          && mv ccompass_bundle_onefile_macos/ccompass_bundle_onefile release_assets/ccompass_bundle_onefile_macos
+
     - name: Upload release asset
       uses: AButler/upload-release-assets@v3.0
       if: github.event_name == 'release' && (github.event.action == 'created' || github.event.action == 'published')
 
       with:
-        files: "ccompass_bundle_onefile_*"
+        files: "release_assets/*"
         repo-token: ${{ secrets.GITHUB_TOKEN }}
