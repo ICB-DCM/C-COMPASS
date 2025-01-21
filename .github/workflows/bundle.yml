@@ -78,7 +78,7 @@ jobs:
     - name: Create launcher script
       # we can't use the setuptools shim (.exe) on Windows
       run: |
-        echo "from ccompass.CCMPS import main" > launcher.py
+        echo "from ccompass.__main__ import main" > launcher.py
         echo "main()" >> launcher.py
 
     - name: Build with PyInstaller
