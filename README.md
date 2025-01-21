@@ -2,6 +2,8 @@
 
 [![PyPI](https://badge.fury.io/py/ccompass.svg)](https://badge.fury.io/py/ccompass)
 [![Documentation](https://readthedocs.org/projects/c-compass/badge/?version=latest)](https://c-compass.readthedocs.io)
+[![DOI](https://zenodo.org/badge/916143374.svg)](https://doi.org/10.5281/zenodo.14712134)
+
 
 **C-COMPASS** (Cellular COMPartmentclASSifier) is an open-source software tool designed to predict the spatial distribution of proteins across cellular compartments. It uses a neural network-based regression model to analyze multilocalization patterns and integrate protein abundance data while considering different biological conditions. C-COMPASS is designed to be accessible to users without extensive computational expertise, featuring an intuitive graphical user interface.
 
