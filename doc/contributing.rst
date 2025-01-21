@@ -24,14 +24,49 @@ and formatting tools before each commit, helping to catch issues early.
 To set up the pre-commit hooks in your local environment, follow these steps:
 
 1. Install `pre-commit` if you haven't already:
-   ```sh
-   pip install pre-commit
-   ```
+
+   .. code-block:: sh
+
+      pip install pre-commit
+      # or install it together with the other development dependencies via
+      pip install -e .[dev]
 
 2. Navigate to the project directory and run:
-   ```sh
-   pre-commit install
-   ```
+
+   .. code-block:: sh
+
+      pre-commit install
 
 3. You're all set! The pre-commit hooks will now run automatically before each
    commit.
+
+Building the Documentation
+--------------------------
+
+To build the documentation locally, you can use the following commands:
+
+.. code-block:: sh
+
+   # install tox if you haven't already
+   pip install tox
+   # build the documentation
+   tox -e doc
+   # this will generate the HTML documentation in doc/_build/html
+   # you can open the documentation in your browser manually, or with
+   python -c "import webbrowser; webbrowser.open('doc/_build/html/index.html')"
+
+Release Process
+---------------
+
+To ensure a smooth release process, we follow these steps:
+
+1. Update the release notes in ``doc/CHANGELOG.rst`` with the latest changes
+   and version number.
+
+2. Create a `new release <https://github.com/ICB-DCM/C-COMPASS/releases/new>`__
+   via GitHub, following the Python versioning specifier scheme
+   for the tag name (e.g., ``v1.0.0``). (For more information, see the
+   `PyPA guide <https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers>`__.)
+
+3. The release will be automatically built and published to PyPI and Zenodo
+   by GitHub Actions. The documentation will also be updated on Read the Docs.
