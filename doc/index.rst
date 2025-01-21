@@ -1,6 +1,10 @@
 Welcome to C-COMPASS Documentation
 ==================================
 
+
+.. image:: https://zenodo.org/badge/916143374.svg
+  :target: https://doi.org/10.5281/zenodo.14712134
+
 Introduction
 ------------
 
