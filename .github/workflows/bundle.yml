@@ -1,12 +1,16 @@
 name: Build and Package
 
 on:
+  release:
+    types:
+      - published
+      - created
   push:
     branches:
       - main
-#  pull_request:
-#    branches:
-#      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linux_bundle:
@@ -130,3 +134,20 @@ jobs:
       with:
         name: ccompass_bundle_onefile_macos
         path: dist/ccompass_bundle_onefile
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    needs: [linux_bundle, windows_bundle, macos_bundle]
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Upload release asset
+      uses: AButler/upload-release-assets@v3.0
+      if: github.event_name == 'release' && (github.event.action == 'created' || github.event.action == 'published')
+
+      with:
+        files: "ccompass_bundle_onefile_*"
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
