@@ -2,6 +2,7 @@
 
 import os
 import platform
+from collections.abc import Iterable
 from pathlib import Path
 
 
@@ -34,3 +35,15 @@ def get_data_directory() -> Path:
 def get_ccmps_data_directory() -> Path:
     """Get the platform-specific data directory for ccmps."""
     return get_data_directory() / "C-COMPASS"
+
+
+def unique_preserve_order(seq: Iterable) -> list:
+    """Return a list of unique elements from some iterable, keeping only the
+    first occurrence of each element.
+
+    :param seq: Sequence to prune
+    :return: List of unique elements in ``seq``
+    """
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]

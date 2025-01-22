@@ -11,6 +11,8 @@ import pandas as pd
 from scipy.stats import pearsonr
 from sklearn.preprocessing import MinMaxScaler
 
+from ._utils import unique_preserve_order
+
 logger = logging.getLogger(__package__)
 
 
@@ -18,8 +20,8 @@ def create_dataset(
     input_data: dict[str, pd.DataFrame],
     input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
     identifiers: dict[str, str],
-    conditions,
-    window_FDP: sg.Window,
+    conditions: list[str],
+    window: sg.Window,
     progress: float,
 ) -> tuple[dict[str, dict[str, pd.DataFrame]], dict[str, pd.DataFrame], float]:
     for i in ["", "[IDENTIFIER]"]:
@@ -36,9 +38,9 @@ def create_dataset(
 
     for condition in conditions:
         progress += stepsize
-        window_FDP["--status2--"].Update(condition)
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
+        window["--status2--"].Update(condition)
+        window["--progress--"].Update(progress)
+        window.read(timeout=50)
 
         data_new = pd.DataFrame(index=idents)
         for path in input_tables:
@@ -113,17 +115,15 @@ def create_dataset(
     return dataset, data_keep, progress
 
 
-def pre_post_scaling(data, how: str, window_FDP: sg.Window, progress: int):
+def pre_post_scaling(data, how: str, window: sg.Window, progress: int):
     if how == "minmax":
         for condition in data:
             stepsize = (5.0 / len(data)) / len(data[condition])
             for replicate in data[condition]:
                 progress += stepsize
-                window_FDP["--progress--"].Update(progress)
-                window_FDP["--status2--"].Update(
-                    " ".join([condition, replicate])
-                )
-                window_FDP.read(timeout=50)
+                window["--progress--"].Update(progress)
+                window["--status2--"].Update(" ".join([condition, replicate]))
+                window.read(timeout=50)
                 scaler = MinMaxScaler()
                 data[condition][replicate] = pd.DataFrame(
                     scaler.fit_transform(data[condition][replicate].T).T,
@@ -134,11 +134,9 @@ def pre_post_scaling(data, how: str, window_FDP: sg.Window, progress: int):
             stepsize = (5.0 / len(data)) / len(data[condition])
             for replicate in data[condition]:
                 progress += stepsize
-                window_FDP["--progress--"].Update(progress)
-                window_FDP["--status2--"].Update(
-                    " ".join([condition, replicate])
-                )
-                window_FDP.read(timeout=50)
+                window["--progress--"].Update(progress)
+                window["--status2--"].Update(" ".join([condition, replicate]))
+                window.read(timeout=50)
                 data[condition][replicate] = data[condition][replicate].div(
                     data[condition][replicate].sum(axis=1), axis=0
                 )
@@ -148,21 +146,31 @@ def pre_post_scaling(data, how: str, window_FDP: sg.Window, progress: int):
 
 
 def filter_missing(
-    data: dict[str, pd.DataFrame], mincount: int, window_FDP, progress
+    data: dict[str, pd.DataFrame], mincount: int, window, progress
 ):
     for condition in data:
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window_FDP["--progress--"].Update(progress)
-            window_FDP["--status2--"].Update(" ".join([condition, replicate]))
-            window_FDP.read(timeout=50)
+            window["--progress--"].Update(progress)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
             data[condition][replicate].dropna(thresh=mincount, inplace=True)
             data[condition][replicate].replace(np.nan, 0.0, inplace=True)
     return data, progress
 
 
-def filter_count(data, mincount, window_FDP, progress):
+def filter_count(
+    data: dict[str, dict[str, pd.DataFrame]],
+    mincount: int,
+    window: sg.Window,
+    progress: float,
+) -> tuple[dict[str, dict[str, pd.DataFrame]], dict[str, list[str]], float]:
+    """Filter data by minimum number of replicates.
+
+    Returns a tuple containing the filtered data, the remaining protein list
+    and the updated progress.
+    """
     protlist_remaining = {}
     for condition in data:
         stepsize = (5.0 / len(data)) / len(data[condition])
@@ -172,9 +180,9 @@ def filter_count(data, mincount, window_FDP, progress):
         peplist = list(set(remove_elements(peplist, mincount)))
         for replicate in data[condition]:
             progress += stepsize
-            window_FDP["--progress--"].Update(progress)
-            window_FDP["--status2--"].Update(" ".join([condition, replicate]))
-            window_FDP.read(timeout=50)
+            window["--progress--"].Update(progress)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
             for index in list(data[condition][replicate].index):
                 if index not in peplist:
                     data[condition][replicate].drop(
@@ -193,7 +201,7 @@ def remove_elements(lst: list, k: int) -> list:
     return [el for el in lst if counted[el] >= k]
 
 
-def list_samples(data, window_FDP, progress):
+def list_samples(data, window, progress):
     fracts_con = {}
     fracts_count = {}
     fracts_corr = {}
@@ -203,9 +211,9 @@ def list_samples(data, window_FDP, progress):
         stepsize = (10.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window_FDP["--progress--"].Update(progress)
-            window_FDP["--status2--"].Update(" ".join([condition, replicate]))
-            window_FDP.read(timeout=50)
+            window["--progress--"].Update(progress)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
             for sample in list(data[condition][replicate].columns):
                 prefix = sample[: sample.find("_")]
                 fractnumber = int(prefix[3:])
@@ -224,14 +232,14 @@ def list_samples(data, window_FDP, progress):
     return fracts_con, fracts_count, fracts_corr, progress
 
 
-def calculate_icorr(data, fracts_corr, protlist_con, window_FDP):
+def calculate_icorr(data, fracts_corr, protlist_con, window):
     icorr = {}
     icorr_mean = {}
     for condition in data:
         icorr_sub = pd.DataFrame(index=protlist_con[condition])
         for replicate in data[condition]:
-            window_FDP["--status2--"].Update(" ".join([condition, replicate]))
-            window_FDP.read(timeout=50)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
             repdata_own = data[condition][replicate]
             for fract in repdata_own.columns:
                 prefix = fract[: fract.find("_")]
@@ -281,12 +289,12 @@ def calculate_icorr(data, fracts_corr, protlist_con, window_FDP):
     return icorr, icorr_mean
 
 
-def filter_corr(data, protlist_con, mincount, icorr, window_FDP):
+def filter_corr(data, protlist_con, mincount, icorr, window):
     check_IDs = {}
     for condition in data:
-        window_FDP["--status1--"].Update(value="checking IDs...")
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=100)
+        window["--status1--"].Update(value="checking IDs...")
+        window["--status2--"].Update(condition)
+        window.read(timeout=100)
 
         corr_IDs = []
         for ID in protlist_con[condition]:
@@ -299,11 +307,11 @@ def filter_corr(data, protlist_con, mincount, icorr, window_FDP):
         check_IDs[condition] = corr_IDs
 
     for condition in data:
-        window_FDP["--status1--"].Update(
+        window["--status1--"].Update(
             value="removing worst InnerCorrelations..."
         )
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=100)
+        window["--status2--"].Update(condition)
+        window.read(timeout=100)
         correls = icorr[condition]
         for ID in check_IDs[condition]:
             minrep = correls.idxmin(axis=1)[ID]
@@ -314,23 +322,23 @@ def filter_corr(data, protlist_con, mincount, icorr, window_FDP):
     return data
 
 
-def implement_icorr(protein_info, icorr_mean, window_FDP):
+def implement_icorr(protein_info, icorr_mean, window):
     for condition in icorr_mean:
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=50)
+        window["--status2--"].Update(condition)
+        window.read(timeout=50)
         protein_info["InnerCorrelation_" + condition] = icorr_mean[condition]
     return protein_info
 
 
-def combine_median_std(data, fracts_con, window_FDP, progress):
+def combine_median_std(data, fracts_con, window, progress):
     data_median = {}
     data_std = {}
     stepsize = 5.0 / len(data)
     for condition in data:
         progress += stepsize
-        window_FDP["--progress--"].Update(progress)
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=50)
+        window["--progress--"].Update(progress)
+        window["--status2--"].Update(condition)
+        window.read(timeout=50)
         con_vals = pd.DataFrame()
         con_std = pd.DataFrame()
         for fract in fracts_con[condition]:
@@ -381,10 +389,10 @@ def combine_median_std(data, fracts_con, window_FDP, progress):
     return data_median, data_std, progress
 
 
-def combine_concat(data, window_FDP):
+def combine_concat(data, window):
     for condition in data:
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=50)
+        window["--status2--"].Update(condition)
+        window.read(timeout=50)
         con_vals = pd.DataFrame()
         for replicate in data[condition]:
             renamedict = {}
@@ -409,14 +417,14 @@ def combine_concat(data, window_FDP):
     return data
 
 
-def remove_zeros(data, window_FDP, progress):
+def remove_zeros(data, window, progress):
     for condition in data:
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window_FDP["--progress--"].Update(progress)
-            window_FDP["--status2--"].Update(" ".join([condition, replicate]))
-            window_FDP.read(timeout=50)
+            window["--progress--"].Update(progress)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
             data[condition][replicate] = data[condition][replicate].apply(
                 pd.to_numeric, errors="coerce"
             )
@@ -426,14 +434,14 @@ def remove_zeros(data, window_FDP, progress):
     return data, progress
 
 
-def calculate_outcorr(data, protlist_remaining, comb, window_FDP, progress):
+def calculate_outcorr(data, protlist_remaining, comb, window, progress):
     outer_corrs = pd.DataFrame()
     stepsize = 5.0 / len(data)
     for condition in data:
         progress += stepsize
-        window_FDP["--progress--"].Update(progress)
-        window_FDP["--status2--"].Update(condition)
-        window_FDP.read(timeout=50)
+        window["--progress--"].Update(progress)
+        window["--status2--"].Update(condition)
+        window.read(timeout=50)
         outcorr = pd.DataFrame(index=protlist_remaining[condition])
         for con in data:
             if not con == condition:
@@ -477,9 +485,9 @@ def modify_structure(data_in):
     for way in data_in:
         for condition in data_in[way]:
             for mode in data_in[way][condition]:
-                data_out[way][condition + "_" + mode] = data_in[way][
-                    condition
-                ][mode]
+                data_out[way][f"{condition}_{mode}"] = data_in[way][condition][
+                    mode
+                ]
                 # data_out[way][condition] = data_in[way][condition][mode]
     return data_out
 
@@ -554,329 +562,253 @@ def create_fract_processing_window() -> sg.Window:
 
 
 def start_fract_data_processing(
-    window_FDP: sg.Window,
+    window: sg.Window,
     input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
     preparams: dict[str, dict],
     identifiers: dict[str, str],
-    data_ways: dict[str, dict[str, pd.DataFrame]],
-    std_ways: dict[str, dict[str, pd.DataFrame]],
-    intermediate_data: dict[str, dict[str, dict[str, pd.DataFrame]]],
-    protein_info: dict[str, pd.DataFrame],
-    conditions_trans: list[str],
     fract_indata: dict[str, pd.DataFrame],
 ):
-    is_ident = True
-    is_con = True
-    is_rep = True
-    is_fract = True
-    fract_ok = True
+    """Start fractionation data processing."""
+    # collect conditions (including [IDENTIFIER] and [KEEP])
+    conditions = unique_preserve_order(
+        sample[1]
+        for input_table in input_tables.values()
+        for sample in input_table
+    )
 
-    conditions = []
-    for path in input_tables:
-        conlist = []
-        replist = []
-        fractlist = []
-        for sample in input_tables[path]:
-            conlist.append(sample[1])
-            replist.append(sample[2])
-            fractlist.append(sample[3])
-            if sample[1] not in conditions:
-                conditions.append(sample[1])
-        if "[IDENTIFIER]" not in conlist:
-            is_ident = False
-        if "" in conlist:
-            is_con = False
-        if "" in replist:
-            is_rep = False
-        if "" in fractlist:
-            is_fract = False
-        if len(list(set(replist))) - 1 < int(preparams["global"]["minrep"][0]):
-            fract_ok = False
+    data_ways = {"class": [], "vis": []}
+    std_ways = {"class": [], "vis": []}
+    intermediate_data = {}
 
-    if not is_ident:
-        messagebox.showerror(
-            "Error",
-            "At least one Identifier is missing.\n"
-            "Please check for multiple import files.",
-        )
-    elif not is_con:
-        messagebox.showerror(
-            "Error",
-            "At least one Condition is missing.\n"
-            "Please check for multiple import files.",
-        )
-    elif not is_rep:
-        messagebox.showerror(
-            "Error",
-            "At least one Replicate is missing.\n"
-            "Please check for multiple import files.",
-        )
-    elif not is_fract:
-        messagebox.showerror(
-            "Error",
-            "At least one Fraction is missing.\n"
-            "Please check for multiple import files.",
-        )
-    elif not fract_ok:
-        messagebox.showerror(
-            "Error",
-            "Not enough replicates! "
-            "Load more replicates or reduce threshold in Parameters.",
-        )
-    else:
-        window_FDP["--start--"].Update(disabled=True)
-        window_FDP["--cancel--"].Update(disabled=True)
-        data_ways = {"class": [], "vis": []}
-        std_ways = {"class": [], "vis": []}
-        intermediate_data = {}
+    # ---------------------------------------------------------------------
+    logger.info("creating dataset...")
+    progress = 0
+    window["--status1--"].Update(value="creating dataset...")
+    window.read(timeout=50)
 
-        # ---------------------------------------------------------------------
-        logger.info("creating dataset...")
-        progress = 0
-        window_FDP["--status1--"].Update(value="creating dataset...")
-        window_FDP.read(timeout=50)
+    dataset, protein_info, progress = create_dataset(
+        fract_indata,
+        input_tables,
+        identifiers,
+        conditions,
+        window,
+        progress,
+    )
+    data_ways["class"] = copy.deepcopy(dataset)
+    data_ways["vis"] = copy.deepcopy(dataset)
+    intermediate_data["[0] class_abs"] = copy.deepcopy(data_ways["class"])
+    intermediate_data["[0] vis_abs"] = copy.deepcopy(data_ways["vis"])
 
-        dataset, protein_info, progress = create_dataset(
-            fract_indata,
-            input_tables,
-            identifiers,
-            conditions,
-            window_FDP,
+    # ---------------------------------------------------------------------
+    logger.info("converting dataset...")
+    progress = 10
+    window["--status1--"].Update(value="converting dataset...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
+
+    for way in data_ways:
+        data_ways[way], progress = remove_zeros(
+            data_ways[way], window, progress
+        )
+    intermediate_data["[1] class_nozeros1"] = copy.deepcopy(data_ways["class"])
+    intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(data_ways["vis"])
+
+    # ---------------------------------------------------------------------
+    logger.info("pre-scaling...")
+    progress = 20
+    window["--status1--"].Update(value="pre-scaling...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
+
+    for way in data_ways:
+        if preparams[way]["scale1"][0]:
+            data_ways[way], progress = pre_post_scaling(
+                data_ways[way],
+                preparams[way]["scale1"][1],
+                window,
+                progress,
+            )
+    intermediate_data["[2] class_prescaled"] = copy.deepcopy(
+        data_ways["class"]
+    )
+    intermediate_data["[2] vis_prescaled"] = copy.deepcopy(data_ways["vis"])
+
+    # ---------------------------------------------------------------------
+    logger.info("filtering by missing fractions...")
+    progress = 30
+    window["--status1--"].Update(value="filtering by missing values...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
+
+    if preparams["global"]["missing"][0]:
+        for way in data_ways:
+            data_ways[way], progress = filter_missing(
+                data_ways[way],
+                int(preparams["global"]["missing"][1]),
+                window,
+                progress,
+            )
+    intermediate_data["[3] class_f_missing"] = copy.deepcopy(
+        data_ways["class"]
+    )
+    intermediate_data["[3] vis_f_missing"] = copy.deepcopy(data_ways["vis"])
+
+    # ---------------------------------------------------------------------
+    logger.info("finding IDs...")
+    progress = 40
+    window["--status1--"].Update(value="finding IDs...")
+    window["--progress--"].Update(40)
+    window.read(timeout=50)
+
+    for way in data_ways:
+        data_ways[way], proteins_remaining, progress = filter_count(
+            data_ways[way],
+            int(preparams["global"]["minrep"][1]),
+            window,
             progress,
         )
-        data_ways["class"] = copy.deepcopy(dataset)
-        data_ways["vis"] = copy.deepcopy(dataset)
-        intermediate_data["[0] class_abs"] = copy.deepcopy(data_ways["class"])
-        intermediate_data["[0] vis_abs"] = copy.deepcopy(data_ways["vis"])
+    intermediate_data["[4] class_f_count"] = copy.deepcopy(data_ways["class"])
+    intermediate_data["[4] vis_f_count"] = copy.deepcopy(data_ways["vis"])
 
-        # ---------------------------------------------------------------------
-        logger.info("converting dataset...")
-        progress = 10
-        window_FDP["--status1--"].Update(value="converting dataset...")
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("detecting samples...")
+    progress = 50
+    window["--status1--"].Update(value="detecting samples...")
+    window["--progress--"].Update(50)
+    window.read(timeout=50)
 
-        for way in data_ways:
-            data_ways[way], progress = remove_zeros(
-                data_ways[way], window_FDP, progress
-            )
-        intermediate_data["[1] class_nozeros1"] = copy.deepcopy(
-            data_ways["class"]
+    fracts_con, fracts_count, fracts_corr, progress = list_samples(
+        data_ways["class"], window, progress
+    )
+
+    # #---------------------------------------------------------------------
+    # print('calculating inner correlations...')
+    # window['--status1--'].Update(value = 'calculating InnerCorrelations...')
+    # event, values = window.read(timeout = 50)
+    # icorr, icorr_mean = calculate_icorr(data_ways['vis'], fracts_corr, proteins_remaining, window)
+
+    # #---------------------------------------------------------------------
+    # print('filtering by inner correlations...')
+    # window['--status1--'].Update(value = 'filtering by InnerCorrelations...')
+    # event, values = window.read(timeout = 50)
+
+    # for way in data_ways:
+    #     if preparams[way]['corrfilter']:
+    #         data_ways[way] = filter_corr(data_ways[way], proteins_remaining, int(preparams['global']['minrep'][1]), icorr, window)
+    # intermediate_data['[5] class_f_corr'] = copy.deepcopy(data_ways['class'])
+    # intermediate_data['[5] vis_f_corr'] = copy.deepcopy(data_ways['vis'])
+
+    # #---------------------------------------------------------------------
+    # print('implement inner correlations...')
+    # window['--status1--'].Update(value = 'implement InnerCorrelations...')
+    # event, values = window.read(timeout = 50)
+
+    # protein_info = implement_icorr(protein_info, icorr_mean, window)
+
+    # ---------------------------------------------------------------------
+    logger.info("combining data...")
+    progress = 60
+    window["--status1--"].Update(value="combining data...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
+
+    for way in data_ways:
+        data_combined, std_ways[way], progress = combine_median_std(
+            data_ways[way], fracts_con, window, progress
         )
-        intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(data_ways["vis"])
-
-        # ---------------------------------------------------------------------
-        logger.info("pre-scaling...")
-        progress = 20
-        window_FDP["--status1--"].Update(value="pre-scaling...")
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
-
-        for way in data_ways:
-            if preparams[way]["scale1"][0]:
-                data_ways[way], progress = pre_post_scaling(
-                    data_ways[way],
-                    preparams[way]["scale1"][1],
-                    window_FDP,
-                    progress,
+        if preparams[way]["combination"] == "median":
+            data_ways[way] = data_combined
+            if way == "class":
+                intermediate_data["[6] class_combined"] = copy.deepcopy(
+                    data_ways[way]
                 )
-        intermediate_data["[2] class_prescaled"] = copy.deepcopy(
-            data_ways["class"]
-        )
-        intermediate_data["[2] vis_prescaled"] = copy.deepcopy(
-            data_ways["vis"]
-        )
-
-        # ---------------------------------------------------------------------
-        logger.info("filtering by missing fractions...")
-        progress = 30
-        window_FDP["--status1--"].Update(
-            value="filtering by missing values..."
-        )
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
-
-        if preparams["global"]["missing"][0]:
-            for way in data_ways:
-                data_ways[way], progress = filter_missing(
-                    data_ways[way],
-                    int(preparams["global"]["missing"][1]),
-                    window_FDP,
-                    progress,
+            elif way == "vis":
+                intermediate_data["[6] vis_combined"] = copy.deepcopy(
+                    data_ways[way]
                 )
-        intermediate_data["[3] class_f_missing"] = copy.deepcopy(
-            data_ways["class"]
-        )
-        intermediate_data["[3] vis_f_missing"] = copy.deepcopy(
-            data_ways["vis"]
-        )
 
-        # ---------------------------------------------------------------------
-        logger.info("finding IDs...")
-        progress = 40
-        window_FDP["--status1--"].Update(value="finding IDs...")
-        window_FDP["--progress--"].Update(40)
-        window_FDP.read(timeout=50)
+        elif preparams[way]["combination"] == "concat":
+            data_ways[way] = combine_concat(data_ways[way], window)
+            if way == "class":
+                intermediate_data["[6] class_combined"] = copy.deepcopy(
+                    data_ways[way]
+                )
+            elif way == "vis":
+                intermediate_data["[6] vis_combined"] = copy.deepcopy(
+                    data_ways[way]
+                )
 
-        for way in data_ways:
-            data_ways[way], proteins_remaining, progress = filter_count(
+        elif preparams[way]["combination"] == "separate":
+            if way == "class":
+                intermediate_data["[6] class_combined"] = copy.deepcopy(
+                    data_ways[way]
+                )
+            elif way == "vis":
+                intermediate_data["[6] vis_combined"] = copy.deepcopy(
+                    data_ways[way]
+                )
+
+    # ---------------------------------------------------------------------
+    logger.info("post-scaling...")
+    progress = 70
+    window["--status1--"].Update(value="post-scaling...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
+
+    for way in data_ways:
+        if preparams[way]["scale2"][0]:
+            data_ways[way], progress = pre_post_scaling(
                 data_ways[way],
-                int(preparams["global"]["minrep"][1]),
-                window_FDP,
+                preparams[way]["scale2"][1],
+                window,
                 progress,
             )
-        intermediate_data["[4] class_f_count"] = copy.deepcopy(
-            data_ways["class"]
-        )
-        intermediate_data["[4] vis_f_count"] = copy.deepcopy(data_ways["vis"])
+    intermediate_data["[7] class_postscaled"] = copy.deepcopy(
+        data_ways["class"]
+    )
+    intermediate_data["[7] vis_postscaled"] = copy.deepcopy(data_ways["vis"])
 
-        # ---------------------------------------------------------------------
-        logger.info("detecting samples...")
-        progress = 50
-        window_FDP["--status1--"].Update(value="detecting samples...")
-        window_FDP["--progress--"].Update(50)
-        window_FDP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("removing zeros...")
+    progress = 80
+    window["--status1--"].Update(value="removing baseline profiles...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
 
-        fracts_con, fracts_count, fracts_corr, progress = list_samples(
-            data_ways["class"], window_FDP, progress
-        )
-
-        # #---------------------------------------------------------------------
-        # print('calculating inner correlations...')
-        # window_FDP['--status1--'].Update(value = 'calculating InnerCorrelations...')
-        # event, values = window_FDP.read(timeout = 50)
-        # icorr, icorr_mean = calculate_icorr(data_ways['vis'], fracts_corr, proteins_remaining, window_FDP)
-
-        # #---------------------------------------------------------------------
-        # print('filtering by inner correlations...')
-        # window_FDP['--status1--'].Update(value = 'filtering by InnerCorrelations...')
-        # event, values = window_FDP.read(timeout = 50)
-
-        # for way in data_ways:
-        #     if preparams[way]['corrfilter']:
-        #         data_ways[way] = filter_corr(data_ways[way], proteins_remaining, int(preparams['global']['minrep'][1]), icorr, window_FDP)
-        # intermediate_data['[5] class_f_corr'] = copy.deepcopy(data_ways['class'])
-        # intermediate_data['[5] vis_f_corr'] = copy.deepcopy(data_ways['vis'])
-
-        # #---------------------------------------------------------------------
-        # print('implement inner correlations...')
-        # window_FDP['--status1--'].Update(value = 'implement InnerCorrelations...')
-        # event, values = window_FDP.read(timeout = 50)
-
-        # protein_info = implement_icorr(protein_info, icorr_mean, window_FDP)
-
-        # ---------------------------------------------------------------------
-        logger.info("combining data...")
-        progress = 60
-        window_FDP["--status1--"].Update(value="combining data...")
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
-
-        for way in data_ways:
-            data_combined, std_ways[way], progress = combine_median_std(
-                data_ways[way], fracts_con, window_FDP, progress
+    for way in data_ways:
+        if preparams[way]["zeros"]:
+            data_ways[way], progress = remove_zeros(
+                data_ways[way], window, progress
             )
-            if preparams[way]["combination"] == "median":
-                data_ways[way] = data_combined
-                if way == "class":
-                    intermediate_data["[6] class_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
-                elif way == "vis":
-                    intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
+    intermediate_data["[8] class_nozeros2"] = copy.deepcopy(data_ways["class"])
+    intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
 
-            elif preparams[way]["combination"] == "concat":
-                data_ways[way] = combine_concat(data_ways[way], window_FDP)
-                if way == "class":
-                    intermediate_data["[6] class_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
-                elif way == "vis":
-                    intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
+    # ---------------------------------------------------------------------
+    logger.info("calculating outer correlations...")
+    progress = 90
+    window["--status1--"].Update(value="calculating outer correlations...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
 
-            elif preparams[way]["combination"] == "separate":
-                if way == "class":
-                    intermediate_data["[6] class_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
-                elif way == "vis":
-                    intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                        data_ways[way]
-                    )
-
-        # ---------------------------------------------------------------------
-        logger.info("post-scaling...")
-        progress = 70
-        window_FDP["--status1--"].Update(value="post-scaling...")
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
-
-        for way in data_ways:
-            if preparams[way]["scale2"][0]:
-                data_ways[way], progress = pre_post_scaling(
-                    data_ways[way],
-                    preparams[way]["scale2"][1],
-                    window_FDP,
-                    progress,
-                )
-        intermediate_data["[7] class_postscaled"] = copy.deepcopy(
-            data_ways["class"]
+    if preparams["global"]["outcorr"]:
+        outcorr, progress = calculate_outcorr(
+            data_ways["vis"],
+            proteins_remaining,
+            preparams["vis"]["combination"],
+            window,
+            progress,
         )
-        intermediate_data["[7] vis_postscaled"] = copy.deepcopy(
-            data_ways["vis"]
-        )
+        for column in outcorr.columns:
+            protein_info[column] = outcorr[column]
 
-        # ---------------------------------------------------------------------
-        logger.info("removing zeros...")
-        progress = 80
-        window_FDP["--status1--"].Update(value="removing baseline profiles...")
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
+    data_ways = modify_structure(data_ways)
+    conditions_trans = conditions
 
-        for way in data_ways:
-            if preparams[way]["zeros"]:
-                data_ways[way], progress = remove_zeros(
-                    data_ways[way], window_FDP, progress
-                )
-        intermediate_data["[8] class_nozeros2"] = copy.deepcopy(
-            data_ways["class"]
-        )
-        intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
-
-        # ---------------------------------------------------------------------
-        logger.info("calculating outer correlations...")
-        progress = 90
-        window_FDP["--status1--"].Update(
-            value="calculating outer correlations..."
-        )
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
-
-        if preparams["global"]["outcorr"]:
-            outcorr, progress = calculate_outcorr(
-                data_ways["vis"],
-                proteins_remaining,
-                preparams["vis"]["combination"],
-                window_FDP,
-                progress,
-            )
-            for column in outcorr.columns:
-                protein_info[column] = outcorr[column]
-
-        data_ways = modify_structure(data_ways)
-        conditions_trans = conditions
-
-        # ---------------------------------------------------------------------
-        progress = 100
-        window_FDP["--status1--"].Update(
-            value="calculating outer correlations..."
-        )
-        window_FDP["--progress--"].Update(progress)
-        window_FDP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    progress = 100
+    window["--status1--"].Update(value="calculating outer correlations...")
+    window["--progress--"].Update(progress)
+    window.read(timeout=50)
 
     logger.info("done!")
 
@@ -889,8 +821,78 @@ def start_fract_data_processing(
     )
 
 
+def sample_tables_are_valid(
+    input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
+    min_replicates: int,
+) -> bool:
+    """Check that the sample table is valid.
+
+    And show error boxes if not.
+    """
+
+    # validate samples table
+    if not all(
+        any(sample[1] == "[IDENTIFIER]" for sample in input_table)
+        for input_table in input_tables.values()
+    ):
+        messagebox.showerror(
+            "Error",
+            "At least one Identifier is missing.\n"
+            "Please check for multiple import files.",
+        )
+        return False
+
+    if any(
+        sample[1] == ""
+        for input_table in input_tables.values()
+        for sample in input_table
+    ):
+        messagebox.showerror(
+            "Error",
+            "At least one Condition is missing.\n"
+            "Please check for multiple import files.",
+        )
+        return False
+
+    if any(
+        sample[2] == ""
+        for input_table in input_tables.values()
+        for sample in input_table
+    ):
+        messagebox.showerror(
+            "Error",
+            "At least one Replicate is missing.\n"
+            "Please check for multiple import files.",
+        )
+        return False
+
+    if any(
+        sample[3] == ""
+        for input_table in input_tables.values()
+        for sample in input_table
+    ):
+        messagebox.showerror(
+            "Error",
+            "At least one Fraction is missing.\n"
+            "Please check for multiple import files.",
+        )
+        return False
+
+    if any(
+        len(set(sample[2] for sample in input_table)) - 1 < min_replicates
+        for input_table in input_tables.values()
+    ):
+        messagebox.showerror(
+            "Error",
+            "Not enough replicates! "
+            "Load more replicates or reduce threshold in Parameters.",
+        )
+        return False
+
+    return True
+
+
 def FDP_exec(
-    window: sg.Window,
     input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
     preparams: dict[str, dict],
     identifiers: dict[str, str],
@@ -902,15 +904,24 @@ def FDP_exec(
     fract_indata: dict[str, pd.DataFrame],
 ):
     """Execute the Fractionation Data Processing."""
-    window_FDP = create_fract_processing_window()
+    window = create_fract_processing_window()
 
     while True:
-        event_FDP, values_FDP = window_FDP.read()
-        if event_FDP == "--cancel--" or event_FDP == sg.WIN_CLOSED:
-            window_FDP.close()
+        event, values = window.read()
+        if event == "--cancel--" or event == sg.WIN_CLOSED:
+            window.close()
             break
 
-        if event_FDP == "--start--":
+        if event == "--start--":
+            window["--start--"].Update(disabled=True)
+            window["--cancel--"].Update(disabled=True)
+
+            if not sample_tables_are_valid(
+                input_tables,
+                min_replicates=int(preparams["global"]["minrep"][0]),
+            ):
+                break
+
             (
                 data_ways,
                 std_ways,
@@ -918,21 +929,15 @@ def FDP_exec(
                 protein_info,
                 conditions_trans,
             ) = start_fract_data_processing(
-                window_FDP,
+                window,
                 input_tables,
                 preparams,
                 identifiers,
-                data_ways,
-                std_ways,
-                intermediate_data,
-                protein_info,
-                conditions_trans,
                 fract_indata,
             )
-            window_FDP.close()
-            window.read(timeout=50)
-
             break
+
+    window.close()
 
     return (
         data_ways,
