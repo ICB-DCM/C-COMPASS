@@ -26,6 +26,19 @@ dependencies = [
     "xlsxwriter",
 ]
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
+readme = "README.md"
+keywords = ["proteomics", "machine learning", "bioinformatics", "mass spectrometry", "fractionation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 
 [project.scripts]
 ccompass = "ccompass.__main__:main"
@@ -34,6 +47,11 @@ ccompass = "ccompass.__main__:main"
 dev = ["pre-commit>=3", "pytest", "tox"]
 doc = ["sphinx", "sphinx-rtd-theme"]
 test = ["pytest"]
+
+[project.urls]
+homepage = "https://github.com/ICB-DCM/C-COMPASS"
+documentation = "https://c-compass.readthedocs.io/en/latest/"
+issue-tracker = "https://github.com/ICB-DCM/C-COMPASS/issues"
 
 [tool.setuptools_scm]
 
