@@ -7,7 +7,7 @@ import random
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, simpledialog
-from typing import Any
+from typing import Any, Literal
 
 import FreeSimpleGUI as sg
 import numpy as np
@@ -1532,7 +1532,7 @@ class MainController:
                 self.model.marker_list = create_markerlist(
                     self.model.marker_sets,
                     self.model.marker_conv,
-                    self.model.marker_params,
+                    **self.model.marker_params,
                 )
                 show_marker_correlation_dialog(
                     self.model.fract_data,
@@ -1564,7 +1564,7 @@ class MainController:
             self.model.marker_list = create_markerlist(
                 self.model.marker_sets,
                 self.model.marker_conv,
-                self.model.marker_params,
+                **self.model.marker_params,
             )
             show_marker_profiles_dialog(
                 self.model.fract_data,
@@ -1608,7 +1608,7 @@ class MainController:
             self.model.marker_list = create_markerlist(
                 self.model.marker_sets,
                 self.model.marker_conv,
-                self.model.marker_params,
+                **self.model.marker_params,
             )
             # print('check1: marker_list created')
             (
@@ -2375,36 +2375,37 @@ def check_markers(marker_sets: dict[str, dict[str, Any]]) -> bool:
     return True
 
 
-def refresh_markertable(window, values, marker_sets):
-    file_list = []
-    for markerfile in marker_sets:
-        file_list.append(markerfile)
+def refresh_markertable(window, marker_sets):
+    """Update the marker table according to the marker sets."""
+    file_list = list(marker_sets.keys())
     window["-marker_list-"].Update(values=file_list)
+
     if file_list:
         window["-marker_list-"].Update(set_to_index=0)
+        cur_marker_set = marker_sets[file_list[0]]
+        column_ids = cur_marker_set["table"].columns.tolist()
         window["-marker_key-"].Update(
-            values=marker_sets[file_list[0]]["table"].columns.tolist(),
-            value=marker_sets[file_list[0]]["identifier_col"],
+            values=column_ids,
+            value=cur_marker_set["identifier_col"],
         )
         window["-marker_class-"].Update(
-            values=marker_sets[file_list[0]]["table"].columns.tolist(),
-            value=marker_sets[file_list[0]]["class_col"],
+            values=column_ids,
+            value=cur_marker_set["class_col"],
         )
 
 
 def refresh_markercols(window, values, marker_sets):
     try:
+        marker_filename = values["-marker_list-"][0]
+        marker_set = marker_sets[marker_filename]
+        marker_set_col_ids = marker_set["table"].columns.tolist()
         window["-marker_key-"].Update(
-            values=marker_sets[values["-marker_list-"][0]][
-                "table"
-            ].columns.tolist(),
-            value=marker_sets[values["-marker_list-"][0]]["identifier_col"],
+            values=marker_set_col_ids,
+            value=marker_set["identifier_col"],
         )
         window["-marker_class-"].Update(
-            values=marker_sets[values["-marker_list-"][0]][
-                "table"
-            ].columns.tolist(),
-            value=marker_sets[values["-marker_list-"][0]]["class_col"],
+            values=marker_set_col_ids,
+            value=marker_set["class_col"],
         )
     except Exception:
         window["-marker_key-"].Update(values=[], value="-")
@@ -2412,6 +2413,8 @@ def refresh_markercols(window, values, marker_sets):
 
 
 def marker_add(window, values, marker_sets):
+    """Show marker list selection dialog
+    and add the selected list to the marker sets."""
     filename = sg.popup_get_file(
         "Select a new Marker List!",
         no_window=True,
@@ -2431,7 +2434,7 @@ def marker_add(window, values, marker_sets):
     marker_sets[filename]["identifier_col"] = "-"
     marker_sets[filename]["class_col"] = "-"
     marker_sets[filename]["classes"] = []
-    refresh_markertable(window, values, marker_sets)
+    refresh_markertable(window, marker_sets)
 
     # window['-marker_test-'].Update(disabled = False)
     # window['-marker_profiles-'].Update(disabled = False)
@@ -2439,8 +2442,9 @@ def marker_add(window, values, marker_sets):
 
 
 def marker_remove(window, values, marker_sets):
-    del marker_sets[values["-marker_list-"][0]]
-    refresh_markertable(window, values, marker_sets)
+    marker_filename = values["-marker_list-"][0]
+    del marker_sets[marker_filename]
+    refresh_markertable(window, marker_sets)
     if not len(marker_sets) > 0:
         window["-marker_test-"].Update(disabled=True)
         window["-marker_profiles-"].Update(disabled=True)
@@ -2449,21 +2453,18 @@ def marker_remove(window, values, marker_sets):
 
 
 def marker_setkey(values, marker_sets):
-    marker_sets[values["-marker_list-"][0]]["identifier_col"] = values[
-        "-marker_key-"
-    ]
+    marker_filename = values["-marker_list-"][0]
+    marker_set = marker_sets[marker_filename]
+    marker_set["identifier_col"] = values["-marker_key-"]
 
 
 def marker_setclass(values, marker_sets):
-    marker_sets[values["-marker_list-"][0]]["class_col"] = values[
-        "-marker_class-"
-    ]
-    marker_sets[values["-marker_list-"][0]]["classes"] = list(
-        set(
-            marker_sets[values["-marker_list-"][0]]["table"][
-                values["-marker_class-"]
-            ]
-        )
+    marker_filename = values["-marker_list-"][0]
+    marker_set = marker_sets[marker_filename]
+
+    marker_set["class_col"] = values["-marker_class-"]
+    marker_set["classes"] = list(
+        set(marker_set["table"][values["-marker_class-"]])
     )
     marker_conv = create_conversion(marker_sets)
     return marker_conv
@@ -2473,8 +2474,8 @@ def create_conversion(
     marker_sets: dict[str, dict[str, Any]],
 ) -> dict[str, str]:
     marker_conv = {}
-    for path in marker_sets:
-        for classname in marker_sets[path]["classes"]:
+    for marker_set in marker_sets.values():
+        for classname in marker_set["classes"]:
             marker_conv[classname] = classname
     return marker_conv
 
@@ -2482,60 +2483,76 @@ def create_conversion(
 def create_markerlist(
     marker_sets: dict[str, dict[str, Any]],
     marker_conv: dict[str, str | float],
-    marker_params: dict[str, Any],
+    what: Literal["unite", "intersect"],
+    how: Literal["majority", "exclude"],
 ) -> pd.DataFrame:
-    markerset = pd.DataFrame(columns=["name"])
+    """Create a uniform marker list from multiple marker sets.
+
+    Create a uniform marker list from multiple marker sets, accounting for
+    any filtering or renaming.
+
+    :return: A DataFrame with the unified marker list with marker names as
+        index ('name') and a 'class' column.
+    """
+    if what not in ["unite", "intersect"]:
+        raise ValueError(f"Invalid 'what' parameter: {what}")
+    if how not in ["majority", "exclude"]:
+        raise ValueError(f"Invalid 'how' parameter: {how}")
+
+    # handle ID conversion, normalize column names
+    combined = pd.DataFrame(columns=["name"])
     counter = 1
-    for path in marker_sets:
-        id_col = marker_sets[path]["identifier_col"]
-        class_col = marker_sets[path]["class_col"]
-        mset = marker_sets[path]["table"][[id_col, class_col]]
-        mset.rename(
+    for marker_set in marker_sets.values():
+        id_col = marker_set["identifier_col"]
+        class_col = marker_set["class_col"]
+        cur_df = marker_set["table"][[id_col, class_col]]
+        cur_df.rename(
             columns={
                 id_col: "name",
                 class_col: f"class{counter}",
             },
             inplace=True,
         )
-        for classname in marker_conv:
-            mset.replace(
-                {f"class{counter}": {classname: marker_conv[classname]}},
-                inplace=True,
-            )
-            mset.replace(
-                {f"class{counter}": {r"^\s*$": np.nan}},
-                regex=True,
-                inplace=True,
-            )
-            mset = mset[mset[f"class{counter}"].notna()]
+        class_col = f"class{counter}"
+        cur_df.replace(
+            {class_col: marker_conv},
+            inplace=True,
+        )
+        cur_df.replace(
+            {class_col: {r"^\s*$": np.nan}},
+            regex=True,
+            inplace=True,
+        )
+        cur_df = cur_df[cur_df[class_col].notna()]
 
-        markerset = pd.merge(markerset, mset, on="name", how="outer")
+        combined = pd.merge(combined, cur_df, on="name", how="outer")
         counter += 1
 
-    markerset.set_index("name", inplace=True)
+    combined.set_index("name", inplace=True)
 
-    if marker_params["what"] == "unite":
+    # union or intersection of markers?
+    if what == "unite":
         pass
-    elif marker_params["what"] == "intersect":
-        markerset.dropna(inplace=True)
-    else:
-        raise ValueError("Invalid marker parameter")
+    elif what == "intersect":
+        combined.dropna(inplace=True)
 
-    if marker_params["how"] == "majority":
-        markerset_final = pd.DataFrame(
-            markerset.mode(axis=1, dropna=True)[0]
-        ).rename(columns={0: "class"})
-    elif marker_params["how"] == "exclude":
-        markerset_final = markerset.mode(axis=1, dropna=True).fillna(np.nan)
-        if 1 in markerset_final.columns:
-            markerset_final = pd.DataFrame(
-                markerset_final[markerset_final[1].isnull()][0]
-            ).rename(columns={0: "class"})
+    # resolve conflicting class assignments
+    # majority: assign the most frequent class
+    # exclude: exclude the marker from the list
+    if how == "majority":
+        combined = pd.DataFrame(combined.mode(axis=1, dropna=True)[0]).rename(
+            columns={0: "class"}
+        )
+    elif how == "exclude":
+        combined = combined.mode(axis=1, dropna=True).fillna(np.nan)
+        if 1 in combined.columns:
+            combined = pd.DataFrame(combined[combined[1].isnull()][0]).rename(
+                columns={0: "class"}
+            )
         else:
-            markerset_final.rename(columns={0: "class"}, inplace=True)
-    else:
-        raise ValueError(f"Invalid marker parameter: {marker_params['how']}")
-    return markerset_final
+            combined.rename(columns={0: "class"}, inplace=True)
+
+    return combined
 
 
 def session_open(window, values, filename, model: SessionModel):
@@ -2569,7 +2586,7 @@ def session_open(window, values, filename, model: SessionModel):
     tp_buttons(window, bool(model.tp_data))
 
     if model.marker_sets:
-        refresh_markertable(window, values, model.marker_sets)
+        refresh_markertable(window, model.marker_sets)
 
         event, values = window.read(timeout=50)
         # marker_setkey(values, marker_sets)

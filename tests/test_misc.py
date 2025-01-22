@@ -20,6 +20,7 @@ def test_create_markerlist():
                         "PROTEIN - COMPLEX",
                         "CYTOPLASM",
                     ],
+                    "ignored...": [np.nan, np.nan, np.nan],
                 }
             ),
         }
@@ -31,7 +32,7 @@ def test_create_markerlist():
         "ignored...": np.nan,
     }
     marker_params = {"how": "exclude", "what": "unite"}
-    markerlist = create_markerlist(marker_sets, marker_conv, marker_params)
+    markerlist = create_markerlist(marker_sets, marker_conv, **marker_params)
     assert markerlist.to_dict() == {
         "class": {
             "AAGAB": "CYTOPLASM",
