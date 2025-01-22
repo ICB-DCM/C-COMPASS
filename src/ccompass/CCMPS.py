@@ -1144,7 +1144,6 @@ class MainController:
                         self.model.fract_info,
                         self.model.fract_conditions,
                     ) = FDP_exec(
-                        self.main_window,
                         self.model.fract_tables,
                         self.model.fract_preparams,
                         self.model.fract_identifiers,
@@ -1477,10 +1476,6 @@ class MainController:
                         )
                     except Exception as e:
                         logger.exception("Error opening session")
-                        import traceback
-
-                        # show error dialog with traceback
-                        traceback = traceback.format_exc()
                         messagebox.showerror(
                             "Error",
                             "An error occurred while opening the session:\n\n"
