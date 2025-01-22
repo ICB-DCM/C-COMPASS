@@ -1641,6 +1641,23 @@ class MainController:
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
 
     def _handle_training(self, key: str):
+        if key == "[IDENTIFIER]":
+            stds = self.model.fract_std
+        else:
+            # Add the required column and set as index
+            conditions_std = [
+                x for x in self.model.fract_conditions if x != "[KEEP]"
+            ]
+            stds = {}
+            for condition in conditions_std:
+                stds[condition] = pd.merge(
+                    self.model.fract_std["class"][condition],
+                    self.model.fract_info[key],
+                    left_index=True,
+                    right_index=True,
+                    how="left",
+                ).set_index(key)
+
         from .MOP import MOP_exec
 
         (
@@ -1653,13 +1670,10 @@ class MainController:
             self.model.svm_test,
             self.model.svm_metrics,
         ) = MOP_exec(
-            self.model.fract_conditions,
             self.model.fract_full,
             self.model.fract_marker,
             self.model.fract_test,
-            self.model.fract_std,
-            self.model.fract_info,
-            key,
+            stds,
             self.model.NN_params,
         )
         # window['-classification_statistics-'].Update(disabled = False)
