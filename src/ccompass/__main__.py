@@ -27,8 +27,8 @@ def launch_gui():
     """Launch the C-COMPASS GUI."""
     import FreeSimpleGUI as sg
 
-    from .CCMPS import MainController
     from .core import SessionModel
+    from .main_gui import MainController
 
     # initialize logging
     log_format = "%(message)s"
