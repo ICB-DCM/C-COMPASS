@@ -1508,14 +1508,9 @@ class MainController:
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
             elif event == "About...":
-                from importlib.metadata import version
+                from .about_dialog import show_about_dialog
 
-                messagebox.showinfo(
-                    f"About {app_name}",
-                    f"{app_name}\n\n"
-                    f"Version: {version('ccompass')}\n"
-                    f"Website: {repository_url}",
-                )
+                show_about_dialog()
             elif event == "Open Website":
                 import webbrowser
 
