@@ -360,11 +360,13 @@ def combine_median_std(data, fracts_con, window, progress):
     data_median = {}
     data_std = {}
     stepsize = 5.0 / len(data)
+
     for condition in data:
         progress += stepsize
         window["--progress--"].Update(progress)
         window["--status2--"].Update(condition)
         window.read(timeout=50)
+
         con_vals = pd.DataFrame()
         con_std = pd.DataFrame()
         for fract in fracts_con[condition]:
@@ -419,6 +421,7 @@ def combine_concat(data, window):
     for condition in data:
         window["--status2--"].Update(condition)
         window.read(timeout=50)
+
         con_vals = pd.DataFrame()
         for replicate in data[condition]:
             renamedict = {}
@@ -458,11 +461,13 @@ def remove_zeros(
 def calculate_outcorr(data, protlist_remaining, comb, window, progress):
     outer_corrs = pd.DataFrame()
     stepsize = 5.0 / len(data)
+
     for condition in data:
         progress += stepsize
         window["--progress--"].Update(progress)
         window["--status2--"].Update(condition)
         window.read(timeout=50)
+
         outcorr = pd.DataFrame(index=protlist_remaining[condition])
         for con in data:
             if not con == condition:
@@ -515,7 +520,7 @@ def modify_structure(data_in):
 
 def create_fract_processing_window() -> sg.Window:
     """Create fractionation data processing progress dialog."""
-    layout_FDP = [
+    layout = [
         [
             sg.Column(
                 [
@@ -576,7 +581,7 @@ def create_fract_processing_window() -> sg.Window:
     ]
     return sg.Window(
         "Processing...",
-        layout_FDP,
+        layout,
         size=(600, 120),
         modal=True,
     )
@@ -739,35 +744,13 @@ def start_fract_data_processing(
         )
         if preparams[way]["combination"] == "median":
             data_ways[way] = data_combined
-            if way == "class":
-                intermediate_data["[6] class_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
-            elif way == "vis":
-                intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
-
         elif preparams[way]["combination"] == "concat":
             data_ways[way] = combine_concat(data_ways[way], window)
-            if way == "class":
-                intermediate_data["[6] class_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
-            elif way == "vis":
-                intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
-
         elif preparams[way]["combination"] == "separate":
-            if way == "class":
-                intermediate_data["[6] class_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
-            elif way == "vis":
-                intermediate_data["[6] vis_combined"] = copy.deepcopy(
-                    data_ways[way]
-                )
+            pass
+        intermediate_data[f"[6] {way}_combined"] = copy.deepcopy(
+            data_ways[way]
+        )
 
     # ---------------------------------------------------------------------
     logger.info("post-scaling...")
