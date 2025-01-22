@@ -100,7 +100,7 @@ def show_about_dialog():
         ],
         [sg.Push(), sg.Button("OK"), sg.Push()],
     ]
-    window = sg.Window(f"About {app_name}", layout, resizable=True)
+    window = sg.Window(f"About {app_name}", layout, resizable=True, modal=True)
 
     while True:
         event, values = window.read()
