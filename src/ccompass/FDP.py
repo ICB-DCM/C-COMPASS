@@ -911,7 +911,13 @@ def FDP_exec(
             break
 
         if event_FDP == "--start--":
-            start_fract_data_processing(
+            (
+                data_ways,
+                std_ways,
+                intermediate_data,
+                protein_info,
+                conditions_trans,
+            ) = start_fract_data_processing(
                 window_FDP,
                 input_tables,
                 preparams,
