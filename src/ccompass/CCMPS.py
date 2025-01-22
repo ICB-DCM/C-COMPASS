@@ -1,6 +1,7 @@
 """C-COMPASS main window."""
 
 import copy
+import logging
 import pickle
 import random
 from datetime import datetime
@@ -18,6 +19,8 @@ from .core import (
     SessionModel,
     SessionStatusModel,
 )
+
+logger = logging.getLogger(__package__)
 
 
 def create_fractionation_tab(fract_paths) -> sg.Tab:
@@ -1473,12 +1476,11 @@ class MainController:
                             model=self.model,
                         )
                     except Exception as e:
-                        print(f"An error occurred: {e}")
+                        logger.exception("Error opening session")
                         import traceback
 
                         # show error dialog with traceback
                         traceback = traceback.format_exc()
-                        print(traceback)
                         messagebox.showerror(
                             "Error",
                             "An error occurred while opening the session:\n\n"
@@ -1637,11 +1639,8 @@ class MainController:
             # print('check5: classification MOP updated')
             # window_CCMPS['-classification_SVM-'].Update(disabled = False)
             # print('check6: classification SVM updated')
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            import traceback
-
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Error matching markers")
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
 
     def _handle_training(self, key: str):
@@ -1698,6 +1697,7 @@ class MainController:
                 self.model.status.training
             ) = True
         except Exception:
+            logger.exception("Error importing prediction")
             messagebox.showerror("Error", "Incompatible file type!")
 
     def _handle_statistics_report(self):
@@ -2814,7 +2814,7 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
 
     fract_marker_up = {}
     for condition in fract_marker:
-        print("condition", condition)
+        logger.info(f"Upscaling condition {condition}")
 
         class_sizes = {}
         for classname in list(set(fract_marker[condition]["class"])):
@@ -2826,7 +2826,7 @@ def upscale(fract_marker, fract_std, key, fract_info, mode):
         fract_marker_up[condition] = fract_marker[condition]
         k = 1
         for classname in list(set(fract_marker[condition]["class"])):
-            print("class", classname)
+            logger.info(f"Upscaling {condition} / {classname}")
 
             data_class_temp = fract_marker[condition].loc[
                 fract_marker[condition]["class"] == classname

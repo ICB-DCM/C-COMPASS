@@ -1,6 +1,9 @@
 """Package entry-point."""
 
 import argparse
+import logging
+
+from rich.logging import RichHandler
 
 from . import app_name
 
@@ -27,6 +30,19 @@ def launch_gui():
     from .CCMPS import MainController
     from .core import SessionModel
 
+    # initialize logging
+    log_format = "%(message)s"
+    logging.basicConfig(
+        level="WARNING",
+        format=log_format,
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
+    logger = logging.getLogger(__package__)
+    logger.setLevel(logging.DEBUG)
+    logger.info(f"Launching {app_name} GUI")
+
+    # GUI theme
     sg.theme("Dark Blue 3")
 
     model = SessionModel()

@@ -19,6 +19,7 @@ dependencies = [
     "pandas",
     "pydantic",
     "pyyaml",
+    "rich",
     "tensorflow",
     "scikit-learn",
     "scipy",

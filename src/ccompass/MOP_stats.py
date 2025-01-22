@@ -1,4 +1,5 @@
 """Multi-organelle prediction statistics."""
+# FIXME: this module is currently unused
 
 import numpy as np
 import pandas as pd

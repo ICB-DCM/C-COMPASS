@@ -1,6 +1,7 @@
 """Fractionation data processing."""
 
 import copy
+import logging
 from collections import Counter
 from tkinter import messagebox
 
@@ -9,6 +10,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
 from sklearn.preprocessing import MinMaxScaler
+
+logger = logging.getLogger(__package__)
 
 
 def create_dataset(
@@ -628,7 +631,7 @@ def start_fract_data_processing(
         intermediate_data = {}
 
         # ---------------------------------------------------------------------
-        print("creating dataset...")
+        logger.info("creating dataset...")
         progress = 0
         window_FDP["--status1--"].Update(value="creating dataset...")
         window_FDP.read(timeout=50)
@@ -647,7 +650,7 @@ def start_fract_data_processing(
         intermediate_data["[0] vis_abs"] = copy.deepcopy(data_ways["vis"])
 
         # ---------------------------------------------------------------------
-        print("converting dataset...")
+        logger.info("converting dataset...")
         progress = 10
         window_FDP["--status1--"].Update(value="converting dataset...")
         window_FDP["--progress--"].Update(progress)
@@ -663,7 +666,7 @@ def start_fract_data_processing(
         intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(data_ways["vis"])
 
         # ---------------------------------------------------------------------
-        print("pre-scaling...")
+        logger.info("pre-scaling...")
         progress = 20
         window_FDP["--status1--"].Update(value="pre-scaling...")
         window_FDP["--progress--"].Update(progress)
@@ -685,7 +688,7 @@ def start_fract_data_processing(
         )
 
         # ---------------------------------------------------------------------
-        print("filtering by missing fractions...")
+        logger.info("filtering by missing fractions...")
         progress = 30
         window_FDP["--status1--"].Update(
             value="filtering by missing values..."
@@ -709,7 +712,7 @@ def start_fract_data_processing(
         )
 
         # ---------------------------------------------------------------------
-        print("finding IDs...")
+        logger.info("finding IDs...")
         progress = 40
         window_FDP["--status1--"].Update(value="finding IDs...")
         window_FDP["--progress--"].Update(40)
@@ -728,7 +731,7 @@ def start_fract_data_processing(
         intermediate_data["[4] vis_f_count"] = copy.deepcopy(data_ways["vis"])
 
         # ---------------------------------------------------------------------
-        print("detecting samples...")
+        logger.info("detecting samples...")
         progress = 50
         window_FDP["--status1--"].Update(value="detecting samples...")
         window_FDP["--progress--"].Update(50)
@@ -763,7 +766,7 @@ def start_fract_data_processing(
         # protein_info = implement_icorr(protein_info, icorr_mean, window_FDP)
 
         # ---------------------------------------------------------------------
-        print("combining data...")
+        logger.info("combining data...")
         progress = 60
         window_FDP["--status1--"].Update(value="combining data...")
         window_FDP["--progress--"].Update(progress)
@@ -806,7 +809,7 @@ def start_fract_data_processing(
                     )
 
         # ---------------------------------------------------------------------
-        print("post-scaling...")
+        logger.info("post-scaling...")
         progress = 70
         window_FDP["--status1--"].Update(value="post-scaling...")
         window_FDP["--progress--"].Update(progress)
@@ -828,7 +831,7 @@ def start_fract_data_processing(
         )
 
         # ---------------------------------------------------------------------
-        print("removing zeros...")
+        logger.info("removing zeros...")
         progress = 80
         window_FDP["--status1--"].Update(value="removing baseline profiles...")
         window_FDP["--progress--"].Update(progress)
@@ -845,7 +848,7 @@ def start_fract_data_processing(
         intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
 
         # ---------------------------------------------------------------------
-        print("calculating outer correlations...")
+        logger.info("calculating outer correlations...")
         progress = 90
         window_FDP["--status1--"].Update(
             value="calculating outer correlations..."
@@ -868,7 +871,6 @@ def start_fract_data_processing(
         conditions_trans = conditions
 
         # ---------------------------------------------------------------------
-        print("done!")
         progress = 100
         window_FDP["--status1--"].Update(
             value="calculating outer correlations..."
@@ -876,7 +878,7 @@ def start_fract_data_processing(
         window_FDP["--progress--"].Update(progress)
         window_FDP.read(timeout=50)
 
-    print("done!")
+    logger.info("done!")
 
     return (
         data_ways,

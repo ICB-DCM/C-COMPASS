@@ -1,6 +1,7 @@
 """Multiple organelle prediction."""
 
 import copy
+import logging
 import random
 from datetime import datetime
 
@@ -24,6 +25,9 @@ from tensorflow import keras
 
 from ._utils import get_ccmps_data_directory
 from .core import NeuralNetworkParametersModel
+
+logger = logging.getLogger(__package__)
+
 
 optimizer_classes = {
     "adam": tf.keras.optimizers.Adam,
@@ -159,7 +163,7 @@ def upsampling(
     if NN_params.upsampling_method == "none":
         pass
     else:
-        print(f"Upsampling condition {condition}:")
+        logger.info(f"Upsampling condition {condition}:")
         class_sizes = {}
         for classname in list(set(fract_marker[condition]["class"])):
             class_sizes[classname] = list(
@@ -168,7 +172,7 @@ def upsampling(
         class_maxsize = max(class_sizes.values())
         k = 1
         for classname in list(set(fract_marker[condition]["class"])):
-            print(classname)
+            logger.info(f"Upsampling {condition} / {classname}")
             data_class_temp = fract_marker[condition].loc[
                 fract_marker[condition]["class"] == classname
             ]
@@ -313,7 +317,6 @@ def upsampling(
                     axis=0,
                     ignore_index=False,
                 )
-        print("")
     fract_marker_up[condition] = fract_marker_up[condition].sample(frac=1)
     fract_full_up[condition] = fract_full_up[condition].sample(frac=1)
     return fract_marker_up, fract_full_up
@@ -498,8 +501,7 @@ def MOP_exec(
         # learning_xyz[condition]['z_test'] = {}
 
     for R in range(1, NN_params.rounds + 1):
-        # print('ROUND 0')
-        print("upsampling...")
+        logger.info(f"Executing round {R}...")
         # fract_full_up = copy.deepcopy(fract_full)
         # fract_marker_up = copy.deepcopy(fract_marker_old)
 
@@ -523,10 +525,9 @@ def MOP_exec(
             fract_marker_up = copy.deepcopy(fract_marker)
             fract_full_up = copy.deepcopy(fract_full)
 
-        print("upsampling done!")
-        print("")
+        logger.info("upsampling done!")
 
-        print("creating data...")
+        logger.info("creating data...")
         for condition in conditions:
             learning_xyz, classes = create_learninglist(
                 learning_xyz,
@@ -540,8 +541,7 @@ def MOP_exec(
                 0,
             )
 
-        print("data complete!")
-        print("")
+        logger.info("data complete!")
 
         svm_metrics = {}
         svm_marker = {}
@@ -588,7 +588,6 @@ def MOP_exec(
 
         fract_unmixed_up = {}
         for condition in conditions:
-            # print()
             unmixed_dummies = pd.get_dummies(
                 fract_marker_up[condition]["class"]
             )  # [learning_xyz[condition]['classes']]
@@ -635,8 +634,7 @@ def MOP_exec(
                     round_id
                 ].to_numpy(dtype=float)
             )
-        print("mixing done!")
-        print("")
+        logger.info("mixing done!")
 
         for condition in conditions:
             x_full = learning_xyz[condition]["x_full"]
@@ -756,6 +754,7 @@ def multi_predictions(
     condition: str,
     roundn: int,
 ):
+    logger.info(f"Training classifier for condition {condition}...")
     y_full = learning_xyz[condition]["y_full"][f"ROUND_{roundn}_0"]
     y_train = learning_xyz[condition]["y_train"][f"ROUND_{roundn}_0"]
     y_train_up = learning_xyz[condition]["y_train_up"][f"ROUND_{roundn}_0"]
@@ -796,7 +795,7 @@ def multi_predictions(
         validation_split=0.2,
         callbacks=[stop_early],
     )
-
+    logger.info("Hyperparameter tuning done!")
     FNN_best = FNN_tuner.get_best_models(num_models=1)[0]
     best_hp = FNN_tuner.get_best_hyperparameters(num_trials=1)[0].values
 
@@ -829,6 +828,10 @@ def multi_predictions(
     )
 
     for subround in range(1, NN_params.subrounds + 1):
+        logger.info(
+            f"Training classifier for condition {condition} "
+            f"{subround}/{NN_params.subrounds}..."
+        )
         # print(learning_xyz[condition]['y_full'])
         subround_id = f"ROUND_{roundn}_{subround}"
         y_full = learning_xyz[condition]["y_full"][subround_id]
@@ -1123,7 +1126,7 @@ def single_prediction(
 
     :param learning_xyz: The learning data. This will be updated in place.
     """
-    print(condition)
+    logger.info(f"Performing single prediction for {condition}...")
     round_id = f"ROUND_{roundn}"
     x_full = learning_xyz["x_full"]
     x_train = learning_xyz["x_train"]
