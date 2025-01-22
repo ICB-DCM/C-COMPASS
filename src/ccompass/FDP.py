@@ -3,7 +3,9 @@
 import copy
 import logging
 from collections import Counter
+from itertools import chain
 from tkinter import messagebox
+from typing import Literal
 
 import FreeSimpleGUI as sg
 import numpy as np
@@ -18,22 +20,35 @@ logger = logging.getLogger(__package__)
 
 def create_dataset(
     input_data: dict[str, pd.DataFrame],
-    input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
-    identifiers: dict[str, str],
+    input_tables: dict[str, list[list[int | str]]],
+    identifier_columns: dict[str, str],
     conditions: list[str],
     window: sg.Window,
     progress: float,
 ) -> tuple[dict[str, dict[str, pd.DataFrame]], dict[str, pd.DataFrame], float]:
-    for i in ["", "[IDENTIFIER]"]:
-        if i in conditions:
-            conditions.remove(i)
+    """Consolidate fractionation data.
 
-    idents = []
-    for path in input_tables:
-        idents = list(set(idents + list(input_data[path][identifiers[path]])))
+    :returns: A tuple containing the dataset, the data to keep and the updated progress.
+    The dataset is a dictionary with the following structure:
+    - condition_id -> replicate_id -> DataFrame
+    - all datasets have the same index (protein identifiers)
+    """
+    conditions = [x for x in conditions if x not in ["", "[IDENTIFIER]"]]
+
+    # collect all identifiers
+    all_identifiers = list(
+        set(
+            chain.from_iterable(
+                input_data[path][identifier_columns[path]]
+                for path in input_tables
+            )
+        )
+    )
 
     # progress increment per condition
     stepsize = 10.0 / len(conditions)
+    # dataset to be created
+    #  condition_id -> replicate_id -> DataFrame
     dataset: dict[str, dict[str, pd.DataFrame]] = {}
 
     for condition in conditions:
@@ -42,62 +57,67 @@ def create_dataset(
         window["--progress--"].Update(progress)
         window.read(timeout=50)
 
-        data_new = pd.DataFrame(index=idents)
+        data_new = pd.DataFrame(index=all_identifiers)
         for path in input_tables:
-            for sample in input_tables[path]:
+            for (
+                samplename,
+                sample_condition,
+                sample_replicate,
+                sample_fraction,
+            ) in input_tables[path]:
+                if sample_condition != condition:
+                    continue
+
                 data = pd.DataFrame()
-                if sample[1] == condition:
-                    samplename = sample[0]
-                    data[samplename] = input_data[path][sample[0]]
-                    data.set_index(
-                        input_data[path][identifiers[path]], inplace=True
-                    )
-                    data_new = pd.merge(
-                        data_new,
-                        data,
-                        right_index=True,
-                        left_index=True,
-                        how="outer",
-                    )
-                    if condition == "[KEEP]":
-                        if samplename + "_x" in data_new.columns:
-                            for element in list(data_new.index):
-                                if pd.isnull(
-                                    data_new[samplename + "_x"][element]
-                                ):
-                                    data_new[samplename + "_x"][element] = (
-                                        data_new[samplename + "_y"][element]
-                                    )
-                                if pd.isnull(
+                data[samplename] = input_data[path][samplename]
+                data.set_index(
+                    input_data[path][identifier_columns[path]], inplace=True
+                )
+                data_new = pd.merge(
+                    data_new,
+                    data,
+                    right_index=True,
+                    left_index=True,
+                    how="outer",
+                )
+
+                if condition == "[KEEP]":
+                    if samplename + "_x" in data_new.columns:
+                        # handle merge conflicts
+                        for element in list(data_new.index):
+                            if pd.isnull(data_new[samplename + "_x"][element]):
+                                data_new[samplename + "_x"][element] = (
                                     data_new[samplename + "_y"][element]
-                                ):
-                                    data_new[samplename + "_y"][element] = (
-                                        data_new[samplename + "_x"][element]
-                                    )
-                        data_new = data_new.T.drop_duplicates().T
-                        data_new.rename(
-                            {samplename + "_x": samplename},
-                            axis=1,
-                            inplace=True,
-                        )
-                    else:
-                        data_new = data_new.rename(
-                            columns={
-                                samplename: f"Fr.{sample[3]}_{samplename}_Rep.{sample[2]}"
-                            }
-                        )
+                                )
+                            if pd.isnull(data_new[samplename + "_y"][element]):
+                                data_new[samplename + "_y"][element] = (
+                                    data_new[samplename + "_x"][element]
+                                )
+                    data_new = data_new.T.drop_duplicates().T
+                    data_new.rename(
+                        {samplename + "_x": samplename},
+                        axis=1,
+                        inplace=True,
+                    )
+                else:
+                    data_new = data_new.rename(
+                        columns={
+                            samplename: f"Fr.{sample_fraction}_{samplename}_Rep.{sample_replicate}"
+                        }
+                    )
+        # list of unique replicate numbers
         replist = []
         for sample in data_new.columns:
+            # get replicate number
             rep = sample[sample.rfind("_") + 1 :]
             if rep not in replist:
                 replist.append(rep)
-
+        # collect all samples for each replicate
         repdata = {}
         for rep in replist:
             data = pd.DataFrame(index=data_new.index)
             for sample in data_new.columns:
-                suffix = sample[sample.rfind("_") + 1 :]
-                if suffix == rep:
+                if sample[sample.rfind("_") + 1 :] == rep:
                     data = pd.merge(
                         data,
                         data_new[sample],
@@ -115,39 +135,13 @@ def create_dataset(
     return dataset, data_keep, progress
 
 
-def pre_post_scaling(data, how: str, window: sg.Window, progress: int):
-    if how == "minmax":
-        for condition in data:
-            stepsize = (5.0 / len(data)) / len(data[condition])
-            for replicate in data[condition]:
-                progress += stepsize
-                window["--progress--"].Update(progress)
-                window["--status2--"].Update(" ".join([condition, replicate]))
-                window.read(timeout=50)
-                scaler = MinMaxScaler()
-                data[condition][replicate] = pd.DataFrame(
-                    scaler.fit_transform(data[condition][replicate].T).T,
-                    columns=data[condition][replicate].columns,
-                ).set_index(data[condition][replicate].index)
-    elif how == "area":
-        for condition in data:
-            stepsize = (5.0 / len(data)) / len(data[condition])
-            for replicate in data[condition]:
-                progress += stepsize
-                window["--progress--"].Update(progress)
-                window["--status2--"].Update(" ".join([condition, replicate]))
-                window.read(timeout=50)
-                data[condition][replicate] = data[condition][replicate].div(
-                    data[condition][replicate].sum(axis=1), axis=0
-                )
-    else:
-        raise ValueError(f"Unknown scaling method: {how}")
-    return data, progress
-
-
-def filter_missing(
-    data: dict[str, pd.DataFrame], mincount: int, window, progress
+def pre_post_scaling(
+    data, how: Literal["minmax", "area"], window: sg.Window, progress: int
 ):
+    """Scale data using MinMaxScaler or area normalization.
+
+    Returns a tuple containing the scaled data and the updated progress.
+    """
     for condition in data:
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
@@ -155,6 +149,35 @@ def filter_missing(
             window["--progress--"].Update(progress)
             window["--status2--"].Update(" ".join([condition, replicate]))
             window.read(timeout=50)
+
+            if how == "minmax":
+                scaler = MinMaxScaler()
+                data[condition][replicate] = pd.DataFrame(
+                    scaler.fit_transform(data[condition][replicate].T).T,
+                    columns=data[condition][replicate].columns,
+                ).set_index(data[condition][replicate].index)
+            elif how == "area":
+                data[condition][replicate] = data[condition][replicate].div(
+                    data[condition][replicate].sum(axis=1), axis=0
+                )
+            else:
+                raise ValueError(f"Unknown scaling method: {how}")
+    return data, progress
+
+
+def filter_missing(
+    data: dict[str, pd.DataFrame], mincount: int, window, progress
+):
+    """Remove rows with at least mincount non-zero values and set remaining
+    N/A values to zero."""
+    for condition in data:
+        stepsize = (5.0 / len(data)) / len(data[condition])
+        for replicate in data[condition]:
+            progress += stepsize
+            window["--progress--"].Update(progress)
+            window["--status2--"].Update(" ".join([condition, replicate]))
+            window.read(timeout=50)
+
             data[condition][replicate].dropna(thresh=mincount, inplace=True)
             data[condition][replicate].replace(np.nan, 0.0, inplace=True)
     return data, progress
@@ -176,13 +199,15 @@ def filter_count(
         stepsize = (5.0 / len(data)) / len(data[condition])
         peplist = []
         for replicate in data[condition]:
-            peplist = peplist + list(data[condition][replicate].index)
+            peplist.extend(data[condition][replicate].index)
         peplist = list(set(remove_elements(peplist, mincount)))
         for replicate in data[condition]:
             progress += stepsize
             window["--progress--"].Update(progress)
             window["--status2--"].Update(" ".join([condition, replicate]))
             window.read(timeout=50)
+
+            # drop rows that are not in peplist
             for index in list(data[condition][replicate].index):
                 if index not in peplist:
                     data[condition][replicate].drop(
@@ -214,6 +239,7 @@ def list_samples(data, window, progress):
             window["--progress--"].Update(progress)
             window["--status2--"].Update(" ".join([condition, replicate]))
             window.read(timeout=50)
+
             for sample in list(data[condition][replicate].columns):
                 prefix = sample[: sample.find("_")]
                 fractnumber = int(prefix[3:])
@@ -417,21 +443,16 @@ def combine_concat(data, window):
     return data
 
 
-def remove_zeros(data, window, progress):
+def remove_zeros(
+    data: dict[str, dict[str, pd.DataFrame]],
+) -> dict[str, dict[str, pd.DataFrame]]:
+    """Remove rows with all zeros from the data."""
     for condition in data:
-        stepsize = (5.0 / len(data)) / len(data[condition])
-        for replicate in data[condition]:
-            progress += stepsize
-            window["--progress--"].Update(progress)
-            window["--status2--"].Update(" ".join([condition, replicate]))
-            window.read(timeout=50)
-            data[condition][replicate] = data[condition][replicate].apply(
-                pd.to_numeric, errors="coerce"
-            )
-            data[condition][replicate] = data[condition][replicate].fillna(0)[
-                ~(data[condition][replicate] == 0).all(axis=1)
-            ]
-    return data, progress
+        for replicate, df in data[condition].items():
+            df = df.apply(pd.to_numeric, errors="coerce")
+            df = df.fillna(0)[~(df == 0).all(axis=1)]
+            data[condition][replicate] = df
+    return data
 
 
 def calculate_outcorr(data, protlist_remaining, comb, window, progress):
@@ -563,7 +584,7 @@ def create_fract_processing_window() -> sg.Window:
 
 def start_fract_data_processing(
     window: sg.Window,
-    input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
+    input_tables: dict[str, list[list[int | str]]],
     preparams: dict[str, dict],
     identifiers: dict[str, str],
     fract_indata: dict[str, pd.DataFrame],
@@ -575,10 +596,6 @@ def start_fract_data_processing(
         for input_table in input_tables.values()
         for sample in input_table
     )
-
-    data_ways = {"class": [], "vis": []}
-    std_ways = {"class": [], "vis": []}
-    intermediate_data = {}
 
     # ---------------------------------------------------------------------
     logger.info("creating dataset...")
@@ -594,10 +611,14 @@ def start_fract_data_processing(
         window,
         progress,
     )
-    data_ways["class"] = copy.deepcopy(dataset)
-    data_ways["vis"] = copy.deepcopy(dataset)
-    intermediate_data["[0] class_abs"] = copy.deepcopy(data_ways["class"])
-    intermediate_data["[0] vis_abs"] = copy.deepcopy(data_ways["vis"])
+    data_ways = {
+        "class": copy.deepcopy(dataset),
+        "vis": copy.deepcopy(dataset),
+    }
+    intermediate_data = {
+        "[0] class_abs": copy.deepcopy(data_ways["class"]),
+        "[0] vis_abs": copy.deepcopy(data_ways["vis"]),
+    }
 
     # ---------------------------------------------------------------------
     logger.info("converting dataset...")
@@ -607,11 +628,10 @@ def start_fract_data_processing(
     window.read(timeout=50)
 
     for way in data_ways:
-        data_ways[way], progress = remove_zeros(
-            data_ways[way], window, progress
+        data_ways[way] = remove_zeros(data_ways[way])
+        intermediate_data[f"[1] {way}_nozeros1"] = copy.deepcopy(
+            data_ways[way]
         )
-    intermediate_data["[1] class_nozeros1"] = copy.deepcopy(data_ways["class"])
-    intermediate_data["[1] vis_nozeros1"] = copy.deepcopy(data_ways["vis"])
 
     # ---------------------------------------------------------------------
     logger.info("pre-scaling...")
@@ -628,10 +648,9 @@ def start_fract_data_processing(
                 window,
                 progress,
             )
-    intermediate_data["[2] class_prescaled"] = copy.deepcopy(
-        data_ways["class"]
-    )
-    intermediate_data["[2] vis_prescaled"] = copy.deepcopy(data_ways["vis"])
+        intermediate_data[f"[2] {way}_prescaled"] = copy.deepcopy(
+            data_ways[way]
+        )
 
     # ---------------------------------------------------------------------
     logger.info("filtering by missing fractions...")
@@ -712,6 +731,8 @@ def start_fract_data_processing(
     window["--progress--"].Update(progress)
     window.read(timeout=50)
 
+    std_ways = {"class": [], "vis": []}
+
     for way in data_ways:
         data_combined, std_ways[way], progress = combine_median_std(
             data_ways[way], fracts_con, window, progress
@@ -777,9 +798,7 @@ def start_fract_data_processing(
 
     for way in data_ways:
         if preparams[way]["zeros"]:
-            data_ways[way], progress = remove_zeros(
-                data_ways[way], window, progress
-            )
+            data_ways[way] = remove_zeros(data_ways[way])
     intermediate_data["[8] class_nozeros2"] = copy.deepcopy(data_ways["class"])
     intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
 
@@ -802,7 +821,6 @@ def start_fract_data_processing(
             protein_info[column] = outcorr[column]
 
     data_ways = modify_structure(data_ways)
-    conditions_trans = conditions
 
     # ---------------------------------------------------------------------
     progress = 100
@@ -817,12 +835,12 @@ def start_fract_data_processing(
         std_ways,
         intermediate_data,
         protein_info,
-        conditions_trans,
+        conditions,
     )
 
 
 def sample_tables_are_valid(
-    input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
+    input_tables: dict[str, list[list[int | str]]],
     min_replicates: int,
 ) -> bool:
     """Check that the sample table is valid.
@@ -893,7 +911,7 @@ def sample_tables_are_valid(
 
 
 def FDP_exec(
-    input_tables: dict[str, list[tuple[str, int | str, int | str, int | str]]],
+    input_tables: dict[str, list[list[int | str]]],
     preparams: dict[str, dict],
     identifiers: dict[str, str],
     data_ways: dict[str, dict[str, pd.DataFrame]],

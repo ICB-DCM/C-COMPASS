@@ -411,35 +411,19 @@ def pairwise_t_test(
     )
 
 
-# ----------------------------------------------------------------------------
-
-
 def MOP_exec(
-    fract_conditions,
     fract_full,
     fract_marker_old,
     fract_test,
-    fract_std,
-    fract_info,
-    key,
+    stds,
     NN_params: NeuralNetworkParametersModel,
 ):
-    """Perform multi-organelle prediction."""
-    conditions_std = [x for x in fract_conditions if x != "[KEEP]"]
-    conditions = [x for x in fract_full]
+    """Perform multi-organelle prediction.
 
-    stds = {}
-    if not key == "[IDENTIFIER]":
-        for condition in conditions_std:
-            stds[condition] = pd.merge(
-                fract_std["class"][condition],
-                fract_info[key],
-                left_index=True,
-                right_index=True,
-                how="left",
-            ).set_index(key)
+    :param fract_full: dictionary of full profiles
+    """
+    conditions = list(fract_full.keys())
 
-    # -------------------------
     ## UPSAMPLING START
     learning_xyz = {}
     for condition in conditions:

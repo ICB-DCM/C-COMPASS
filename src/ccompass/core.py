@@ -186,12 +186,15 @@ class SessionModel(BaseModel):
     #: ??
     #  for visualization and classification, each containing one DataFrame
     #  per condition with columns "{condition}_std_Fr.{fraction}"
-    fract_std: dict[str, dict[str, pd.DataFrame]] = {"class": {}, "vis": {}}
+    fract_std: dict[
+        Literal["class", "vis"], dict[ConditionId, pd.DataFrame]
+    ] = {"class": {}, "vis": {}}
     #: ??
     #  *something* => "{condition}" => "Rep.{replicate}" => DataFrame
     fract_intermediate: dict[str, dict[str, dict[str, pd.DataFrame]]] = {}
-    #: Identifier column for the fractionation: filepath => column id
-    fract_identifiers: dict[str, str] = {}
+    #: Identifier column of each fractionation data table:
+    #   filepath => column id
+    fract_identifiers: dict[Filepath, str] = {}
     #: Addition ("keep") columns from the fractionation data
     #  column ID => DataFrame
     fract_info: dict[str, pd.DataFrame] = {}
@@ -240,7 +243,7 @@ class SessionModel(BaseModel):
     #  *something* => "{condition}" => DataFrame
     tp_intermediate: dict[str, dict[str, pd.DataFrame]] = {}
     #: Identifier column for the total proteome: filepath => column id
-    tp_identifiers: dict[str, str] = {}
+    tp_identifiers: dict[Filepath, str] = {}
     #: ??
     tp_icorr: dict = {}
     #: ??
