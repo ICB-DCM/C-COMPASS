@@ -1,0 +1,29 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  C-COMPASS: a neural network tool for multi-omic
+  classification of cell compartments
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Daniel T.
+    family-names: Haas
+    email: daniel.haas@helmholtz-munich.de
+    affiliation: >-
+      Helmholtz Zentrum München Deutsches Forschungszentrum
+      für Gesundheit und Umwelt (GmbH)
+  - given-names: Daniel
+    family-names: Weindl
+    email: daniel.weindl@uni-bonn.de
+    affiliation: University of Bonn
+    orcid: 'https://orcid.org/0000-0001-9963-6057'
+repository-code: 'https://github.com/ICB-DCM/C-COMPASS/'
+url: 'https://c-compass.readthedocs.io/'
+abstract: >-
+  C-COMPASS is a neural network tool for multi-omic
+  classification of cell compartments.
+license: BSD-3-Clause
