@@ -296,8 +296,12 @@ def upsampling(
                     profile_up.index = [name_up]
                     profile_up["class"] = [classname]
 
-                    class_up = pd.concat(
-                        [class_up, profile_up], axis=0, ignore_index=False
+                    class_up = (
+                        pd.concat(
+                            [class_up, profile_up], axis=0, ignore_index=False
+                        )
+                        if not class_up.empty
+                        else profile_up
                     )
 
                 fract_marker_up[condition] = pd.concat(
