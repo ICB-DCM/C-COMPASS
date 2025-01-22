@@ -252,22 +252,26 @@ class SessionModel(BaseModel):
     #: Total proteome preprocessing parameters
     tp_preparams: dict[str, Any] = {"minrep": 2, "imputation": "normal"}
 
-    #: Marker files, classes and annotations
+    #: The user-provided marker files, classes and annotations
     #  filepath => {'table'->pd.DataFrame,
     #  'identifier_col'-> column ID ("key column" in GUI),
     #  'class_col': column ID with class names in the marker file,
     #  'classes': list[str] class names
     #  }
-    marker_sets: dict[str, dict[str, Any]] = {}
-    #: Marker selection parameters
-    marker_params: dict[str, Any] = {"how": "exclude", "what": "unite"}
+    marker_sets: dict[Filepath, dict[str, Any]] = {}
+    #: Options for merging marker sets
+    marker_params: dict[str, str] = {"how": "exclude", "what": "unite"}
     #: Mapping of compartment names to class names
     #  nan-values indicate that the compartment is not to be used
     marker_conv: dict[str, str | float] = {}
-    #: Marker list "name" (gene name) => "class" (class name)
+    #: The consolidated marker list, after merging `marker_sets`
+    #  according to `marker_params`, and accounting for renaming
+    #  and filtering through `marker_conv`.
+    #  "name" (gene name, index) => "class" (class name)
     marker_list: pd.DataFrame = pd.DataFrame()
-    #: The column ID of the fractionation DataFrame that contains that is
-    #  to be used for matching the markers
+
+    #: The column ID of the fractionation DataFrame that is
+    #  to be used for matching the markers (`marker_list["name"])
     marker_fractkey: str = "[IDENTIFIER]"
 
     #: SVM marker prediction
