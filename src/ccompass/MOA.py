@@ -1,11 +1,15 @@
 """Multiple organelle analysis."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
 from .core import NeuralNetworkParametersModel
+
+logger = logging.getLogger(__package__)
 
 
 def most_frequent_or_nan(row):
@@ -205,7 +209,7 @@ def stats_proteome(
             index=results[condition]["metrics"].index
         )
         for subcon in subcons:
-            print(subcon)
+            logger.info(f"Processing {condition} / {subcon}...")
             learning_xyz[subcon]["w_full_combined"] = pd.DataFrame(
                 index=learning_xyz[subcon]["x_full_df"].index
             )
@@ -541,7 +545,7 @@ def global_comparison(results):
 
     comparison = {}
     for comb in combinations:
-        print(comb)
+        logger.info(f"Processing {comb}...")
         classnames = list(
             set(results[comb[0]]["classnames"])
             & set(results[comb[1]]["classnames"])
@@ -563,7 +567,7 @@ def global_comparison(results):
         metrics_own = results[comb[0]]["metrics"]
         metrics_other = results[comb[1]]["metrics"]
 
-        print("performing t-tests..")
+        logger.info("performing t-tests..")
 
         # --------------
         # ## create RL, nRL, RLS, and nRLS:
@@ -641,7 +645,7 @@ def global_comparison(results):
             how="left",
         )
 
-        print("calculate RLS lists...")
+        logger.info("calculate RLS lists...")
         RLS_results = {}
         RLS_null = {}
         for ID in common_indices:
@@ -717,7 +721,7 @@ def global_comparison(results):
                 comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
 
-        print("calculate nRLS lists...")
+        logger.info("calculate nRLS lists...")
 
         # --------------
         # if mode == 'deep':
@@ -768,7 +772,7 @@ def global_comparison(results):
         #     pass
         # --------------
 
-        print("calculate CPAs...")
+        logger.info("calculate CPAs...")
 
         # --------------
         # if mode == 'deep':
@@ -802,7 +806,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
         # combined_index = tp_data[condition].index
         classnames = results[condition]["classnames"]
 
-        print("creating TPA...")
+        logger.info("creating TPA...")
         ## add TPA:
         TPA_list = []
         TPA_list = []
@@ -815,7 +819,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
             ~results[condition]["metrics"].index.duplicated(keep="first")
         ]
 
-        print("adding CA...")
+        logger.info("adding CA...")
         ## add CA:
         results[condition]["metrics"]["CA_relevant"] = "no"
         results[condition]["class_abundance"] = {}
@@ -835,7 +839,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 results_class
             )
 
-        print("adding CC...")
+        logger.info("adding CC...")
         ## add nCClist:
         for classname in classnames:
             results[condition]["metrics"]["nCClist_" + classname] = results[
@@ -849,7 +853,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 ]
             )
 
-        print("adding nCC...")
+        logger.info("adding nCC...")
         ## add nCC:
         for classname in classnames:
             results[condition]["metrics"]["nCC_" + classname] = (
@@ -868,7 +872,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
             "metrics"
         ][nCC_cols].div(nCC_sums, axis=0)
 
-        print("adding CPA...")
+        logger.info("adding CPA...")
         ## add CPA
         for classname in classnames:
             results[condition]["metrics"]["CPA_" + classname] = (
@@ -881,7 +885,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 * results[condition]["metrics"]["TPA"]
             )
 
-    print("comparing...")
+    logger.info("comparing...")
 
     combinations = []
     for con_1 in conditions:
@@ -902,7 +906,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 - results[comb[0]]["metrics"]["nCC_" + classname]
             )
 
-        print("calculating nRL values...")
+        logger.info("calculating nRL values...")
         nrl_cols = [
             col
             for col in comparison[comb]["metrics"].columns
@@ -987,7 +991,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
 
-        print("calculating CPA values...")
+        logger.info("calculating CPA values...")
 
         for classname in classnames:
             metrics_own["CPA_log_" + classname] = np.log2(

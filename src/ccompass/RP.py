@@ -1,5 +1,6 @@
 """Result plots"""
 
+import logging
 import os
 from io import BytesIO
 
@@ -12,6 +13,8 @@ import seaborn as sns
 from PIL import Image
 from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
+
+logger = logging.getLogger(__package__)
 
 
 def RP_gradient_heatmap(fract_data):
@@ -859,8 +862,8 @@ def RP_class_heatmap(results):
             bio.seek(0)
             return Image.open(bio)
 
-        except ValueError as e:
-            print(f"Error during clustering: {e}")
+        except ValueError:
+            logger.exception("Error during clustering")
             return None
 
     # Function to export heatmaps and data to PDF and Excel

@@ -1,6 +1,7 @@
 """Total proteome data processing."""
 
 import copy
+import logging
 import math
 from tkinter import messagebox
 from typing import Any
@@ -9,6 +10,8 @@ import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
+
+logger = logging.getLogger(__package__)
 
 
 def create_dataset(
@@ -270,7 +273,7 @@ def start_total_proteome_processing(
         tp_intermediate = {}
 
         # ---------------------------------------------------------------------
-        print("creating dataset...")
+        logger.info("creating dataset...")
         progress = 0
         window_TPP["--status1--"].Update(value="creating dataset...")
         window_TPP.read(timeout=50)
@@ -285,7 +288,7 @@ def start_total_proteome_processing(
         tp_intermediate["[0] abs"] = copy.deepcopy(tp_data)
 
         # ---------------------------------------------------------------------
-        print("filtering by missing values...")
+        logger.info("filtering by missing values...")
         progress = 10
         window_TPP["--status1--"].Update(
             value="filtering by missing values..."
@@ -298,7 +301,7 @@ def start_total_proteome_processing(
         tp_intermediate["[1] f_missing"] = copy.deepcopy(tp_data)
 
         # ---------------------------------------------------------------------
-        print("transforming data...")
+        logger.info("transforming data...")
         progress = 20
         window_TPP["--status1--"].Update(value="transforming data...")
         window_TPP["--progress--"].Update(progress)
@@ -308,7 +311,7 @@ def start_total_proteome_processing(
         tp_intermediate["[2] transformed"] = copy.deepcopy(tp_data)
 
         # ---------------------------------------------------------------------
-        print("imputing MissingValues...")
+        logger.info("imputing MissingValues...")
         progress = 30
         window_TPP["--status1--"].Update(value="imputing MissingValues...")
         window_TPP["--progress--"].Update(progress)
@@ -318,7 +321,7 @@ def start_total_proteome_processing(
         tp_intermediate["[3] imputed"] = copy.deepcopy(tp_data)
 
         # ---------------------------------------------------------------------
-        print("calculating correlations...")
+        logger.info("calculating correlations...")
         progress = 40
         window_TPP["--status1--"].Update(value="calculating correlations...")
         window_TPP["--progress--"].Update(progress)
@@ -327,7 +330,7 @@ def start_total_proteome_processing(
         tp_icorr = calculate_correlations(tp_data)
 
         # ---------------------------------------------------------------------
-        print("normalizing data...")
+        logger.info("normalizing data...")
         progress = 50
         window_TPP["--status1--"].Update(value="normalizing data...")
         window_TPP["--progress--"].Update(progress)
@@ -336,7 +339,7 @@ def start_total_proteome_processing(
         tp_data = normalize_data(tp_data, window_TPP)
         tp_intermediate["[4] normalized"] = copy.deepcopy(tp_data)
 
-        print("done!")
+        logger.info("done!")
         progress = 60
         window_TPP["--status1--"].Update(value="normalizing data...")
         window_TPP["--progress--"].Update(progress)
