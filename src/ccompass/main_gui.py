@@ -1006,7 +1006,7 @@ def create_main_window(model: SessionModel) -> sg.Window:
         ["Help", ["About...", "Open Website", "Manual"]],
     ]
 
-    layout_CCMPS = [
+    layout = [
         [sg.Menu(menu_def, tearoff=False)],
         [
             get_data_import_frame(
@@ -1022,7 +1022,7 @@ def create_main_window(model: SessionModel) -> sg.Window:
 
     main_window = sg.Window(
         app_name,
-        layout_CCMPS,
+        layout,
         size=(1260, 720),
         resizable=True,
     )
@@ -1043,12 +1043,12 @@ class MainController:
         # The event loop
         while True:
             event, values = self.main_window.read()
-            # refresh_window(window_CCMPS, status)
+            # refresh_window(window, status)
 
             # if status['fractionation_data']:
-            #     window_CCMPS['-status_fract-'].Update('ready')
+            #     window['-status_fract-'].Update('ready')
             # else:
-            #     window_CCMPS['-status_fract-'].Update('missing')
+            #     window['-status_fract-'].Update('missing')
             if event == sg.WIN_CLOSED or event == "Exit":
                 break
 
@@ -1126,13 +1126,13 @@ class MainController:
                 if sure == "Yes":
                     self.model.reset_fractionation()
                     fract_buttons(self.main_window, False)
-                    # window_CCMPS['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
-                    # enable_markersettings(window_CCMPS, True)
+                    # window['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
+                    # enable_markersettings(window, True)
 
                     self.main_window["-marker_fractkey-"].Update(
                         values=["[IDENTIFIER]"], value=""
                     )
-                    # window_CCMPS['-classification_SVM-'].Update(disabled = True)
+                    # window['-classification_SVM-'].Update(disabled = True)
             elif event == "-fractionation_start-":
                 if self.model.fract_paths:
                     from .FDP import FDP_exec
@@ -1159,7 +1159,7 @@ class MainController:
                     )
                     if self.model.fract_data["class"]:
                         self.model.status.fractionation_data = True
-                    #     fract_buttons(window_CCMPS, True)
+                    #     fract_buttons(window, True)
                 else:
                     messagebox.showerror(
                         "No dataset!", "Please import a fractionation dataset."
@@ -1167,7 +1167,7 @@ class MainController:
             elif event == "-fractionation_summary-":
                 RP.RP_gradient_heatmap(self.model.fract_data)
                 # FSD.FSD_exec(fract_preparams, fract_data)
-            # if event_CCMPS == '-fractionation_export-':
+            # if event == '-fractionation_export-':
             #     fract_export(values_CCMPS, fract_data, fract_info)
 
             elif event == "-tp_add-":
@@ -1262,7 +1262,7 @@ class MainController:
 
                     if self.model.tp_data:
                         self.model.status.tp_data = True
-                        # tp_buttons(window_CCMPS, True)
+                        # tp_buttons(window, True)
                 else:
                     messagebox.showerror(
                         "No dataset!", "Please import a TP dataset."
@@ -1290,7 +1290,7 @@ class MainController:
                         self.main_window, values, self.model.marker_sets
                     )
                 except Exception:
-                    pass
+                    logger.exception("Error")
                 self.model.status.marker_file = bool(self.model.marker_sets)
             elif event == "-marker_list-":
                 refresh_markercols(
@@ -1331,9 +1331,9 @@ class MainController:
 
             elif event == "-marker_reset-":
                 self.model.reset_marker()
-                # enable_markersettings(window_CCMPS, True)
-                # window_CCMPS['-classification_MOP-'].Update(disabled = True)
-                # window_CCMPS['-classification_SVM-'].Update(disabled = True)
+                # enable_markersettings(window, True)
+                # window['-classification_MOP-'].Update(disabled = True)
+                # window['-classification_SVM-'].Update(disabled = True)
 
             elif event == "-classification_parameters-":
                 from .training_parameters_dialog import show_dialog
@@ -1420,18 +1420,18 @@ class MainController:
                 )
                 self.model.status.comparison_class = False
 
-            # if event_CCMPS == '-classification_comparison-':
+            # if event == '-classification_comparison-':
             #     # results = MOP_stats.comp_exec(learning_xyz, results)
             #     comparison = MOP_stats.comp_exec3('deep', results, learning_xyz)
 
-            # if event_CCMPS == '-classification_comparison_rough-':
+            # if event == '-classification_comparison_rough-':
             #     comparison = MOP_stats.comp_exec3('rough', results, learning_xyz)
 
             elif event == "-export_statistics-":
                 self._handle_export_statistics()
             elif event == "-export_comparison-":
                 self._handle_export_comparison()
-            # if event_CCMPS == '-export_statistics-':
+            # if event == '-export_statistics-':
             # path = sg.popup_get_folder('Select a folder')
             # print(path)
             # if fract_data['class']:
@@ -1482,7 +1482,7 @@ class MainController:
                             + str(e),
                         )
 
-                    # window_CCMPS['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
+                    # window['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
                     self.main_window["-marker_fractkey-"].Update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
                         value=self.model.marker_fractkey,
@@ -1541,6 +1541,7 @@ class MainController:
                     key,
                 )
             except Exception:
+                logger.exception("Error")
                 messagebox.showerror(
                     "Error",
                     "Something is wrong with your marker list.",
@@ -1573,6 +1574,7 @@ class MainController:
                 key,
             )
         except Exception:
+            logger.exception("Error")
             messagebox.showerror(
                 "Error",
                 "Something is wrong with your marker list.",
@@ -1628,11 +1630,11 @@ class MainController:
             )
             self.model.status.marker_matched = True
             # print('check3: full profiles created')
-            # enable_markersettings(window_CCMPS, False)
+            # enable_markersettings(window, False)
             # print('check4: marker settings enabled')
-            # window_CCMPS['-classification_MOP-'].Update(disabled = False)
+            # window['-classification_MOP-'].Update(disabled = False)
             # print('check5: classification MOP updated')
-            # window_CCMPS['-classification_SVM-'].Update(disabled = False)
+            # window['-classification_SVM-'].Update(disabled = False)
             # print('check6: classification SVM updated')
         except Exception:
             logger.exception("Error matching markers")
@@ -1660,8 +1662,8 @@ class MainController:
             key,
             self.model.NN_params,
         )
-        # window_CCMPS['-classification_statistics-'].Update(disabled = False)
-        # window_CCMPS['-status_comparison-'].Update('done!')
+        # window['-classification_statistics-'].Update(disabled = False)
+        # window['-status_comparison-'].Update('done!')
         self.model.status.training = True
 
     def _handle_import_prediction(self):
@@ -2408,6 +2410,8 @@ def refresh_markercols(window, values, marker_sets):
             value=marker_set["class_col"],
         )
     except Exception:
+        logger.exception("Error")
+
         window["-marker_key-"].Update(values=[], value="-")
         window["-marker_class-"].Update(values=[], value="-")
 
@@ -2594,12 +2598,12 @@ def session_open(window, values, filename, model: SessionModel):
         refresh_markercols(window, values, model.marker_sets)
 
     # if marker_list.empty:
-    #     CCMPS_actions.enable_markersettings(window, True)
+    #     enable_markersettings(window, True)
     #     window['-marker_test-'].Update(disabled = False)
     #     window['-marker_profiles-'].Update(disabled = False)
     #     window['-marker_remove-'].Update(disabled = False)
     # else:
-    #     CCMPS_actions.enable_markersettings(window, False)
+    #     enable_markersettings(window, False)
     #     window['-marker_test-'].Update(disabled = True)
     #     window['-marker_profiles-'].Update(disabled = True)
     #     window['-marker_remove-'].Update(disabled = True)

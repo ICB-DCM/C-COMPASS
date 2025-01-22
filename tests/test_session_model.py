@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 import pandas as pd
 
-from ccompass.CCMPS import SessionModel
+from ccompass.main_gui import SessionModel
 
 
 def test_serialization():

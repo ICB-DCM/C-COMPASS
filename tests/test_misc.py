@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from ccompass.CCMPS import create_markerlist
+from ccompass.main_gui import create_markerlist
 
 
 def test_create_markerlist():
