@@ -171,9 +171,7 @@ class SessionModel(BaseModel):
     fract_paths: list[Filepath] = []
     #: Fractionation column assignments
     #  filepath => [column ID, condition, replicate, fraction]
-    fract_tables: dict[
-        Filepath, list[tuple[str, int | ConditionId, int | str, int | str]]
-    ] = {}
+    fract_tables: dict[Filepath, list[list[int | str]]] = {}
     #: ??
     fract_pos: dict[Filepath, list[int]] = {}
     #: Fractionation input files: filepath => DataFrame
@@ -229,7 +227,7 @@ class SessionModel(BaseModel):
     tp_paths: list[Filepath] = []
     #: Total proteome column assignments
     #  filepath => [column ID, condition]
-    tp_tables: dict[Filepath, list[tuple[str, str]]] = {}
+    tp_tables: dict[Filepath, list[list[str]]] = {}
     #: ??
     tp_pos: dict[Filepath, list[int]] = {}
     #: Total proteome input files: filepath => DataFrame
