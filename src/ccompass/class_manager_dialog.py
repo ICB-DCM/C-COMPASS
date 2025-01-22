@@ -25,7 +25,7 @@ def _create_class_manager_window(
     """Create the class manager window."""
     layout_column = [
         [sg.Text("Annotation", size=(25, 1)), sg.Text("Class", size=(20, 1))],
-        [sg.Text("-" * 80)],
+        [sg.HSeparator()],
         *[
             [
                 sg.Checkbox(
@@ -102,7 +102,7 @@ def _create_class_manager_window(
 def show_class_manager_dialog(
     marker_conv: dict[str, str | float],
 ) -> dict[str, str | float]:
-    """Show the class managar dialog."""
+    """Show the class manager dialog."""
     conv_old = marker_conv
     num_names = sum(not pd.isnull(v) for v in marker_conv.values())
 
