@@ -418,3 +418,146 @@ class SessionModel(BaseModel):
         with open(filepath, "rb") as f:
             data = np.load(f, allow_pickle=True).item()
             return cls(**data)
+
+
+def write_global_changes_reports(
+    comparison: dict[
+        tuple[ConditionId, ConditionId], dict[str, pd.Series | pd.DataFrame]
+    ],
+    outdir: Path | str,
+) -> None:
+    """Create Excel reports for the global changes."""
+    for comb in comparison:
+        fname = Path(
+            outdir,
+            f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
+        )
+        selected_columns = [
+            col
+            for col in comparison[comb]["metrics"].columns
+            if col.startswith("fRL_")
+        ] + ["fRLS", "DS", "P(t)_RLS"]
+        df_out = comparison[comb]["metrics"][selected_columns]
+        df_out.columns = [
+            col.replace("fRL_", "RL_Relocalization_")
+            if col.startswith("fRL_")
+            else "RLS_ReLocalizationScore"
+            if col == "fRLS"
+            else "DS_DistanceScore"
+            if col == "DS"
+            else "P-Value"
+            if col == "P(t)_RLS"
+            else col
+            for col in df_out.columns
+        ]
+        df_out.to_excel(fname, index=True)
+
+
+def write_class_changes_reports(
+    model: SessionModel, outdir: Path | str
+) -> None:
+    """Create Excel reports for the class changes."""
+    for condition in model.results:
+        fname = Path(
+            outdir,
+            f"CCMPS_ClassComposition_{condition}.xlsx",
+        )
+        selected_columns = [
+            col
+            for col in model.results[condition]["metrics"].columns
+            if col.startswith("nCPA")
+        ] + ["TPA"]
+        df_out = model.results[condition]["metrics"][selected_columns]
+        df_out.columns = [
+            col.replace(
+                "nCPA_imp_",
+                "nCPA_normalizedClasscentrigProteinAmount_",
+            )
+            if col.startswith("nCPA_")
+            else "TPA_TotalProteinAmount"
+            if col == "TPA"
+            else col
+            for col in df_out.columns
+        ]
+        df_out.to_excel(fname, index=True)
+
+    for comb in model.comparison:
+        fname = Path(
+            outdir,
+            f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
+        )
+        selected_columns = [
+            col
+            for col in model.comparison[comb]["metrics"].columns
+            if col.startswith("nCFC_")
+        ]
+        df_out = model.comparison[comb]["metrics"][selected_columns]
+        df_out.columns = [
+            col.replace(
+                "nCFC_",
+                "nCFC_normalizedClasscentricFoldChange_",
+            )
+            if col.startswith("nCFC_")
+            else col
+            for col in df_out.columns
+        ]
+        df_out.to_excel(fname, index=True)
+
+
+def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
+    for comb in model.comparison:
+        fname = Path(
+            outdir,
+            f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
+        )
+
+        df_out = pd.DataFrame(
+            index=model.comparison[comb]["intersection_data"].index
+        )
+        df_out = pd.merge(
+            df_out,
+            model.comparison[comb]["metrics"],
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+        for colname in model.fract_info:
+            df_out = pd.merge(
+                df_out,
+                model.fract_info[colname],
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+        df_out.to_csv(
+            fname,
+            sep="\t",
+            index=True,
+            index_label="Identifier",
+        )
+
+
+def write_statistics_reports(model: SessionModel, outdir: str | Path) -> None:
+    for condition in model.results:
+        fname = Path(outdir, f"CCMPS_statistics_{condition}.tsv")
+        df_out = pd.merge(
+            model.fract_data["vis"][condition + "_median"],
+            model.results[condition]["metrics"],
+            left_index=True,
+            right_index=True,
+            how="outer",
+        )
+        for colname in model.fract_info:
+            df_out = pd.merge(
+                df_out,
+                model.fract_info[colname],
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+        df_out.to_csv(
+            fname,
+            sep="\t",
+            index=True,
+            index_label="Identifier",
+        )

@@ -17,6 +17,10 @@ from .core import (
     AppSettings,
     SessionModel,
     SessionStatusModel,
+    write_class_changes_reports,
+    write_comparison_reports,
+    write_global_changes_reports,
+    write_statistics_reports,
 )
 
 logger = logging.getLogger(__package__)
@@ -1753,147 +1757,28 @@ class MainController:
         if not export_folder:
             return
 
-        for comb in self.model.comparison:
-            fname = Path(
-                export_folder,
-                f"CCMPS_comparison_{comb[0]}_{comb[1]}.xlsx",
-            )
-            selected_columns = [
-                col
-                for col in self.model.comparison[comb]["metrics"].columns
-                if col.startswith("fRL_")
-            ] + ["fRLS", "DS", "P(t)_RLS"]
-            df_out = self.model.comparison[comb]["metrics"][selected_columns]
-            df_out.columns = [
-                col.replace("fRL_", "RL_Relocalization_")
-                if col.startswith("fRL_")
-                else "RLS_ReLocalizationScore"
-                if col == "fRLS"
-                else "DS_DistanceScore"
-                if col == "DS"
-                else "P-Value"
-                if col == "P(t)_RLS"
-                else col
-                for col in df_out.columns
-            ]
-            df_out.to_excel(fname, index=True)
+        write_global_changes_reports(self.model.comparison, export_folder)
 
     def _handle_class_changes_report(self):
         export_folder = sg.popup_get_folder("Class-centric Changes Report")
         if not export_folder:
             return
 
-        for condition in self.model.results:
-            fname = Path(
-                export_folder,
-                f"CCMPS_ClassComposition_{condition}.xlsx",
-            )
-            selected_columns = [
-                col
-                for col in self.model.results[condition]["metrics"].columns
-                if col.startswith("nCPA")
-            ] + ["TPA"]
-            df_out = self.model.results[condition]["metrics"][selected_columns]
-            df_out.columns = [
-                col.replace(
-                    "nCPA_imp_",
-                    "nCPA_normalizedClasscentrigProteinAmount_",
-                )
-                if col.startswith("nCPA_")
-                else "TPA_TotalProteinAmount"
-                if col == "TPA"
-                else col
-                for col in df_out.columns
-            ]
-            df_out.to_excel(fname, index=True)
-
-        for comb in self.model.comparison:
-            fname = Path(
-                export_folder,
-                f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
-            )
-            selected_columns = [
-                col
-                for col in self.model.comparison[comb]["metrics"].columns
-                if col.startswith("nCFC_")
-            ]
-            df_out = self.model.comparison[comb]["metrics"][selected_columns]
-            df_out.columns = [
-                col.replace(
-                    "nCFC_",
-                    "nCFC_normalizedClasscentricFoldChange_",
-                )
-                if col.startswith("nCFC_")
-                else col
-                for col in df_out.columns
-            ]
-            df_out.to_excel(fname, index=True)
+        write_class_changes_reports(self.model, export_folder)
 
     def _handle_export_statistics(self):
         export_folder = sg.popup_get_folder("Export Statistics")
         if not export_folder:
             return
 
-        for condition in self.model.results:
-            fname = Path(export_folder, f"CCMPS_statistics_{condition}.tsv")
-            df_out = pd.merge(
-                self.model.fract_data["vis"][condition + "_median"],
-                self.model.results[condition]["metrics"],
-                left_index=True,
-                right_index=True,
-                how="outer",
-            )
-            for colname in self.model.fract_info:
-                df_out = pd.merge(
-                    df_out,
-                    self.model.fract_info[colname],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                )
-            df_out.to_csv(
-                fname,
-                sep="\t",
-                index=True,
-                index_label="Identifier",
-            )
-            # results[condition]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
+        write_statistics_reports(self.model, export_folder)
 
     def _handle_export_comparison(self):
         export_folder = sg.popup_get_folder("Export Comparison")
         if not export_folder:
             return
 
-        for comb in self.model.comparison:
-            fname = Path(
-                export_folder,
-                f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
-            )
-            df_out = pd.DataFrame(
-                index=self.model.comparison[comb]["intersection_data"].index
-            )
-            df_out = pd.merge(
-                df_out,
-                self.model.comparison[comb]["metrics"],
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-            for colname in self.model.fract_info:
-                df_out = pd.merge(
-                    df_out,
-                    self.model.fract_info[colname],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                )
-            df_out.to_csv(
-                fname,
-                sep="\t",
-                index=True,
-                index_label="Identifier",
-            )
-            # comparison[comb]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
+        write_comparison_reports(self.model, export_folder)
 
 
 def fract_refreshtable(window: sg.Window, table: list):
