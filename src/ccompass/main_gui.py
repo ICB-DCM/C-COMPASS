@@ -716,6 +716,19 @@ def create_spatial_prediction_frame() -> sg.Frame:
 
 def create_marker_selection_frame() -> sg.Frame:
     """Create the "Marker Selection" frame."""
+    tt_fract_key = (
+        "The column in the fractionation data (marked [IDENTIFIER] or [KEEP]) "
+        "to match the key column of the marker table."
+    )
+    tt_marker_key = (
+        "The column in the marker table to match the key column "
+        "of the fractionation data, e.g. a gene name."
+    )
+    tt_marker_class = (
+        "The column in the marker table that contains the "
+        "class (compartment) associated with the marker."
+    )
+
     import_frame = sg.Frame(
         layout=[
             [
@@ -756,23 +769,27 @@ def create_marker_selection_frame() -> sg.Frame:
                 sg.Column(
                     layout=[
                         [
-                            sg.Text("key column:\t"),
+                            sg.Text("Key column:", tooltip=tt_marker_key),
+                            sg.Push(),
                             sg.Combo(
                                 [],
                                 size=(10, 1),
                                 key="-marker_key-",
                                 enable_events=True,
                                 readonly=True,
+                                tooltip=tt_marker_key,
                             ),
                         ],
                         [
-                            sg.Text("class column:\t"),
+                            sg.Text("Class column:", tooltip=tt_marker_class),
+                            sg.Push(),
                             sg.Combo(
                                 [],
                                 size=(10, 1),
                                 key="-marker_class-",
                                 enable_events=True,
                                 readonly=True,
+                                tooltip=tt_marker_class,
                             ),
                         ],
                     ],
@@ -803,12 +820,14 @@ def create_marker_selection_frame() -> sg.Frame:
                         ],
                         [sg.HSep()],
                         [
-                            sg.Text("Fract. Key:\t"),
+                            sg.Text("Fract. Key:", tooltip=tt_fract_key),
+                            sg.Push(),
                             sg.Combo(
                                 ["[IDENTIFIER]"],
                                 key="-marker_fractkey-",
                                 size=(18, 1),
                                 readonly=True,
+                                tooltip=tt_fract_key,
                             ),
                         ],
                         [sg.HSep()],
