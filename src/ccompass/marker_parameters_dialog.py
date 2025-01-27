@@ -94,20 +94,20 @@ def show_dialog(params_old: dict[str, Any]) -> dict[str, Any]:
 
         if event == "--PMM_exclude--":
             marker_params["how"] = "exclude"
-            window["--PMM_exclude--"].Update(value=True)
-            window["--PMM_majority--"].Update(value=False)
+            window["--PMM_exclude--"].update(value=True)
+            window["--PMM_majority--"].update(value=False)
         elif event == "--PMM_majority--":
             marker_params["how"] = "majority"
-            window["--PMM_exclude--"].Update(value=False)
-            window["--PMM_majority--"].Update(value=True)
+            window["--PMM_exclude--"].update(value=False)
+            window["--PMM_majority--"].update(value=True)
         elif event == "--PMM_unite--":
             marker_params["what"] = "unite"
-            window["--PMM_unite--"].Update(value=True)
-            window["--PMM_intersect--"].Update(value=False)
+            window["--PMM_unite--"].update(value=True)
+            window["--PMM_intersect--"].update(value=False)
         elif event == "--PMM_intersect--":
             marker_params["what"] = "intersect"
-            window["--PMM_unite--"].Update(value=False)
-            window["--PMM_intersect--"].Update(value=True)
+            window["--PMM_unite--"].update(value=False)
+            window["--PMM_intersect--"].update(value=True)
 
     window.close()
     return marker_params

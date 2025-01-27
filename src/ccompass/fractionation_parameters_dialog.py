@@ -84,50 +84,50 @@ def _accept(values):
 
 
 def _reset(window, params):
-    window["--class_scale1--"].Update(value=params["class"]["scale1"][0])
-    window["--class_scale1_how--"].Update(value=params["class"]["scale1"][1])
-    window["--class_corrfilter--"].Update(value=params["class"]["corrfilter"])
-    window["--class_scale2--"].Update(value=params["class"]["scale2"][0])
-    window["--class_scale2_how--"].Update(value=params["class"]["scale2"][1])
-    window["--class_zeros--"].Update(value=params["class"]["zeros"])
+    window["--class_scale1--"].update(value=params["class"]["scale1"][0])
+    window["--class_scale1_how--"].update(value=params["class"]["scale1"][1])
+    window["--class_corrfilter--"].update(value=params["class"]["corrfilter"])
+    window["--class_scale2--"].update(value=params["class"]["scale2"][0])
+    window["--class_scale2_how--"].update(value=params["class"]["scale2"][1])
+    window["--class_zeros--"].update(value=params["class"]["zeros"])
 
-    window["--vis_scale1--"].Update(value=params["vis"]["scale1"][0])
-    window["--vis_scale1_how--"].Update(value=params["vis"]["scale1"][1])
-    window["--vis_corrfilter--"].Update(value=params["vis"]["corrfilter"])
-    window["--vis_scale2--"].Update(value=params["vis"]["scale2"][0])
-    window["--vis_scale2_how--"].Update(value=params["vis"]["scale2"][1])
-    window["--vis_zeros--"].Update(value=params["vis"]["zeros"])
+    window["--vis_scale1--"].update(value=params["vis"]["scale1"][0])
+    window["--vis_scale1_how--"].update(value=params["vis"]["scale1"][1])
+    window["--vis_corrfilter--"].update(value=params["vis"]["corrfilter"])
+    window["--vis_scale2--"].update(value=params["vis"]["scale2"][0])
+    window["--vis_scale2_how--"].update(value=params["vis"]["scale2"][1])
+    window["--vis_zeros--"].update(value=params["vis"]["zeros"])
 
-    window["--glob_missing--"].Update(value=params["global"]["missing"][0])
-    window["--glob_minval--"].Update(value=params["global"]["missing"][1])
-    window["--glob_minrep--"].Update(value=params["global"]["minrep"][0])
-    window["--glob_mincount--"].Update(value=params["global"]["minrep"][1])
-    window["--glob_outcorr--"].Update(value=params["global"]["outcorr"])
+    window["--glob_missing--"].update(value=params["global"]["missing"][0])
+    window["--glob_minval--"].update(value=params["global"]["missing"][1])
+    window["--glob_minrep--"].update(value=params["global"]["minrep"][0])
+    window["--glob_mincount--"].update(value=params["global"]["minrep"][1])
+    window["--glob_outcorr--"].update(value=params["global"]["outcorr"])
 
     if params["class"]["combination"] == "median":
-        window["--class_median--"].Update(value=True)
-        window["--class_concat--"].Update(value=False)
-        window["--class_separate--"].Update(value=False)
+        window["--class_median--"].update(value=True)
+        window["--class_concat--"].update(value=False)
+        window["--class_separate--"].update(value=False)
     elif params["class"]["combination"] == "concat":
-        window["--class_median--"].Update(value=False)
-        window["--class_concat--"].Update(value=True)
-        window["--class_separate--"].Update(value=False)
+        window["--class_median--"].update(value=False)
+        window["--class_concat--"].update(value=True)
+        window["--class_separate--"].update(value=False)
     elif params["class"]["combination"] == "separate":
-        window["--class_median--"].Update(value=False)
-        window["--class_concat--"].Update(value=False)
-        window["--class_separate--"].Update(value=True)
+        window["--class_median--"].update(value=False)
+        window["--class_concat--"].update(value=False)
+        window["--class_separate--"].update(value=True)
     if params["vis"]["combination"] == "median":
-        window["--vis_median--"].Update(value=True)
-        window["--vis_concat--"].Update(value=False)
-        window["--vis_separate--"].Update(value=False)
+        window["--vis_median--"].update(value=True)
+        window["--vis_concat--"].update(value=False)
+        window["--vis_separate--"].update(value=False)
     elif params["vis"]["combination"] == "concat":
-        window["--vis_median--"].Update(value=False)
-        window["--vis_concat--"].Update(value=True)
-        window["--vis_separate--"].Update(value=False)
+        window["--vis_median--"].update(value=False)
+        window["--vis_concat--"].update(value=True)
+        window["--vis_separate--"].update(value=False)
     elif params["vis"]["combination"] == "separate":
-        window["--vis_median--"].Update(value=False)
-        window["--vis_concat--"].Update(value=False)
-        window["--vis_separate--"].Update(value=True)
+        window["--vis_median--"].update(value=False)
+        window["--vis_concat--"].update(value=False)
+        window["--vis_separate--"].update(value=True)
 
 
 def _create_window(params_old) -> sg.Window:
@@ -428,54 +428,54 @@ def show_dialog(params_old):
             break
 
         if event == "--class_scale1--":
-            window["--class_scale1_how--"].Update(
+            window["--class_scale1_how--"].update(
                 disabled=not values["--class_scale1--"]
             )
         elif event == "--vis_scale1--":
-            window["--vis_scale1_how--"].Update(
+            window["--vis_scale1_how--"].update(
                 disabled=not values["--vis_scale1--"]
             )
         elif event == "--class_median--":
-            window["--class_median--"].Update(value=True)
-            window["--class_concat--"].Update(value=False)
-            window["--class_separate--"].Update(value=False)
+            window["--class_median--"].update(value=True)
+            window["--class_concat--"].update(value=False)
+            window["--class_separate--"].update(value=False)
         elif event == "--class_concat--":
-            window["--class_median--"].Update(value=False)
-            window["--class_concat--"].Update(value=True)
-            window["--class_separate--"].Update(value=False)
+            window["--class_median--"].update(value=False)
+            window["--class_concat--"].update(value=True)
+            window["--class_separate--"].update(value=False)
         elif event == "--class_separate--":
-            window["--class_median--"].Update(value=False)
-            window["--class_concat--"].Update(value=False)
-            window["--class_separate--"].Update(value=True)
+            window["--class_median--"].update(value=False)
+            window["--class_concat--"].update(value=False)
+            window["--class_separate--"].update(value=True)
         elif event == "--vis_median--":
-            window["--vis_median--"].Update(value=True)
-            window["--vis_concat--"].Update(value=False)
-            window["--vis_separate--"].Update(value=False)
-            window["--glob_outcorr--"].Update(disabled=False)
+            window["--vis_median--"].update(value=True)
+            window["--vis_concat--"].update(value=False)
+            window["--vis_separate--"].update(value=False)
+            window["--glob_outcorr--"].update(disabled=False)
         elif event == "--vis_concat--":
-            window["--vis_median--"].Update(value=False)
-            window["--vis_concat--"].Update(value=True)
-            window["--vis_separate--"].Update(value=False)
-            window["--glob_outcorr--"].Update(disabled=True, value=False)
+            window["--vis_median--"].update(value=False)
+            window["--vis_concat--"].update(value=True)
+            window["--vis_separate--"].update(value=False)
+            window["--glob_outcorr--"].update(disabled=True, value=False)
         elif event == "--vis_separate--":
-            window["--vis_median--"].Update(value=False)
-            window["--vis_concat--"].Update(value=False)
-            window["--vis_separate--"].Update(value=True)
-            window["--glob_outcorr--"].Update(disabled=True, value=False)
+            window["--vis_median--"].update(value=False)
+            window["--vis_concat--"].update(value=False)
+            window["--vis_separate--"].update(value=True)
+            window["--glob_outcorr--"].update(disabled=True, value=False)
         elif event == "--class_scale2--":
-            window["--class_scale2_how--"].Update(
+            window["--class_scale2_how--"].update(
                 disabled=not values["--class_scale2--"]
             )
         elif event == "--vis_scale2--":
-            window["--vis_scale2_how--"].Update(
+            window["--vis_scale2_how--"].update(
                 disabled=not values["--vis_scale2--"]
             )
         elif event == "--glob_missing--":
-            window["--glob_minval--"].Update(
+            window["--glob_minval--"].update(
                 disabled=not values["--glob_missing--"]
             )
         elif event == "--glob_minrep--":
-            window["--glob_mincount--"].Update(
+            window["--glob_mincount--"].update(
                 disabled=not values["--glob_minrep--"]
             )
         elif event == "--default--":

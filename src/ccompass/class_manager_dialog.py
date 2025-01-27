@@ -118,14 +118,14 @@ def show_class_manager_dialog(
         for k in marker_conv:
             # checkbox clicked?
             if event == f"--{k}--":
-                window[f"--{k}_class--"].Update(visible=values[f"--{k}--"])
+                window[f"--{k}_class--"].update(visible=values[f"--{k}--"])
                 if values[f"--{k}--"]:
-                    window[f"--{k}_class--"].Update(value=k)
+                    window[f"--{k}_class--"].update(value=k)
                     num_names += 1
                 else:
-                    window[f"--{k}_class--"].Update(value=False)
+                    window[f"--{k}_class--"].update(value=False)
                     num_names -= 1
-                window["-num_anno-"].Update(value=str(num_names))
+                window["-num_anno-"].update(value=str(num_names))
 
         if event == "--accept--":
             marker_conv = _refresh_conversion(marker_conv, values)

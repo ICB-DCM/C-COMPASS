@@ -1046,9 +1046,9 @@ class MainController:
             # refresh_window(window, status)
 
             # if status['fractionation_data']:
-            #     window['-status_fract-'].Update('ready')
+            #     window['-status_fract-'].update('ready')
             # else:
-            #     window['-status_fract-'].Update('missing')
+            #     window['-status_fract-'].update('missing')
             if event == sg.WIN_CLOSED or event == "Exit":
                 break
 
@@ -1126,13 +1126,13 @@ class MainController:
                 if sure == "Yes":
                     self.model.reset_fractionation()
                     fract_buttons(self.main_window, False)
-                    # window['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
+                    # window['-marker_fractkey-'].update(values = ['[IDENTIFIER]'] + list(fract_info))
                     # enable_markersettings(window, True)
 
-                    self.main_window["-marker_fractkey-"].Update(
+                    self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"], value=""
                     )
-                    # window['-classification_SVM-'].Update(disabled = True)
+                    # window['-classification_SVM-'].update(disabled = True)
             elif event == "-fractionation_start-":
                 if self.model.fract_paths:
                     from .FDP import FDP_exec
@@ -1154,7 +1154,7 @@ class MainController:
                         self.model.fract_conditions,
                         self.model.fract_indata,
                     )
-                    self.main_window["-marker_fractkey-"].Update(
+                    self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
                     if self.model.fract_data["class"]:
@@ -1332,8 +1332,8 @@ class MainController:
             elif event == "-marker_reset-":
                 self.model.reset_marker()
                 # enable_markersettings(window, True)
-                # window['-classification_MOP-'].Update(disabled = True)
-                # window['-classification_SVM-'].Update(disabled = True)
+                # window['-classification_MOP-'].update(disabled = True)
+                # window['-classification_SVM-'].update(disabled = True)
 
             elif event == "-classification_parameters-":
                 from .training_parameters_dialog import show_dialog
@@ -1482,8 +1482,8 @@ class MainController:
                             + str(e),
                         )
 
-                    # window['-marker_tpkey-'].Update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
-                    self.main_window["-marker_fractkey-"].Update(
+                    # window['-marker_tpkey-'].update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
+                    self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
                         value=self.model.marker_fractkey,
                     )
@@ -1498,10 +1498,10 @@ class MainController:
                     fract_clearinput(self.main_window)
                     tp_clearinput(self.main_window)
 
-                    self.main_window["-marker_list-"].Update(values=[])
-                    self.main_window["-marker_key-"].Update(values=[])
-                    self.main_window["-marker_class-"].Update(values=[])
-                    self.main_window["-marker_fractkey-"].Update(
+                    self.main_window["-marker_list-"].update(values=[])
+                    self.main_window["-marker_key-"].update(values=[])
+                    self.main_window["-marker_class-"].update(values=[])
+                    self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
             elif event == "About...":
@@ -1632,9 +1632,9 @@ class MainController:
             # print('check3: full profiles created')
             # enable_markersettings(window, False)
             # print('check4: marker settings enabled')
-            # window['-classification_MOP-'].Update(disabled = False)
+            # window['-classification_MOP-'].update(disabled = False)
             # print('check5: classification MOP updated')
-            # window['-classification_SVM-'].Update(disabled = False)
+            # window['-classification_SVM-'].update(disabled = False)
             # print('check6: classification SVM updated')
         except Exception:
             logger.exception("Error matching markers")
@@ -1676,8 +1676,8 @@ class MainController:
             stds,
             self.model.NN_params,
         )
-        # window['-classification_statistics-'].Update(disabled = False)
-        # window['-status_comparison-'].Update('done!')
+        # window['-classification_statistics-'].update(disabled = False)
+        # window['-status_comparison-'].update('done!')
         self.model.status.training = True
 
     def _handle_import_prediction(self):
@@ -1883,11 +1883,11 @@ class MainController:
 
 
 def fract_refreshtable(window, table):
-    window["-fractionation_table-"].Update(values=table)
+    window["-fractionation_table-"].update(values=table)
 
 
 def tp_refreshtable(window, table):
-    window["-tp_table-"].Update(values=table)
+    window["-tp_table-"].update(values=table)
 
 
 def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
@@ -1931,15 +1931,15 @@ def fract_buttons(window, status):
         "-fractionation_summary-",
     ]
     for button in active:
-        window[button].Update(disabled=status)
+        window[button].update(disabled=status)
     for button in inactive:
-        window[button].Update(disabled=not status)
+        window[button].update(disabled=not status)
     if status:
-        window["-fractionation_status-"].Update(
+        window["-fractionation_status-"].update(
             value="done!", text_color="dark green"
         )
     else:
-        window["-fractionation_status-"].Update(
+        window["-fractionation_status-"].update(
             value="...ready!", text_color="white"
         )
 
@@ -1957,23 +1957,23 @@ def tp_buttons(window, status):
     ]
     inactive = ["-tp_reset-", "-tp_summary-", "-tp_export-"]
     for button in active:
-        window[button].Update(disabled=status)
+        window[button].update(disabled=status)
     for button in inactive:
-        window[button].Update(disabled=not status)
+        window[button].update(disabled=not status)
     if status:
-        window["-tp_status-"].Update(value="done!", text_color="dark green")
+        window["-tp_status-"].update(value="done!", text_color="dark green")
     else:
-        window["-tp_status-"].Update(value="...ready!", text_color="white")
+        window["-tp_status-"].update(value="...ready!", text_color="white")
 
 
 def fract_clearinput(window):
-    window["-fractionation_path-"].Update(values=[])
-    window["-fractionation_table-"].Update(values=[])
+    window["-fractionation_path-"].update(values=[])
+    window["-fractionation_table-"].update(values=[])
 
 
 def tp_clearinput(window):
-    window["-tp_path-"].Update(values=[])
-    window["-tp_table-"].Update(values=[])
+    window["-tp_path-"].update(values=[])
+    window["-tp_table-"].update(values=[])
 
 
 def fract_add(
@@ -1992,7 +1992,7 @@ def fract_add(
         return
 
     model.fract_paths.append(filename)
-    window["-fractionation_path-"].Update(
+    window["-fractionation_path-"].update(
         values=model.fract_paths, value=filename
     )
     data = pd.read_csv(filename, sep="\t", header=0)
@@ -2024,7 +2024,7 @@ def fract_rem(values, window, model: SessionModel):
     else:
         curr = []
         fract_refreshtable(window, curr)
-    window["-fractionation_path-"].Update(values=model.fract_paths, value=curr)
+    window["-fractionation_path-"].update(values=model.fract_paths, value=curr)
 
 
 def fract_defrem(values, window, fract_tables):
@@ -2034,7 +2034,7 @@ def fract_defrem(values, window, fract_tables):
     for index in sorted(selected, reverse=True):
         del table[index]
     fract_tables[path] = table
-    window["-fractionation_table-"].Update(values=fract_tables[path])
+    window["-fractionation_table-"].update(values=fract_tables[path])
 
 
 def fract_defkeep(values, window, fract_tables):
@@ -2045,7 +2045,7 @@ def fract_defkeep(values, window, fract_tables):
         table[pos][2] = "-"
         table[pos][3] = "-"
     fract_tables[path] = table
-    window["-fractionation_table-"].Update(values=fract_tables[path])
+    window["-fractionation_table-"].update(values=fract_tables[path])
 
 
 def fract_defcon(values, window, fract_tables):
@@ -2058,7 +2058,7 @@ def fract_defcon(values, window, fract_tables):
         0,
         "string",
     )
-    window["-fractionation_table-"].Update(
+    window["-fractionation_table-"].update(
         values=fract_tables[values["-fractionation_path-"]]
     )
 
@@ -2073,7 +2073,7 @@ def fract_defrep(values, window, fract_tables):
         0,
         "integer",
     )
-    window["-fractionation_table-"].Update(
+    window["-fractionation_table-"].update(
         values=fract_tables[values["-fractionation_path-"]]
     )
 
@@ -2088,7 +2088,7 @@ def fract_handle_set_fraction(values, window, fract_tables):
         1,
         "integer",
     )
-    window["-fractionation_table-"].Update(
+    window["-fractionation_table-"].update(
         values=fract_tables[values["-fractionation_path-"]]
     )
 
@@ -2113,7 +2113,7 @@ def fract_handle_set_identifier(
             table[pos[0]][2] = "-"
             table[pos[0]][3] = "-"
             input_tables[path] = table
-            window["-fractionation_table-"].Update(
+            window["-fractionation_table-"].update(
                 values=input_tables[values["-fractionation_path-"]]
             )
         else:
@@ -2235,7 +2235,7 @@ def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
     )
     if filename:
         tp_paths.append(filename)
-        window["-tp_path-"].Update(values=tp_paths, value=filename)
+        window["-tp_path-"].update(values=tp_paths, value=filename)
         data = pd.read_csv(filename, sep="\t", header=0)
         data = data.replace("NaN", np.nan)
         data = data.replace("Filtered", np.nan)
@@ -2270,7 +2270,7 @@ def tp_remove(values, window, tp_paths, tp_tables):
     else:
         curr = []
         tp_refreshtable(window, curr)
-    window["-tp_path-"].Update(values=tp_paths, value=curr)
+    window["-tp_path-"].update(values=tp_paths, value=curr)
 
 
 def tp_defrem(values, window, tp_tables):
@@ -2280,7 +2280,7 @@ def tp_defrem(values, window, tp_tables):
     for index in sorted(selected, reverse=True):
         del table[index]
     tp_tables[path] = table
-    window["-tp_table-"].Update(values=tp_tables[path])
+    window["-tp_table-"].update(values=tp_tables[path])
     return
 
 
@@ -2290,7 +2290,7 @@ def tp_defkeep(values, window, tp_tables):
     for pos in values["-tp_table-"]:
         table[pos][1] = "[KEEP]"
     tp_tables[path] = table
-    window["-tp_table-"].Update(values=tp_tables[path])
+    window["-tp_table-"].update(values=tp_tables[path])
     return
 
 
@@ -2305,7 +2305,7 @@ def tp_set_condition(values, window, tp_tables):
             tp_tables[path] = table
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
-    window["-tp_table-"].Update(values=tp_tables[values["-tp_path-"]])
+    window["-tp_table-"].update(values=tp_tables[values["-tp_path-"]])
 
 
 def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
@@ -2322,7 +2322,7 @@ def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
             tp_pos[path] = pos
             table[pos[0]][1] = "[IDENTIFIER]"
             tp_tables[path] = table
-            window["-tp_table-"].Update(values=tp_tables[values["-tp_path-"]])
+            window["-tp_table-"].update(values=tp_tables[values["-tp_path-"]])
         else:
             messagebox.showerror("Error", "No sample selected.")
     return tp_identifiers
@@ -2394,17 +2394,17 @@ def check_markers(marker_sets: dict[str, dict[str, Any]]) -> bool:
 def refresh_markertable(window, marker_sets):
     """Update the marker table according to the marker sets."""
     file_list = list(marker_sets.keys())
-    window["-marker_list-"].Update(values=file_list)
+    window["-marker_list-"].update(values=file_list)
 
     if file_list:
-        window["-marker_list-"].Update(set_to_index=0)
+        window["-marker_list-"].update(set_to_index=0)
         cur_marker_set = marker_sets[file_list[0]]
         column_ids = cur_marker_set["table"].columns.tolist()
-        window["-marker_key-"].Update(
+        window["-marker_key-"].update(
             values=column_ids,
             value=cur_marker_set["identifier_col"],
         )
-        window["-marker_class-"].Update(
+        window["-marker_class-"].update(
             values=column_ids,
             value=cur_marker_set["class_col"],
         )
@@ -2415,19 +2415,19 @@ def refresh_markercols(window, values, marker_sets):
         marker_filename = values["-marker_list-"][0]
         marker_set = marker_sets[marker_filename]
         marker_set_col_ids = marker_set["table"].columns.tolist()
-        window["-marker_key-"].Update(
+        window["-marker_key-"].update(
             values=marker_set_col_ids,
             value=marker_set["identifier_col"],
         )
-        window["-marker_class-"].Update(
+        window["-marker_class-"].update(
             values=marker_set_col_ids,
             value=marker_set["class_col"],
         )
     except Exception:
         logger.exception("Error")
 
-        window["-marker_key-"].Update(values=[], value="-")
-        window["-marker_class-"].Update(values=[], value="-")
+        window["-marker_key-"].update(values=[], value="-")
+        window["-marker_class-"].update(values=[], value="-")
 
 
 def marker_add(window, values, marker_sets):
@@ -2454,9 +2454,9 @@ def marker_add(window, values, marker_sets):
     marker_sets[filename]["classes"] = []
     refresh_markertable(window, marker_sets)
 
-    # window['-marker_test-'].Update(disabled = False)
-    # window['-marker_profiles-'].Update(disabled = False)
-    # window['-marker_remove-'].Update(disabled = False)
+    # window['-marker_test-'].update(disabled = False)
+    # window['-marker_profiles-'].update(disabled = False)
+    # window['-marker_remove-'].update(disabled = False)
 
 
 def marker_remove(window, values, marker_sets):
@@ -2464,9 +2464,9 @@ def marker_remove(window, values, marker_sets):
     del marker_sets[marker_filename]
     refresh_markertable(window, marker_sets)
     if not len(marker_sets) > 0:
-        window["-marker_test-"].Update(disabled=True)
-        window["-marker_profiles-"].Update(disabled=True)
-        window["-marker_remove-"].Update(disabled=True)
+        window["-marker_test-"].update(disabled=True)
+        window["-marker_profiles-"].update(disabled=True)
+        window["-marker_remove-"].update(disabled=True)
     return marker_sets
 
 
@@ -2581,12 +2581,12 @@ def session_open(window, values, filename, model: SessionModel):
 
     if model.fract_paths:
         fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
-        window["-fractionation_path-"].Update(
+        window["-fractionation_path-"].update(
             values=model.fract_paths, value=model.fract_paths[0]
         )
     else:
         fract_refreshtable(window, [])
-        window["-fractionation_path-"].Update(
+        window["-fractionation_path-"].update(
             values=model.fract_paths, value=""
         )
 
@@ -2594,12 +2594,12 @@ def session_open(window, values, filename, model: SessionModel):
 
     if model.tp_paths:
         tp_refreshtable(window, model.tp_tables[model.tp_paths[0]])
-        window["-tp_path-"].Update(
+        window["-tp_path-"].update(
             values=model.tp_paths, value=model.tp_paths[0]
         )
     else:
         tp_refreshtable(window, [])
-        window["-tp_path-"].Update(values=model.tp_paths, value="")
+        window["-tp_path-"].update(values=model.tp_paths, value="")
 
     tp_buttons(window, bool(model.tp_data))
 
@@ -2613,51 +2613,51 @@ def session_open(window, values, filename, model: SessionModel):
 
     # if marker_list.empty:
     #     enable_markersettings(window, True)
-    #     window['-marker_test-'].Update(disabled = False)
-    #     window['-marker_profiles-'].Update(disabled = False)
-    #     window['-marker_remove-'].Update(disabled = False)
+    #     window['-marker_test-'].update(disabled = False)
+    #     window['-marker_profiles-'].update(disabled = False)
+    #     window['-marker_remove-'].update(disabled = False)
     # else:
     #     enable_markersettings(window, False)
-    #     window['-marker_test-'].Update(disabled = True)
-    #     window['-marker_profiles-'].Update(disabled = True)
-    #     window['-marker_remove-'].Update(disabled = True)
+    #     window['-marker_test-'].update(disabled = True)
+    #     window['-marker_profiles-'].update(disabled = True)
+    #     window['-marker_remove-'].update(disabled = True)
 
     # if fract_data['class'] and not marker_list.empty:
     #     # print('positive')
-    #     window['-classification_MOP-'].Update(disabled = False)
-    #     #window['-classification_SVM-'].Update(disabled = False)
+    #     window['-classification_MOP-'].update(disabled = False)
+    #     #window['-classification_SVM-'].update(disabled = False)
     # else:
     #     # print('negative')
-    #     window['-classification_MOP-'].Update(disabled = True)
-    # window['-classification_SVM-'].Update(disabled = True)
+    #     window['-classification_MOP-'].update(disabled = True)
+    # window['-classification_SVM-'].update(disabled = True)
 
-    # window['-marker_fractkey-'].Update(values = ['[IDENTIFIER]'] + list(fract_info))
+    # window['-marker_fractkey-'].update(values = ['[IDENTIFIER]'] + list(fract_info))
 
     # if fract_data['class']:
-    #     window['-classification_MOP-'].Update(disabled = False)
+    #     window['-classification_MOP-'].update(disabled = False)
     # else:
-    #     window['-classification_MOP-'].Update(disabled = True)
+    #     window['-classification_MOP-'].update(disabled = True)
 
     # if learning_xyz:
-    #     window['-classification_statistics-'].Update(disabled = False)
+    #     window['-classification_statistics-'].update(disabled = False)
     # else:
-    #     window['-classification_statistics-'].Update(disabled = True)
+    #     window['-classification_statistics-'].update(disabled = True)
 
     # if results:
-    #     #window['-classification_comparison-'].Update(disabled = False)
-    #     window['-status_statistics-'].Update('done!')
-    #     window['-export_statistics-'].Update(disabled = False)
+    #     #window['-classification_comparison-'].update(disabled = False)
+    #     window['-status_statistics-'].update('done!')
+    #     window['-export_statistics-'].update(disabled = False)
     # else:
-    #     #window['-classification_comparison-'].Update(disabled = True)
-    #     window['-status_statistics-'].Update('missing')
-    #     window['-export_statistics-'].Update(disabled = True)
+    #     #window['-classification_comparison-'].update(disabled = True)
+    #     window['-status_statistics-'].update('missing')
+    #     window['-export_statistics-'].update(disabled = True)
 
     # if comparison:
-    #     window['-status_comparison-'].Update('done!')
-    #     window['-export_comparison-'].Update(disabled = False)
+    #     window['-status_comparison-'].update('done!')
+    #     window['-export_comparison-'].update(disabled = False)
     # else:
-    #     window['-status_comparison-'].Update('missing')
-    #     window['-export_comparison-'].Update(disabled = True)
+    #     window['-status_comparison-'].update('missing')
+    #     window['-export_comparison-'].update(disabled = True)
 
 
 # def convert_markers(markers, conversion, mode):
@@ -3243,16 +3243,16 @@ def enable_markersettings(window, is_enabled):
         "-marker_profiles-",
         "-marker_test-",
     ]:
-        window[element].Update(disabled=not is_enabled)
+        window[element].update(disabled=not is_enabled)
 
     for element in ["-marker_reset-"]:
-        window[element].Update(disabled=is_enabled)
+        window[element].update(disabled=is_enabled)
 
-    # window['-marker_reset-'].Update(disabled = is_enabled)
+    # window['-marker_reset-'].update(disabled = is_enabled)
     if is_enabled:
-        window["-status_marker-"].Update(value="missing", text_color="white")
+        window["-status_marker-"].update(value="missing", text_color="white")
     else:
-        window["-status_marker-"].Update(
+        window["-status_marker-"].update(
             value="ready!", text_color="dark green"
         )
     return
@@ -3312,7 +3312,7 @@ def enable_markersettings(window, is_enabled):
 
 def refresh_window(window: sg.Window, status: SessionStatusModel):
     for element in ["-fractionation_reset-", "-fractionation_summary-"]:
-        window[element].Update(disabled=not status.fractionation_data)
+        window[element].update(disabled=not status.fractionation_data)
     for element in [
         "-fractionation_add-",
         "-fractionation_remove-",
@@ -3325,10 +3325,10 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
         "-fractionation_parameters-",
         "-fractionation_start-",
     ]:
-        window[element].Update(disabled=status.fractionation_data)
+        window[element].update(disabled=status.fractionation_data)
 
     for element in ["-tp_reset-", "-tp_summary-", "-tp_export-"]:
-        window[element].Update(disabled=not status.tp_data)
+        window[element].update(disabled=not status.tp_data)
     for element in [
         "-tp_add-",
         "-tp_remove-",
@@ -3339,56 +3339,56 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
         "-tp_parameters-",
         "-tp_start-",
     ]:
-        window[element].Update(disabled=status.tp_data)
+        window[element].update(disabled=status.tp_data)
 
     for element in ["-marker_remove-", "-marker_manage-", "-marker_accept-"]:
         if status.marker_matched:
-            window[element].Update(disabled=True)
+            window[element].update(disabled=True)
         else:
-            window[element].Update(disabled=not status.marker_file)
+            window[element].update(disabled=not status.marker_file)
     for element in ["-marker_test-", "-marker_profiles-"]:
-        window[element].Update(disabled=not status.marker_file)
+        window[element].update(disabled=not status.marker_file)
     for element in ["-marker_reset-"]:
-        window[element].Update(disabled=not status.marker_matched)
+        window[element].update(disabled=not status.marker_matched)
     for element in ["-marker_add-", "-marker_parameters-", "-marker_preset-"]:
-        window[element].Update(disabled=status.marker_matched)
+        window[element].update(disabled=status.marker_matched)
 
     for element in ["-statistic_import-"]:
-        window[element].Update(disabled=status.comparison_global)
+        window[element].update(disabled=status.comparison_global)
 
     if status.fractionation_data:
-        window["-status_fract-"].Update("ready", text_color="dark green")
+        window["-status_fract-"].update("ready", text_color="dark green")
     else:
-        window["-status_fract-"].Update("none", text_color="black")
+        window["-status_fract-"].update("none", text_color="black")
     if status.tp_data:
-        window["-status_tp-"].Update("ready", text_color="dark green")
+        window["-status_tp-"].update("ready", text_color="dark green")
     else:
-        window["-status_tp-"].Update("none", text_color="black")
+        window["-status_tp-"].update("none", text_color="black")
     if status.lipidome_data:
-        window["-status_fract_lipid-"].Update("ready", text_color="dark green")
+        window["-status_fract_lipid-"].update("ready", text_color="dark green")
     else:
-        window["-status_fract_lipid-"].Update("none", text_color="black")
+        window["-status_fract_lipid-"].update("none", text_color="black")
     if status.marker_matched:
-        window["-status_marker-"].Update("ready", text_color="dark green")
+        window["-status_marker-"].update("ready", text_color="dark green")
     else:
-        window["-status_marker-"].Update("none", text_color="black")
+        window["-status_marker-"].update("none", text_color="black")
     if status.lipidome_total:
-        window["-status_total_lipid-"].Update("ready", text_color="dark green")
+        window["-status_total_lipid-"].update("ready", text_color="dark green")
     else:
-        window["-status_total_lipid-"].Update("none", text_color="black")
+        window["-status_total_lipid-"].update("none", text_color="black")
 
     for element in ["-classification_MOP-"]:
         if status.fractionation_data and status.marker_matched:
-            window[element].Update(disabled=status.training)
+            window[element].update(disabled=status.training)
         else:
-            window[element].Update(disabled=True)
+            window[element].update(disabled=True)
 
     for element in ["-classification_validation-", "-classification_reset-"]:
-        window[element].Update(disabled=not status.training)
+        window[element].update(disabled=not status.training)
 
     if status.training:
         for element in ["-statistic_predict-"]:
-            window[element].Update(disabled=status.proteome_prediction)
+            window[element].update(disabled=status.proteome_prediction)
         for element in [
             "-statistic_export-",
             "-statistic_report-",
@@ -3396,29 +3396,29 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
             "-statistic_heatmap-",
             "-statistic_distribution-",
         ]:
-            window[element].Update(disabled=not status.proteome_prediction)
+            window[element].update(disabled=not status.proteome_prediction)
 
         if status.proteome_prediction:
             for element in ["-global_run-"]:
-                window[element].Update(disabled=status.comparison_global)
+                window[element].update(disabled=status.comparison_global)
             for element in [
                 "-global_heatmap-",
                 "-global_distance-",
                 "-global_report-",
                 "-global_reset-",
             ]:
-                window[element].Update(disabled=not status.comparison_global)
+                window[element].update(disabled=not status.comparison_global)
 
             if status.comparison_global and status.tp_data:
                 for element in ["-class_run-"]:
-                    window[element].Update(disabled=status.comparison_class)
+                    window[element].update(disabled=status.comparison_class)
                 for element in [
                     "-class_heatmap-",
                     "-class_reorganization-",
                     "-class_report-",
                     "-class_reset-",
                 ]:
-                    window[element].Update(
+                    window[element].update(
                         disabled=not status.comparison_class
                     )
             else:
@@ -3429,11 +3429,11 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
                     "-class_report-",
                     "-class_reset-",
                 ]:
-                    window[element].Update(disabled=True)
+                    window[element].update(disabled=True)
 
                 if status.lipidome_data:
                     for element in ["-lipidome_predict-"]:
-                        window[element].Update(
+                        window[element].update(
                             disabled=status.lipidome_prediction
                         )
                     for element in [
@@ -3444,7 +3444,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
                         "-lipidome_density-",
                         "-lipidome_composition-",
                     ]:
-                        window[element].Update(
+                        window[element].update(
                             disabled=not status.lipidome_prediction
                         )
                 else:
@@ -3457,7 +3457,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
                         "-lipidome_density-",
                         "-lipidome_composition-",
                     ]:
-                        window[element].Update(disabled=True)
+                        window[element].update(disabled=True)
 
         else:
             for element in [
@@ -3479,7 +3479,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
                 "-class_report-",
                 "-class_reset-",
             ]:
-                window[element].Update(disabled=True)
+                window[element].update(disabled=True)
 
     else:
         for element in [
@@ -3507,4 +3507,4 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
             "-class_report-",
             "-class_reset-",
         ]:
-            window[element].Update(disabled=True)
+            window[element].update(disabled=True)

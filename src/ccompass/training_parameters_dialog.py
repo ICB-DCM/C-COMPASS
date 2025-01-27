@@ -241,10 +241,10 @@ def show_dialog(
 
         if event == "--upsampling--":
             nn_params.upsampling = values["--upsampling--"]
-            window["--upsampling_method--"].Update(
+            window["--upsampling_method--"].update(
                 disabled=not values["--upsampling--"]
             )
-            window["--noise--"].Update(disabled=not values["--upsampling--"])
+            window["--noise--"].update(disabled=not values["--upsampling--"])
         elif event == "--upsampling_method--":
             nn_params.upsampling_method = values["--upsampling_method--"]
         elif event == "--noise--":

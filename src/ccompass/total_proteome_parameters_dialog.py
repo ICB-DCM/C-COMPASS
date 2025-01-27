@@ -86,12 +86,12 @@ def show_dialog(params_old) -> dict:
 
         if event == "--normal--":
             tp_params["imputation"] = "normal"
-            window_TPPM["--normal--"].Update(value=True)
-            window_TPPM["--constant--"].Update(value=False)
+            window_TPPM["--normal--"].update(value=True)
+            window_TPPM["--constant--"].update(value=False)
         elif event == "--constant--":
             tp_params["imputation"] = "constant"
-            window_TPPM["--constant--"].Update(value=True)
-            window_TPPM["--normal--"].Update(value=False)
+            window_TPPM["--constant--"].update(value=True)
+            window_TPPM["--normal--"].update(value=False)
 
     window_TPPM.close()
     return tp_params

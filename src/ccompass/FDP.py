@@ -53,8 +53,8 @@ def create_dataset(
 
     for condition in conditions:
         progress += stepsize
-        window["--status2--"].Update(condition)
-        window["--progress--"].Update(progress)
+        window["--status2--"].update(condition)
+        window["--progress--"].update(progress)
         window.read(timeout=50)
 
         data_new = pd.DataFrame(index=all_identifiers)
@@ -146,8 +146,8 @@ def pre_post_scaling(
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].Update(progress)
-            window["--status2--"].Update(" ".join([condition, replicate]))
+            window["--progress--"].update(progress)
+            window["--status2--"].update(" ".join([condition, replicate]))
             window.read(timeout=50)
 
             if how == "minmax":
@@ -174,8 +174,8 @@ def filter_missing(
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].Update(progress)
-            window["--status2--"].Update(" ".join([condition, replicate]))
+            window["--progress--"].update(progress)
+            window["--status2--"].update(" ".join([condition, replicate]))
             window.read(timeout=50)
 
             data[condition][replicate].dropna(thresh=mincount, inplace=True)
@@ -203,8 +203,8 @@ def filter_count(
         peplist = list(set(remove_elements(peplist, mincount)))
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].Update(progress)
-            window["--status2--"].Update(" ".join([condition, replicate]))
+            window["--progress--"].update(progress)
+            window["--status2--"].update(" ".join([condition, replicate]))
             window.read(timeout=50)
 
             # drop rows that are not in peplist
@@ -236,8 +236,8 @@ def list_samples(data, window, progress):
         stepsize = (10.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].Update(progress)
-            window["--status2--"].Update(" ".join([condition, replicate]))
+            window["--progress--"].update(progress)
+            window["--status2--"].update(" ".join([condition, replicate]))
             window.read(timeout=50)
 
             for sample in list(data[condition][replicate].columns):
@@ -264,7 +264,7 @@ def calculate_icorr(data, fracts_corr, protlist_con, window):
     for condition in data:
         icorr_sub = pd.DataFrame(index=protlist_con[condition])
         for replicate in data[condition]:
-            window["--status2--"].Update(" ".join([condition, replicate]))
+            window["--status2--"].update(" ".join([condition, replicate]))
             window.read(timeout=50)
             repdata_own = data[condition][replicate]
             for fract in repdata_own.columns:
@@ -318,8 +318,8 @@ def calculate_icorr(data, fracts_corr, protlist_con, window):
 def filter_corr(data, protlist_con, mincount, icorr, window):
     check_IDs = {}
     for condition in data:
-        window["--status1--"].Update(value="checking IDs...")
-        window["--status2--"].Update(condition)
+        window["--status1--"].update(value="checking IDs...")
+        window["--status2--"].update(condition)
         window.read(timeout=100)
 
         corr_IDs = []
@@ -333,10 +333,10 @@ def filter_corr(data, protlist_con, mincount, icorr, window):
         check_IDs[condition] = corr_IDs
 
     for condition in data:
-        window["--status1--"].Update(
+        window["--status1--"].update(
             value="removing worst InnerCorrelations..."
         )
-        window["--status2--"].Update(condition)
+        window["--status2--"].update(condition)
         window.read(timeout=100)
         correls = icorr[condition]
         for ID in check_IDs[condition]:
@@ -350,7 +350,7 @@ def filter_corr(data, protlist_con, mincount, icorr, window):
 
 def implement_icorr(protein_info, icorr_mean, window):
     for condition in icorr_mean:
-        window["--status2--"].Update(condition)
+        window["--status2--"].update(condition)
         window.read(timeout=50)
         protein_info["InnerCorrelation_" + condition] = icorr_mean[condition]
     return protein_info
@@ -363,8 +363,8 @@ def combine_median_std(data, fracts_con, window, progress):
 
     for condition in data:
         progress += stepsize
-        window["--progress--"].Update(progress)
-        window["--status2--"].Update(condition)
+        window["--progress--"].update(progress)
+        window["--status2--"].update(condition)
         window.read(timeout=50)
 
         con_vals = pd.DataFrame()
@@ -419,7 +419,7 @@ def combine_median_std(data, fracts_con, window, progress):
 
 def combine_concat(data, window):
     for condition in data:
-        window["--status2--"].Update(condition)
+        window["--status2--"].update(condition)
         window.read(timeout=50)
 
         con_vals = pd.DataFrame()
@@ -464,8 +464,8 @@ def calculate_outcorr(data, protlist_remaining, comb, window, progress):
 
     for condition in data:
         progress += stepsize
-        window["--progress--"].Update(progress)
-        window["--status2--"].Update(condition)
+        window["--progress--"].update(progress)
+        window["--status2--"].update(condition)
         window.read(timeout=50)
 
         outcorr = pd.DataFrame(index=protlist_remaining[condition])
@@ -605,7 +605,7 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("creating dataset...")
     progress = 0
-    window["--status1--"].Update(value="creating dataset...")
+    window["--status1--"].update(value="creating dataset...")
     window.read(timeout=50)
 
     dataset, protein_info, progress = create_dataset(
@@ -628,8 +628,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("converting dataset...")
     progress = 10
-    window["--status1--"].Update(value="converting dataset...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="converting dataset...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     for way in data_ways:
@@ -641,8 +641,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("pre-scaling...")
     progress = 20
-    window["--status1--"].Update(value="pre-scaling...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="pre-scaling...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     for way in data_ways:
@@ -660,8 +660,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("filtering by missing fractions...")
     progress = 30
-    window["--status1--"].Update(value="filtering by missing values...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="filtering by missing values...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     if preparams["global"]["missing"][0]:
@@ -680,8 +680,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("finding IDs...")
     progress = 40
-    window["--status1--"].Update(value="finding IDs...")
-    window["--progress--"].Update(40)
+    window["--status1--"].update(value="finding IDs...")
+    window["--progress--"].update(40)
     window.read(timeout=50)
 
     for way in data_ways:
@@ -697,8 +697,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("detecting samples...")
     progress = 50
-    window["--status1--"].Update(value="detecting samples...")
-    window["--progress--"].Update(50)
+    window["--status1--"].update(value="detecting samples...")
+    window["--progress--"].update(50)
     window.read(timeout=50)
 
     fracts_con, fracts_count, fracts_corr, progress = list_samples(
@@ -707,13 +707,13 @@ def start_fract_data_processing(
 
     # #---------------------------------------------------------------------
     # print('calculating inner correlations...')
-    # window['--status1--'].Update(value = 'calculating InnerCorrelations...')
+    # window['--status1--'].update(value = 'calculating InnerCorrelations...')
     # event, values = window.read(timeout = 50)
     # icorr, icorr_mean = calculate_icorr(data_ways['vis'], fracts_corr, proteins_remaining, window)
 
     # #---------------------------------------------------------------------
     # print('filtering by inner correlations...')
-    # window['--status1--'].Update(value = 'filtering by InnerCorrelations...')
+    # window['--status1--'].update(value = 'filtering by InnerCorrelations...')
     # event, values = window.read(timeout = 50)
 
     # for way in data_ways:
@@ -724,7 +724,7 @@ def start_fract_data_processing(
 
     # #---------------------------------------------------------------------
     # print('implement inner correlations...')
-    # window['--status1--'].Update(value = 'implement InnerCorrelations...')
+    # window['--status1--'].update(value = 'implement InnerCorrelations...')
     # event, values = window.read(timeout = 50)
 
     # protein_info = implement_icorr(protein_info, icorr_mean, window)
@@ -732,8 +732,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("combining data...")
     progress = 60
-    window["--status1--"].Update(value="combining data...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="combining data...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     std_ways = {"class": [], "vis": []}
@@ -755,8 +755,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("post-scaling...")
     progress = 70
-    window["--status1--"].Update(value="post-scaling...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="post-scaling...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     for way in data_ways:
@@ -775,8 +775,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("removing zeros...")
     progress = 80
-    window["--status1--"].Update(value="removing baseline profiles...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="removing baseline profiles...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     for way in data_ways:
@@ -788,8 +788,8 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("calculating outer correlations...")
     progress = 90
-    window["--status1--"].Update(value="calculating outer correlations...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="calculating outer correlations...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     if preparams["global"]["outcorr"]:
@@ -807,8 +807,8 @@ def start_fract_data_processing(
 
     # ---------------------------------------------------------------------
     progress = 100
-    window["--status1--"].Update(value="calculating outer correlations...")
-    window["--progress--"].Update(progress)
+    window["--status1--"].update(value="calculating outer correlations...")
+    window["--progress--"].update(progress)
     window.read(timeout=50)
 
     logger.info("done!")
@@ -914,8 +914,8 @@ def FDP_exec(
             break
 
         if event == "--start--":
-            window["--start--"].Update(disabled=True)
-            window["--cancel--"].Update(disabled=True)
+            window["--start--"].update(disabled=True)
+            window["--cancel--"].update(disabled=True)
 
             if not sample_tables_are_valid(
                 input_tables,
