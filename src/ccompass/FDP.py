@@ -595,11 +595,12 @@ def start_fract_data_processing(
     fract_indata: dict[str, pd.DataFrame],
 ):
     """Start fractionation data processing."""
-    # collect conditions (including [IDENTIFIER] and [KEEP])
+    # collect conditions (including [KEEP])
     conditions = unique_preserve_order(
         sample[1]
         for input_table in input_tables.values()
         for sample in input_table
+        if sample[1] != "[IDENTIFIER]"
     )
 
     # ---------------------------------------------------------------------
