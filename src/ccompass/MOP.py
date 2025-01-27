@@ -326,17 +326,6 @@ def upsampling(
     return fract_marker_up, fract_full_up
 
 
-def create_fullprofiles(
-    fract_marker: dict[str, pd.DataFrame], fract_test: dict[str, pd.DataFrame]
-) -> dict[str, pd.DataFrame]:
-    fract_full = {}
-    for condition in fract_test:
-        fract_full[condition] = pd.concat(
-            [fract_test[condition], fract_marker[condition]]
-        )
-    return fract_full
-
-
 def sum1_normalization(x):
     """Normalize the input to sum to 1."""
     return x / (ops.sum(x, axis=1, keepdims=True) + epsilon())
