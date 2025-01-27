@@ -1,4 +1,4 @@
-"""Result plots"""
+"""Dialogs for result visualization."""
 
 import logging
 import os
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from PIL import Image
+from PIL import Image, ImageFile
 from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
 
@@ -18,8 +18,9 @@ logger = logging.getLogger(__package__)
 
 
 def RP_gradient_heatmap(fract_data):
-    # Get the list of conditions from fract_data['vis']
-    conditions = list(fract_data["vis"].keys())
+    """Create a GUI to display a heatmap with hierarchical clustering for each condition."""
+
+    conditions = list(fract_data["vis"])
 
     # Define the layout
     layout = [
@@ -37,7 +38,6 @@ def RP_gradient_heatmap(fract_data):
         [sg.Image(key="-HEATMAP-")],
     ]
 
-    # Create the window with a static size
     window = sg.Window(
         "Hierarchical Clustering Heatmap",
         layout,
@@ -46,15 +46,13 @@ def RP_gradient_heatmap(fract_data):
         modal=True,
     )
 
-    # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
-    cmap = mcolors.LinearSegmentedColormap.from_list(
-        "custom_gray", ["#f2f2f2", "#6d6e71"], N=256
-    )
-
     # Function to plot heatmap and return as a PIL image
     def plot_heatmap(
-        dataframe, condition_name, save_as_pdf=False, folder_path=None
-    ):
+        dataframe: pd.DataFrame,
+        condition_name: str,
+        save_as_pdf=False,
+        folder_path=None,
+    ) -> ImageFile:
         # Perform hierarchical clustering on the rows
         linkage_matrix = linkage(dataframe, method="ward")
         clustered_rows = leaves_list(
@@ -63,6 +61,11 @@ def RP_gradient_heatmap(fract_data):
 
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = dataframe.iloc[clustered_rows, :]
+
+        # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
+        cmap = mcolors.LinearSegmentedColormap.from_list(
+            "custom_gray", ["#f2f2f2", "#6d6e71"], N=256
+        )
 
         # Plot the heatmap using seaborn with the custom color gradient
         plt.figure(figsize=(8, 6))
@@ -95,8 +98,9 @@ def RP_gradient_heatmap(fract_data):
         bio.seek(0)
         return Image.open(bio)
 
-    # Function to export dataframes to Excel and heatmaps to PDFs
     def export_results(fract_data, folder_path):
+        """Export dataframes to Excel and heatmaps to PDFs."""
+
         # Create an Excel writer to save all conditions into one file
         excel_filename = os.path.join(folder_path, "conditions_data.xlsx")
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
@@ -123,40 +127,35 @@ def RP_gradient_heatmap(fract_data):
             break
 
         # If a condition is selected from the dropdown menu
-        if event == "-CONDITION-":
-            selected_condition = values["-CONDITION-"]
+        if event == "-CONDITION-" and (
+            selected_condition := values["-CONDITION-"]
+        ):
+            df = fract_data["vis"][selected_condition]
 
-            if selected_condition:
-                # Load the corresponding pandas DataFrame from fract_data['vis']
-                df = fract_data["vis"][selected_condition]
+            # Generate the heatmap with hierarchical clustering and condition name as the title
+            heatmap_image = plot_heatmap(df, selected_condition)
 
-                # Generate the heatmap with hierarchical clustering and condition name as the title
-                heatmap_image = plot_heatmap(df, selected_condition)
-
-                # Convert the heatmap image to PNG and update the window
-                bio = BytesIO()
-                heatmap_image.save(bio, format="PNG")
-                window["-HEATMAP-"].update(data=bio.getvalue())
+            # Convert the heatmap image to PNG and update the window
+            bio = BytesIO()
+            heatmap_image.save(bio, format="PNG")
+            window["-HEATMAP-"].update(data=bio.getvalue())
 
         # If the Export button is clicked
-        if event == "Export":
+        elif event == "Export":
             # Open a folder selection window
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
                 # Export the dataframes to Excel and the heatmaps to PDF
                 export_results(fract_data, folder_path)
 
-    # Close the window when done
     window.close()
-
-    return
 
 
 def RP_stats_heatmap(results):
+    """Create a GUI to display a heatmap with hierarchical clustering for each condition."""
     # Get the list of conditions from results
-    conditions = list(results.keys())
+    conditions = list(results)
 
-    # Define the GUI layout
     layout = [
         [sg.Button("Export all")],
         [sg.Text("Select Condition:")],
@@ -179,11 +178,6 @@ def RP_stats_heatmap(results):
         resizable=True,
         finalize=True,
         modal=True,
-    )
-
-    # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
-    cmap = mcolors.LinearSegmentedColormap.from_list(
-        "custom_gray", ["#f2f2f2", "#6d6e71"], N=256
     )
 
     # Function to plot heatmap and return as a PIL image
@@ -210,6 +204,11 @@ def RP_stats_heatmap(results):
 
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = df_fcc_cleaned.iloc[clustered_rows, :]
+
+        # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
+        cmap = mcolors.LinearSegmentedColormap.from_list(
+            "custom_gray", ["#f2f2f2", "#6d6e71"], N=256
+        )
 
         # Plot the heatmap using seaborn with the custom color gradient
         plt.figure(figsize=(8, 6))
@@ -245,8 +244,8 @@ def RP_stats_heatmap(results):
         bio.seek(0)
         return Image.open(bio)
 
-    # Function to export dataframes to Excel and heatmaps to PDFs
     def export_results(results, folder_path):
+        """Export dataframes to Excel and heatmaps to PDFs"""
         # Create an Excel writer to save all conditions into one file
         excel_filename = os.path.join(folder_path, "results_data.xlsx")
 
@@ -276,23 +275,21 @@ def RP_stats_heatmap(results):
             break
 
         # If a condition is selected from the dropdown menu
-        if event == "-CONDITION-":
-            selected_condition = values["-CONDITION-"]
+        if event == "-CONDITION-" and (
+            selected_condition := values["-CONDITION-"]
+        ):
+            df = results[selected_condition]["metrics"]
 
-            if selected_condition:
-                # Load the corresponding pandas DataFrame from results['metrics']
-                df = results[selected_condition]["metrics"]
+            # Generate the heatmap with hierarchical clustering and condition name as the title
+            heatmap_image = plot_heatmap(df, selected_condition)
 
-                # Generate the heatmap with hierarchical clustering and condition name as the title
-                heatmap_image = plot_heatmap(df, selected_condition)
-
-                # Convert the heatmap image to PNG and update the window
-                bio = BytesIO()
-                heatmap_image.save(bio, format="PNG")
-                window["-HEATMAP-"].update(data=bio.getvalue())
+            # Convert the heatmap image to PNG and update the window
+            bio = BytesIO()
+            heatmap_image.save(bio, format="PNG")
+            window["-HEATMAP-"].update(data=bio.getvalue())
 
         # If the Export button is clicked
-        if event == "Export":
+        elif event == "Export":
             # Open a folder selection window
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
@@ -304,8 +301,7 @@ def RP_stats_heatmap(results):
 
 
 def RP_stats_distribution(results):
-    # Get the list of conditions from results
-    conditions = list(results.keys())
+    conditions = list(results)
 
     # Define the layout
     layout = [
@@ -522,10 +518,7 @@ def RP_global_heatmap(comparison):
 
         # Rotate the x-axis labels to be vertical
         plt.xticks(rotation=90)
-
-        # Add the comparison name as the title of the plot, prefixed by 'ReLocalizations:'
         plt.title(f"ReLocalizations: {comparison_name}", fontsize=16)
-
         plt.tight_layout()
 
         # If we need to save the plot as a PDF file
