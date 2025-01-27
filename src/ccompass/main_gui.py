@@ -1488,7 +1488,6 @@ class MainController:
                     try:
                         session_open(
                             self.main_window,
-                            values,
                             filename,
                             model=self.model,
                         )
@@ -1621,8 +1620,6 @@ class MainController:
             )
             return
 
-        from .MOP import create_fullprofiles
-
         try:
             self.model.marker_list = create_markerlist(
                 self.model.marker_sets,
@@ -1634,8 +1631,7 @@ class MainController:
                 self.model.fract_marker,
                 self.model.fract_marker_vis,
                 self.model.fract_test,
-                _,
-            ) = create_markerprofiles(
+            ) = create_marker_profiles(
                 self.model.fract_data,
                 values["-marker_fractkey-"],
                 self.model.fract_info,
@@ -2623,12 +2619,13 @@ def create_markerlist(
     return combined
 
 
-def session_open(window, values, filename, model: SessionModel):
+def session_open(window: sg.Window, filename: str, model: SessionModel):
     """Read session data from file and update the window."""
     # Update session data
     tmp_session = SessionModel.from_numpy(filename)
     model.reset(tmp_session)
 
+    # update GUI
     if model.fract_paths:
         fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
         window["-fractionation_path-"].update(
@@ -2710,82 +2707,60 @@ def session_open(window, values, filename, model: SessionModel):
     #     window['-export_comparison-'].update(disabled = True)
 
 
-def create_markerprofiles(fract_data, key: str, fract_info, marker_list):
+def create_marker_profiles(fract_data, key: str, fract_info, marker_list):
+    """Create marker profiles for classification and visualization."""
+    # create marker profiles for classification
     profiles = {}
     for condition in fract_data["class"]:
         profiles[condition] = copy.deepcopy(fract_data["class"][condition])
 
-    profiles_vis = {}
-    for condition in fract_data["vis"]:
-        profiles_vis[condition] = copy.deepcopy(fract_data["vis"][condition])
-
+    # profiles with known class
     fract_marker = {}
-    fract_marker_vis = {}
+    # profiles with unknown class
     fract_test = {}
 
-    if key == "[IDENTIFIER]":
-        for condition in profiles:
-            fract_marker[condition] = pd.merge(
-                profiles[condition],
-                marker_list,
-                left_index=True,
-                right_index=True,
-                how="left",
-            ).dropna(subset=["class"])
-            fract_test[condition] = pd.merge(
+    for condition in profiles:
+        if key == "[IDENTIFIER]":
+            profile_full = pd.merge(
                 profiles[condition],
                 marker_list,
                 left_index=True,
                 right_index=True,
                 how="left",
             )
-            fract_test[condition] = fract_test[condition][
-                fract_test[condition]["class"].isna()
-            ]
-        for condition in profiles_vis:
-            fract_marker_vis[condition] = pd.merge(
-                profiles_vis[condition],
-                marker_list,
-                left_index=True,
-                right_index=True,
-            )
-
-            # profiles_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_index = True, right_index = True)
-            # fract_marker_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_index = True, right_index = True, how = 'left').dropna(subset = ['class'])
-
-    else:
-        for condition in profiles:
+        else:
+            # add identifier column
             profiles[condition] = pd.merge(
                 profiles[condition],
                 fract_info[key].astype(str).map(str.upper),
                 left_index=True,
                 right_index=True,
             )
-            # profiles[condition] = pd.merge(profiles[condition], fract_info[key].map(str.upper), left_index = True, right_index = True)
-
-            # fract_info_upper = fract_info[key].map(str.upper)
-            fract_marker[condition] = (
-                pd.merge(
-                    profiles[condition],
-                    marker_list,
-                    left_on=key,
-                    right_index=True,
-                    how="left",
-                )
-                .drop(key, axis=1)
-                .dropna(subset=["class"])
-            )
-            fract_test[condition] = pd.merge(
+            profile_full = pd.merge(
                 profiles[condition],
                 marker_list,
                 left_on=key,
                 right_index=True,
                 how="left",
             ).drop(key, axis=1)
-            fract_test[condition] = fract_test[condition][
-                fract_test[condition]["class"].isna()
-            ]
-        for condition in profiles_vis:
+        fract_marker[condition] = profile_full.dropna(subset=["class"])
+        fract_test[condition] = profile_full[profile_full["class"].isna()]
+
+    # create marker profiles for visualization
+    profiles_vis = {}
+    for condition in fract_data["vis"]:
+        profiles_vis[condition] = copy.deepcopy(fract_data["vis"][condition])
+
+    fract_marker_vis = {}
+    for condition in profiles_vis:
+        if key == "[IDENTIFIER]":
+            fract_marker_vis[condition] = pd.merge(
+                profiles_vis[condition],
+                marker_list,
+                left_index=True,
+                right_index=True,
+            )
+        else:
             profiles_vis[condition] = pd.merge(
                 profiles_vis[condition],
                 fract_info[key],
@@ -2803,61 +2778,22 @@ def create_markerprofiles(fract_data, key: str, fract_info, marker_list):
                 .drop(key, axis=1)
                 .dropna(subset=["class"])
             )
-
-        # for condition in profiles:
-        #     print('check1')
-        #     profiles[condition] = pd.merge(profiles[condition], fract_info[key], left_index = True, right_index = True)
-        #     print('check2')
-        #     profiles_vis[condition] = pd.merge(profiles_vis[condition], fract_info[key], left_index = True, right_index = True)
-        #     print('check3')
-        #     #print(profiles_vis[condition])
-        #     fract_marker[condition] = pd.merge(profiles[condition], marker_list, left_on = key, right_index = True, how = 'left').drop(key, axis = 1).dropna(subset = ['class'])
-        #     print('check4')
-        #     fract_marker_vis[condition] = pd.merge(profiles_vis[condition], marker_list, left_on = key, right_index = True, how = 'left').drop(key, axis = 1).dropna(subset = ['class'])
-        #     print('check5')
-        #     fract_test[condition] = pd.merge(profiles[condition], marker_list, left_on = key, right_index = True, how = 'left'). drop(key, axis = 1)
-        #     print('check6')
-        #     fract_test[condition] = fract_test[condition][fract_test[condition]['class'].isna()]
-
-    classnames = {
-        condition: list(fract_marker[condition]["class"].unique())
-        for condition in profiles
-    }
-    return fract_marker, fract_marker_vis, fract_test, classnames
+    return fract_marker, fract_marker_vis, fract_test
 
 
-def enable_markersettings(window, is_enabled):
-    for element in [
-        "-marker_add-",
-        "-marker_remove-",
-        "-marker_key-",
-        "-marker_class-",
-        "-marker_fractkey-",
-        "-marker_parameters-",
-        "-marker_manage-",
-        "-marker_accept-",
-        "-marker_profiles-",
-        "-marker_test-",
-    ]:
-        window[element].update(disabled=not is_enabled)
-
-    for element in ["-marker_reset-"]:
-        window[element].update(disabled=is_enabled)
-
-    # window['-marker_reset-'].update(disabled = is_enabled)
-    if is_enabled:
-        window["-status_marker-"].update(value="missing", text_color="white")
-    else:
-        window["-status_marker-"].update(
-            value="ready!", text_color="dark green"
+def create_fullprofiles(
+    fract_marker: dict[str, pd.DataFrame], fract_test: dict[str, pd.DataFrame]
+) -> dict[str, pd.DataFrame]:
+    fract_full = {}
+    for condition in fract_test:
+        fract_full[condition] = pd.concat(
+            [fract_test[condition], fract_marker[condition]]
         )
+    return fract_full
 
 
-def refresh_window(window: sg.Window, status: SessionStatusModel):
-    """Update the window based on the current session status."""
-    fract_buttons(window, status.fractionation_data)
-    tp_buttons(window, status.tp_data)
-
+def enable_markersettings(window: sg.Window, status: SessionStatusModel):
+    """Enable / disable marker settings based on the current session status."""
     for element in ["-marker_remove-", "-marker_manage-", "-marker_accept-"]:
         if status.marker_matched:
             window[element].update(disabled=True)
@@ -2872,6 +2808,18 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
 
     for element in ["-marker_add-", "-marker_parameters-", "-marker_preset-"]:
         window[element].update(disabled=status.marker_matched)
+
+    if status.marker_matched:
+        window["-status_marker-"].update("ready", text_color="dark green")
+    else:
+        window["-status_marker-"].update("none", text_color="black")
+
+
+def refresh_window(window: sg.Window, status: SessionStatusModel):
+    """Update the window based on the current session status."""
+    fract_buttons(window, status.fractionation_data)
+    tp_buttons(window, status.tp_data)
+    enable_markersettings(window, status)
 
     for element in ["-statistic_import-"]:
         window[element].update(disabled=status.comparison_global)
@@ -2890,11 +2838,6 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
         window["-status_fract_lipid-"].update("ready", text_color="dark green")
     else:
         window["-status_fract_lipid-"].update("none", text_color="black")
-
-    if status.marker_matched:
-        window["-status_marker-"].update("ready", text_color="dark green")
-    else:
-        window["-status_marker-"].update("none", text_color="black")
 
     if status.lipidome_total:
         window["-status_total_lipid-"].update("ready", text_color="dark green")
