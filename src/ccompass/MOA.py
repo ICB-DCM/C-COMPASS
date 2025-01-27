@@ -7,31 +7,36 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
-from .core import NeuralNetworkParametersModel
-
 logger = logging.getLogger(__package__)
 
 
 def most_frequent_or_nan(row):
+    """Return the most frequent value in a row, or np.nan if there's a tie."""
     counts = row.value_counts()
     # If the row is empty, return np.nan
     if counts.empty:
         return np.nan
+
     # If there's only one unique value in the row, return that value
-    elif len(counts) == 1:
+    if len(counts) == 1:
         return counts.idxmax()
+
     # If the two most frequent values occur the same number of times, return np.nan
-    elif counts.iloc[0] == counts.iloc[1]:
+    if counts.iloc[0] == counts.iloc[1]:
         return np.nan
-    else:
-        return counts.idxmax()
+
+    return counts.idxmax()
 
 
 def compare_lists(list1, list2):
+    """Compute the sum of absolute differences between two lists.
+
+    Ignores NaNs.
+    """
     # Function to compare two lists and handle NaNs
     return sum(
         abs(a - b)
-        for a, b in zip(list1, list2)
+        for a, b in zip(list1, list2, strict=True)
         if not pd.isna(a) and not pd.isna(b)
     )
 
@@ -44,7 +49,15 @@ def is_all_nan(list_):
     )
 
 
-def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
+def perform_mann_whitney_t_tests_per_cell(
+    df1: pd.DataFrame, df2: pd.DataFrame, prefix: str
+) -> pd.DataFrame:
+    """Perform Mann-Whitney U tests, t-tests, and compute Cohen's D.
+
+    Groups are compared for each cell in the given DataFrames'
+    columns starting with `prefix`. Those columns are assumed to
+    contain lists of values for each group.
+    """
     cc_columns = [
         col
         for col in df1.columns
@@ -107,14 +120,15 @@ def perform_mann_whitney_t_tests_per_cell(df1, df2, prefix):
                 results_df.loc[idx, f"{col}_T"] = t_stat
                 results_df.loc[idx, f"{col}_P(T)"] = p_value_t
 
-    return results_df, common_indices, cc_columns
+    return results_df
 
 
 def calculate_common_indices(df1, df2):
     return df1.index.intersection(df2.index)
 
 
-def impute_data(df, colname, newcol):
+def impute_data(df: pd.DataFrame, colname: str, newcol: str):
+    """Impute missing values in a DataFrame column using a normal distribution."""
     s = 1.8
     w = 0.3
 
@@ -138,11 +152,9 @@ def impute_data(df, colname, newcol):
 
 
 def stats_proteome(
-    learning_xyz,
-    NN_params: NeuralNetworkParametersModel,
-    fract_data,
-    fract_conditions,
+    learning_xyz, fract_data, fract_conditions, reliability: float
 ):
+    """Proteome prediction / statistics."""
     conditions = [x for x in fract_conditions if x != "[KEEP]"]
     results = {}
 
@@ -360,15 +372,13 @@ def stats_proteome(
                 columns=learning_xyz[subcon]["Z_train_df"].columns,
             )
 
-        con_frames = []
-        for subcon in subcons:
-            con_frames.append(learning_xyz[subcon]["z_full_mean_df"])
-
-        classnames = []
-        for subcon in subcons:
-            for classname in learning_xyz[subcon]["classes"]:
-                classnames.append(classname)
-        classnames = list(set(classnames))
+        classnames = list(
+            set(
+                classname
+                for subcon in subcons
+                for classname in learning_xyz[subcon]["classes"]
+            )
+        )
 
         for classname in classnames:
             CC_list = pd.DataFrame(index=combined_index)
@@ -458,7 +468,7 @@ def stats_proteome(
             ][["CC_" + class_act]]
             thresh = np.percentile(
                 nonmarker_z["CC_" + class_act].tolist(),
-                NN_params.reliability,
+                reliability,
             )
             results[condition]["metrics"]["fCC_" + class_act] = results[
                 condition
@@ -526,7 +536,10 @@ def stats_proteome(
 
 
 def global_comparison(results):
-    conditions = [x for x in results]
+    """Compute global changes."""
+    conditions = list(results)
+
+    # deduplicate indices
     for condition in conditions:
         results[condition]["metrics"] = results[condition]["metrics"][
             ~results[condition]["metrics"].index.duplicated(keep="first")
@@ -537,11 +550,12 @@ def global_comparison(results):
     #     class_lists.append(results[condition]['classnames'])
     # classnames = list(set(class_lists[0]).intersection(*class_lists[1:]))
 
-    combinations = []
-    for con_1 in conditions:
-        for con_2 in conditions:
-            if con_1 != con_2:
-                combinations.append((con_1, con_2))
+    combinations = [
+        (con_1, con_2)
+        for con_1 in conditions
+        for con_2 in conditions
+        if con_1 != con_2
+    ]
 
     comparison = {}
     for comb in combinations:
@@ -552,10 +566,13 @@ def global_comparison(results):
         )
         comparison[comb] = {}
 
+        metrics_own = results[comb[0]]["metrics"]
+        metrics_other = results[comb[1]]["metrics"]
+
         ## prepare data:
         comparison[comb]["intersection_data"] = pd.merge(
-            results[comb[0]]["metrics"],
-            results[comb[1]]["metrics"],
+            metrics_own,
+            metrics_other,
             left_index=True,
             right_index=True,
             how="inner",
@@ -564,10 +581,7 @@ def global_comparison(results):
             index=comparison[comb]["intersection_data"].index
         )
 
-        metrics_own = results[comb[0]]["metrics"]
-        metrics_other = results[comb[1]]["metrics"]
-
-        logger.info("performing t-tests..")
+        logger.info("performing t-tests...")
 
         # --------------
         # ## create RL, nRL, RLS, and nRLS:
@@ -581,8 +595,8 @@ def global_comparison(results):
 
         for classname in classnames:
             comparison[comb]["metrics"]["RL_" + classname] = (
-                results[comb[1]]["metrics"]["CC_" + classname]
-                - results[comb[0]]["metrics"]["CC_" + classname]
+                metrics_other["CC_" + classname]
+                - metrics_own["CC_" + classname]
             )
 
         rl_cols = [
@@ -604,8 +618,8 @@ def global_comparison(results):
 
         for classname in classnames:
             comparison[comb]["metrics"]["fRL_" + classname] = (
-                results[comb[1]]["metrics"]["fCC_" + classname]
-                - results[comb[0]]["metrics"]["fCC_" + classname]
+                metrics_other["fCC_" + classname]
+                - metrics_own["fCC_" + classname]
             )
         frl_cols = [
             col
@@ -616,11 +630,10 @@ def global_comparison(results):
             comparison[comb]["metrics"][frl_cols].abs().sum(axis=1)
         )
 
-        test_df, common_indices, ncc_columns = (
-            perform_mann_whitney_t_tests_per_cell(
-                metrics_own, metrics_other, "CClist_"
-            )
+        test_df = perform_mann_whitney_t_tests_per_cell(
+            metrics_own, metrics_other, "CClist_"
         )
+        common_indices = test_df.index
         for classname in classnames:
             test_df.rename(
                 columns={
@@ -799,28 +812,23 @@ def global_comparison(results):
     return comparison
 
 
-def class_comparison(tp_data, fract_conditions, results, comparison):
-    conditions = [x for x in results]
-
-    for condition in conditions:
+def class_comparison(tp_data, results, comparison):
+    for condition in results:
         # combined_index = tp_data[condition].index
         classnames = results[condition]["classnames"]
 
-        logger.info("creating TPA...")
         ## add TPA:
-        TPA_list = []
-        TPA_list = []
+        logger.info("creating total protein amount...")
         tp_nontrans = tp_data[condition].map(lambda x: 2**x)
-        for replicate in tp_data[condition]:
-            TPA_list.append(tp_nontrans[replicate])
+        TPA_list = [tp_nontrans[replicate] for replicate in tp_data[condition]]
         combined_TPA = pd.concat(TPA_list, axis=1)
         results[condition]["metrics"]["TPA"] = combined_TPA.mean(axis=1)
         results[condition]["metrics"] = results[condition]["metrics"].loc[
             ~results[condition]["metrics"].index.duplicated(keep="first")
         ]
 
-        logger.info("adding CA...")
         ## add CA:
+        logger.info("adding class abundance...")
         results[condition]["metrics"]["CA_relevant"] = "no"
         results[condition]["class_abundance"] = {}
         for classname in classnames:
@@ -831,16 +839,13 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
             results[condition]["metrics"].loc[
                 results_class.index, "CA_relevant"
             ] = "yes"
-            results[condition]["class_abundance"][classname] = {}
-            results[condition]["class_abundance"][classname]["CA"] = np.median(
-                results_class["TPA"]
-            )
-            results[condition]["class_abundance"][classname]["count"] = len(
-                results_class
-            )
+            results[condition]["class_abundance"][classname] = {
+                "CA": np.median(results_class["TPA"]),
+                "count": len(results_class),
+            }
 
-        logger.info("adding CC...")
         ## add nCClist:
+        logger.info("adding nCClist...")
         for classname in classnames:
             results[condition]["metrics"]["nCClist_" + classname] = results[
                 condition
@@ -853,7 +858,7 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
                 ]
             )
 
-        logger.info("adding nCC...")
+        logger.info("adding normalized class contributions...")
         ## add nCC:
         for classname in classnames:
             results[condition]["metrics"]["nCC_" + classname] = (
@@ -887,14 +892,11 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
 
     logger.info("comparing...")
 
-    combinations = []
-    for con_1 in conditions:
-        for con_2 in conditions:
-            if con_1 != con_2:
-                combinations.append((con_1, con_2))
+    combinations = [
+        (con1, con2) for con1 in results for con2 in results if con1 != con2
+    ]
 
     ## create , nRL, , and nRLS:
-
     for comb in combinations:
         metrics_own = results[comb[0]]["metrics"]
         metrics_other = results[comb[1]]["metrics"]
@@ -1035,7 +1037,12 @@ def class_comparison(tp_data, fract_conditions, results, comparison):
     return comparison
 
 
-def class_reset(results, comparison):
+def class_reset(results, comparison) -> None:
+    """Reset classification results.
+
+    Resets the classification results in the results and comparison
+    dictionaries.
+    """
     for condition in results:
         results[condition]["class_abundance"] = {}
         results[condition]["metrics"].drop(
@@ -1058,6 +1065,7 @@ def class_reset(results, comparison):
                 axis=1,
                 inplace=True,
             )
+
     for comb in comparison:
         comparison[comb]["metrics"].drop(
             ["nRLS", "P(t)_nRLS", "P(u)_nRLS"], axis=1, inplace=True
@@ -1074,4 +1082,3 @@ def class_reset(results, comparison):
                 axis=1,
                 inplace=True,
             )
-    return results, comparison
