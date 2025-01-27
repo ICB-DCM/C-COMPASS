@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
 
+from ._utils import unique_preserve_order
+
 logger = logging.getLogger(__package__)
 
 
@@ -157,7 +159,7 @@ def impute_data(data, window, mode):
     return data
 
 
-def normalize_data(data, window):
+def normalize_data(data):
     for condition in data:
         for replicate in data[condition]:
             q1 = np.percentile(data[condition][replicate], 25)
@@ -169,12 +171,11 @@ def normalize_data(data, window):
                 if x - q2 >= 0
                 else (x - q2) / (q2 - q1)
             )
-    return data
 
 
 def create_window() -> sg.Window:
     """Create the total proteome processing dialog window."""
-    layout_TPP = [
+    layout = [
         [
             sg.Column(
                 [
@@ -233,11 +234,11 @@ def create_window() -> sg.Window:
             ),
         ]
     ]
-    return sg.Window("Processing...", layout_TPP, size=(600, 110), modal=True)
+    return sg.Window("Processing...", layout, size=(600, 110), modal=True)
 
 
 def start_total_proteome_processing(
-    window_TPP: sg.Window,
+    window: sg.Window,
     tp_data: dict[str, pd.DataFrame],
     tp_tables: dict[str, list[tuple[str, str]]],
     tp_preparams: dict[str, Any],
@@ -248,102 +249,97 @@ def start_total_proteome_processing(
     tp_indata: dict[str, pd.DataFrame],
     tp_conditions: list,
 ):
-    is_ident = True
-    is_con = True
-
-    conditions = []
-    for path in tp_tables:
-        for sample in tp_tables[path]:
-            if sample[1] not in conditions:
-                conditions.append(sample[1])
-        if "[IDENTIFIER]" not in conditions:
-            is_ident = False
-        if "" in conditions:
-            is_con = False
-
-    if not is_ident:
+    # validate input
+    if not all(
+        any("[IDENTIFIER]" == sample[1] for sample in table)
+        for table in tp_tables.values()
+    ):
         messagebox.showerror("Error", "At least one Identifier is missing.")
-    if not is_con:
+        return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
+
+    if any(
+        sample[1] == "" for table in tp_tables.values() for sample in table
+    ):
         messagebox.showerror("Error", "At least one Condition is missing.")
+        return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
 
-    else:
-        window_TPP["--start--"].update(disabled=True)
-        window_TPP["--cancel--"].update(disabled=True)
+    # deactivate buttons
+    window["--start--"].update(disabled=True)
+    window["--cancel--"].update(disabled=True)
 
-        tp_intermediate = {}
+    tp_intermediate = {}
 
-        # ---------------------------------------------------------------------
-        logger.info("creating dataset...")
-        progress = 0
-        window_TPP["--status1--"].update(value="creating dataset...")
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("creating dataset...")
+    window["--status1--"].update(value="creating dataset...")
+    window.read(timeout=50)
 
-        tp_data, tp_info, tp_conditions = create_dataset(
-            tp_indata,
-            tp_tables,
-            tp_identifiers,
-            conditions,
-            window_TPP,
-        )
-        tp_intermediate["[0] abs"] = copy.deepcopy(tp_data)
+    conditions = unique_preserve_order(
+        sample[1] for table in tp_tables.values() for sample in table
+    )
+    tp_data, tp_info, tp_conditions = create_dataset(
+        tp_indata,
+        tp_tables,
+        tp_identifiers,
+        conditions,
+        window,
+    )
+    tp_intermediate["[0] abs"] = copy.deepcopy(tp_data)
 
-        # ---------------------------------------------------------------------
-        logger.info("filtering by missing values...")
-        progress = 10
-        window_TPP["--status1--"].update(
-            value="filtering by missing values..."
-        )
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("filtering by missing values...")
+    progress = 10
+    window["--status1--"].update(value="filtering by missing values...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
-        minrep = tp_preparams["minrep"]
-        tp_data = filter_missing(tp_data, minrep, window_TPP)
-        tp_intermediate["[1] f_missing"] = copy.deepcopy(tp_data)
+    tp_data = filter_missing(tp_data, tp_preparams["minrep"], window)
+    tp_intermediate["[1] f_missing"] = copy.deepcopy(tp_data)
 
-        # ---------------------------------------------------------------------
-        logger.info("transforming data...")
-        progress = 20
-        window_TPP["--status1--"].update(value="transforming data...")
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("transforming data...")
+    progress = 20
+    window["--status1--"].update(value="transforming data...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
-        tp_data = transform_data(tp_data, window_TPP)
-        tp_intermediate["[2] transformed"] = copy.deepcopy(tp_data)
+    tp_data = transform_data(tp_data, window)
+    tp_intermediate["[2] transformed"] = copy.deepcopy(tp_data)
 
-        # ---------------------------------------------------------------------
-        logger.info("imputing MissingValues...")
-        progress = 30
-        window_TPP["--status1--"].update(value="imputing MissingValues...")
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("imputing MissingValues...")
+    progress = 30
+    window["--status1--"].update(value="imputing MissingValues...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
-        tp_data = impute_data(tp_data, window_TPP, tp_preparams["imputation"])
-        tp_intermediate["[3] imputed"] = copy.deepcopy(tp_data)
+    tp_data = impute_data(tp_data, window, tp_preparams["imputation"])
+    tp_intermediate["[3] imputed"] = copy.deepcopy(tp_data)
 
-        # ---------------------------------------------------------------------
-        logger.info("calculating correlations...")
-        progress = 40
-        window_TPP["--status1--"].update(value="calculating correlations...")
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("calculating correlations...")
+    progress = 40
+    window["--status1--"].update(value="calculating correlations...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
-        tp_icorr = calculate_correlations(tp_data)
+    tp_icorr = calculate_correlations(tp_data)
 
-        # ---------------------------------------------------------------------
-        logger.info("normalizing data...")
-        progress = 50
-        window_TPP["--status1--"].update(value="normalizing data...")
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    # ---------------------------------------------------------------------
+    logger.info("normalizing data...")
+    progress = 50
+    window["--status1--"].update(value="normalizing data...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
-        tp_data = normalize_data(tp_data, window_TPP)
-        tp_intermediate["[4] normalized"] = copy.deepcopy(tp_data)
+    normalize_data(tp_data)
+    tp_intermediate["[4] normalized"] = copy.deepcopy(tp_data)
 
-        logger.info("done!")
-        progress = 60
-        window_TPP["--status1--"].update(value="normalizing data...")
-        window_TPP["--progress--"].update(progress)
-        window_TPP.read(timeout=50)
+    logger.info("done!")
+    progress = 60
+    window["--status1--"].update(value="normalizing data...")
+    window["--progress--"].update(progress)
+    window.read(timeout=50)
 
     return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
 
