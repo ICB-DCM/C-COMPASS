@@ -1370,9 +1370,9 @@ class MainController:
             elif event == "-statistic_predict-":
                 self.model.results = MOA.stats_proteome(
                     self.model.learning_xyz,
-                    self.model.NN_params,
                     self.model.fract_data,
                     self.model.fract_conditions,
+                    self.model.NN_params.reliability,
                 )
                 self.model.status.proteome_prediction = True
 
@@ -1430,16 +1430,13 @@ class MainController:
             elif event == "-class_run-":
                 self.model.comparison = MOA.class_comparison(
                     self.model.tp_data,
-                    self.model.fract_conditions,
                     self.model.results,
                     self.model.comparison,
                 )
                 self.model.status.comparison_class = True
 
             elif event == "-class_reset-":
-                self.model.results, self.model.comparison = MOA.class_reset(
-                    self.model.results, self.model.comparison
-                )
+                MOA.class_reset(self.model.results, self.model.comparison)
                 self.model.status.comparison_class = False
 
             # if event == '-classification_comparison-':
