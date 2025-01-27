@@ -1054,7 +1054,7 @@ class MainController:
                 fract_add(self.main_window, model=self.model)
             elif event == "-fractionation_remove-":
                 if values["-fractionation_path-"]:
-                    fract_rem(
+                    fract_remove_file(
                         values,
                         self.main_window,
                         model=self.model,
@@ -1066,28 +1066,28 @@ class MainController:
                 )
             elif event == "-fractionation_edit_remove-":
                 if values["-fractionation_table-"]:
-                    fract_defrem(
+                    fract_remove_row(
                         values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_keep-":
                 if values["-fractionation_table-"]:
-                    fract_defkeep(
+                    fract_set_keep(
                         values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_condition-":
                 if values["-fractionation_table-"]:
-                    fract_defcon(
+                    fract_define_condition(
                         values, self.main_window, self.model.fract_tables
                     )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_replicate-":
                 if values["-fractionation_table-"]:
-                    fract_defrep(
+                    fract_define_replicate(
                         values, self.main_window, self.model.fract_tables
                     )
                 else:
@@ -1169,7 +1169,7 @@ class MainController:
             #     fract_export(values_CCMPS, fract_data, fract_info)
 
             elif event == "-tp_add-":
-                tp_add(
+                tp_add_dataset(
                     self.main_window,
                     self.model.tp_paths,
                     self.model.tp_tables,
@@ -1179,7 +1179,7 @@ class MainController:
                 )
             elif event == "-tp_remove-":
                 if values["-tp_path-"]:
-                    tp_remove(
+                    tp_remove_dataset(
                         values,
                         self.main_window,
                         self.model.tp_paths,
@@ -1192,12 +1192,14 @@ class MainController:
                 )
             elif event == "-tp_edit_remove-":
                 if values["-tp_table-"]:
-                    tp_defrem(values, self.main_window, self.model.tp_tables)
+                    tp_remove_row(
+                        values, self.main_window, self.model.tp_tables
+                    )
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_keep-":
                 if values["-tp_table-"]:
-                    tp_defkeep(values, self.main_window, self.model.tp_tables)
+                    tp_set_keep(values, self.main_window, self.model.tp_tables)
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_condition-":
@@ -1579,13 +1581,13 @@ class MainController:
             )
 
     def _handle_match_markers(self, values: dict):
-        if values["-marker_list-"] == []:
+        if not values["-marker_list-"]:
             messagebox.showerror(
                 "Error", "Please import at least one Marker List!"
             )
             return
 
-        if self.model.fract_data["class"] == []:
+        if not self.model.fract_data["class"]:
             messagebox.showerror(
                 "Error", "Please import Fractionation Data first!"
             )
@@ -1604,13 +1606,12 @@ class MainController:
         from .MOP import create_fullprofiles
 
         try:
-            # print('Starting try block')
             self.model.marker_list = create_markerlist(
                 self.model.marker_sets,
                 self.model.marker_conv,
                 **self.model.marker_params,
             )
-            # print('check1: marker_list created')
+            logger.info("Marker list created")
             (
                 self.model.fract_marker,
                 self.model.fract_marker_vis,
@@ -1622,12 +1623,12 @@ class MainController:
                 self.model.fract_info,
                 self.model.marker_list,
             )
-            # print('check2: marker profiles created')
+            logger.info("Marker profiles created")
             self.model.fract_full = create_fullprofiles(
                 self.model.fract_marker, self.model.fract_test
             )
+            logger.info("Full profiles created")
             self.model.status.marker_matched = True
-            # print('check3: full profiles created')
             # enable_markersettings(window, False)
             # print('check4: marker settings enabled')
             # window['-classification_MOP-'].update(disabled = False)
@@ -1639,6 +1640,7 @@ class MainController:
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
 
     def _handle_training(self, key: str):
+        """Handle click on "Train C-COMPASS!" button."""
         if key == "[IDENTIFIER]":
             stds = self.model.fract_std
         else:
@@ -1880,15 +1882,24 @@ class MainController:
             # comparison[comb]['metrics'].to_csv(fname, sep='\t', index=True, index_label='Identifier')
 
 
-def fract_refreshtable(window, table):
+def fract_refreshtable(window: sg.Window, table: list):
     window["-fractionation_table-"].update(values=table)
 
 
-def tp_refreshtable(window, table):
+def tp_refreshtable(window: sg.Window, table: list):
     window["-tp_table-"].update(values=table)
 
 
-def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
+def fract_modifytable(
+    title: str,
+    prompt: str,
+    values: dict,
+    fract_tables: dict[str, list],
+    pos: int,
+    q: int,
+    ask: Literal["integer", "string"],
+):
+    """Show dialog for updating values in the fractionation table."""
     if values["-fractionation_table-"]:
         path = values["-fractionation_path-"]
         table = fract_tables[path]
@@ -1906,12 +1917,14 @@ def fract_modifytable(title, prompt, values, fract_tables, pos, q, ask):
                 for i in values["-fractionation_table-"]:
                     table[i][pos] = value
                 fract_tables[path] = table
+        else:
+            raise ValueError(f"Invalid ask value: {ask}")
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
     return values, fract_tables
 
 
-def fract_buttons(window, status):
+def fract_buttons(window: sg.Window, status: bool) -> None:
     active = [
         "-fractionation_add-",
         "-fractionation_remove-",
@@ -1932,6 +1945,7 @@ def fract_buttons(window, status):
         window[button].update(disabled=status)
     for button in inactive:
         window[button].update(disabled=not status)
+
     if status:
         window["-fractionation_status-"].update(
             value="done!", text_color="dark green"
@@ -1942,7 +1956,7 @@ def fract_buttons(window, status):
         )
 
 
-def tp_buttons(window, status):
+def tp_buttons(window: sg.Window, status: bool) -> None:
     active = [
         "-tp_add-",
         "-tp_remove-",
@@ -1958,6 +1972,7 @@ def tp_buttons(window, status):
         window[button].update(disabled=status)
     for button in inactive:
         window[button].update(disabled=not status)
+
     if status:
         window["-tp_status-"].update(value="done!", text_color="dark green")
     else:
@@ -1978,6 +1993,7 @@ def fract_add(
     window,
     model: SessionModel,
 ):
+    """Add a fractionation dataset."""
     filename = sg.popup_get_file(
         "Chose dataset",
         no_window=True,
@@ -2009,7 +2025,8 @@ def fract_add(
     fract_refreshtable(window, table)
 
 
-def fract_rem(values, window, model: SessionModel):
+def fract_remove_file(values, window, model: SessionModel):
+    """Remove a fractionation dataset."""
     sure = sg.popup_yes_no("Remove data from list?")
     if sure != "Yes":
         return
@@ -2025,7 +2042,8 @@ def fract_rem(values, window, model: SessionModel):
     window["-fractionation_path-"].update(values=model.fract_paths, value=curr)
 
 
-def fract_defrem(values, window, fract_tables):
+def fract_remove_row(values, window, fract_tables):
+    """Remove a row from the fractionation table."""
     path = values["-fractionation_path-"]
     selected = values["-fractionation_table-"]
     table = fract_tables[path]
@@ -2035,7 +2053,8 @@ def fract_defrem(values, window, fract_tables):
     window["-fractionation_table-"].update(values=fract_tables[path])
 
 
-def fract_defkeep(values, window, fract_tables):
+def fract_set_keep(values, window, fract_tables):
+    """Set the selected rows to "keep"."""
     path = values["-fractionation_path-"]
     table = fract_tables[path]
     for pos in values["-fractionation_table-"]:
@@ -2046,7 +2065,8 @@ def fract_defkeep(values, window, fract_tables):
     window["-fractionation_table-"].update(values=fract_tables[path])
 
 
-def fract_defcon(values, window, fract_tables):
+def fract_define_condition(values, window, fract_tables):
+    """Define the condition for the selected rows."""
     values, fract_tables = fract_modifytable(
         "Set Condition",
         "Condition Name:",
@@ -2061,7 +2081,8 @@ def fract_defcon(values, window, fract_tables):
     )
 
 
-def fract_defrep(values, window, fract_tables):
+def fract_define_replicate(values, window, fract_tables):
+    """Define the replicate for the selected rows."""
     values, fract_tables = fract_modifytable(
         "Set Replicate",
         "Replicate Number:",
@@ -2077,6 +2098,7 @@ def fract_defrep(values, window, fract_tables):
 
 
 def fract_handle_set_fraction(values, window, fract_tables):
+    """Set the fraction for the selected rows."""
     values, fract_tables = fract_modifytable(
         "Set Fractions",
         "FIRST Fraction Number:",
@@ -2094,6 +2116,7 @@ def fract_handle_set_fraction(values, window, fract_tables):
 def fract_handle_set_identifier(
     values, window, input_tables, ident_pos, identifiers
 ):
+    """Set the identifier for the selected rows."""
     pos = values["-fractionation_table-"]
     if pos:
         if len(pos) > 1:
@@ -2222,7 +2245,10 @@ def convert_to_float(x):
         return x
 
 
-def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
+def tp_add_dataset(
+    window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
+):
+    """Add a total proteome dataset."""
     filename = sg.popup_get_file(
         "Chose dataset",
         no_window=True,
@@ -2231,30 +2257,33 @@ def tp_add(window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers):
             ("Text (tab delimited)", "*.txt"),
         ),
     )
-    if filename:
-        tp_paths.append(filename)
-        window["-tp_path-"].update(values=tp_paths, value=filename)
-        data = pd.read_csv(filename, sep="\t", header=0)
-        data = data.replace("NaN", np.nan)
-        data = data.replace("Filtered", np.nan)
-        data = data.map(convert_to_float)
+    if not filename:
+        return
 
-        rows_with_float = data.map(is_float).any(axis=1)
-        data = data[rows_with_float]
+    tp_paths.append(filename)
+    window["-tp_path-"].update(values=tp_paths, value=filename)
+    data = pd.read_csv(filename, sep="\t", header=0)
+    data = data.replace("NaN", np.nan)
+    data = data.replace("Filtered", np.nan)
+    data = data.map(convert_to_float)
 
-        colnames = data.columns.values.tolist()
-        table = []
-        for name in colnames:
-            namelist = [name, ""]
-            table.append(namelist)
-        tp_tables[filename] = table
-        tp_indata[filename] = data
-        tp_pos[filename] = []
-        tp_identifiers[filename] = []
-        tp_refreshtable(window, table)
+    rows_with_float = data.map(is_float).any(axis=1)
+    data = data[rows_with_float]
+
+    colnames = data.columns.values.tolist()
+    table = []
+    for name in colnames:
+        namelist = [name, ""]
+        table.append(namelist)
+    tp_tables[filename] = table
+    tp_indata[filename] = data
+    tp_pos[filename] = []
+    tp_identifiers[filename] = []
+    tp_refreshtable(window, table)
 
 
-def tp_remove(values, window, tp_paths, tp_tables):
+def tp_remove_dataset(values, window, tp_paths, tp_tables):
+    """Remove a total proteome dataset."""
     sure = sg.popup_yes_no("Remove data from list?")
     if sure != "Yes":
         return
@@ -2271,7 +2300,8 @@ def tp_remove(values, window, tp_paths, tp_tables):
     window["-tp_path-"].update(values=tp_paths, value=curr)
 
 
-def tp_defrem(values, window, tp_tables):
+def tp_remove_row(values, window, tp_tables):
+    """Remove a row from the total proteome data table."""
     path = values["-tp_path-"]
     selected = values["-tp_table-"]
     table = tp_tables[path]
@@ -2279,20 +2309,20 @@ def tp_defrem(values, window, tp_tables):
         del table[index]
     tp_tables[path] = table
     window["-tp_table-"].update(values=tp_tables[path])
-    return
 
 
-def tp_defkeep(values, window, tp_tables):
+def tp_set_keep(values, window, tp_tables):
+    """Set a total proteome row to [KEEP]."""
     path = values["-tp_path-"]
     table = tp_tables[path]
     for pos in values["-tp_table-"]:
         table[pos][1] = "[KEEP]"
     tp_tables[path] = table
     window["-tp_table-"].update(values=tp_tables[path])
-    return
 
 
 def tp_set_condition(values, window, tp_tables):
+    """Set the condition of the selected total proteome rows."""
     if values["-tp_table-"]:
         path = values["-tp_path-"]
         table = tp_tables[path]
@@ -2307,6 +2337,7 @@ def tp_set_condition(values, window, tp_tables):
 
 
 def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
+    """Set the identifier of the selected total proteome row."""
     pos = values["-tp_table-"]
     if pos:
         if len(pos) > 1:
@@ -2469,12 +2500,14 @@ def marker_remove(window, values, marker_sets):
 
 
 def marker_setkey(values, marker_sets):
+    """Set the identifier column for the selected marker list."""
     marker_filename = values["-marker_list-"][0]
     marker_set = marker_sets[marker_filename]
     marker_set["identifier_col"] = values["-marker_key-"]
 
 
 def marker_setclass(values, marker_sets):
+    """Set the class column for the selected marker list."""
     marker_filename = values["-marker_list-"][0]
     marker_set = marker_sets[marker_filename]
 
@@ -2482,13 +2515,14 @@ def marker_setclass(values, marker_sets):
     marker_set["classes"] = list(
         set(marker_set["table"][values["-marker_class-"]])
     )
-    marker_conv = create_conversion(marker_sets)
+    marker_conv = create_identity_conversion(marker_sets)
     return marker_conv
 
 
-def create_conversion(
+def create_identity_conversion(
     marker_sets: dict[str, dict[str, Any]],
 ) -> dict[str, str]:
+    """Create dummy conversion dictionary for classes."""
     marker_conv = {}
     for marker_set in marker_sets.values():
         for classname in marker_set["classes"]:
@@ -2686,11 +2720,12 @@ def session_open(window, values, filename, model: SessionModel):
 #     return markerset_final
 
 
-def create_markerprofiles(fract_data, key, fract_info, marker_list):
+def create_markerprofiles(fract_data, key: str, fract_info, marker_list):
     profiles = {}
-    profiles_vis = {}
     for condition in fract_data["class"]:
         profiles[condition] = copy.deepcopy(fract_data["class"][condition])
+
+    profiles_vis = {}
     for condition in fract_data["vis"]:
         profiles_vis[condition] = copy.deepcopy(fract_data["vis"][condition])
 
@@ -2794,12 +2829,10 @@ def create_markerprofiles(fract_data, key, fract_info, marker_list):
         #     print('check6')
         #     fract_test[condition] = fract_test[condition][fract_test[condition]['class'].isna()]
 
-    classnames = {}
-    for condition in profiles:
-        classnames[condition] = []
-        for classname in list(set(fract_marker[condition]["class"].tolist())):
-            classnames[condition].append(classname)
-
+    classnames = {
+        condition: list(fract_marker[condition]["class"].unique())
+        for condition in profiles
+    }
     return fract_marker, fract_marker_vis, fract_test, classnames
 
 
@@ -3253,7 +3286,6 @@ def enable_markersettings(window, is_enabled):
         window["-status_marker-"].update(
             value="ready!", text_color="dark green"
         )
-    return
 
 
 # data_up = data_learning
@@ -3309,45 +3341,22 @@ def enable_markersettings(window, is_enabled):
 
 
 def refresh_window(window: sg.Window, status: SessionStatusModel):
-    for element in ["-fractionation_reset-", "-fractionation_summary-"]:
-        window[element].update(disabled=not status.fractionation_data)
-    for element in [
-        "-fractionation_add-",
-        "-fractionation_remove-",
-        "-fractionation_edit_remove-",
-        "-fractionation_edit_keep-",
-        "-fractionation_edit_condition-",
-        "-fractionation_edit_replicate-",
-        "-fractionation_edit_fractions-",
-        "-fractionation_edit_identifier-",
-        "-fractionation_parameters-",
-        "-fractionation_start-",
-    ]:
-        window[element].update(disabled=status.fractionation_data)
-
-    for element in ["-tp_reset-", "-tp_summary-", "-tp_export-"]:
-        window[element].update(disabled=not status.tp_data)
-    for element in [
-        "-tp_add-",
-        "-tp_remove-",
-        "-tp_edit_remove-",
-        "-tp_edit_keep-",
-        "-tp_edit_condition-",
-        "-tp_edit_identifier-",
-        "-tp_parameters-",
-        "-tp_start-",
-    ]:
-        window[element].update(disabled=status.tp_data)
+    """Update the window based on the current session status."""
+    fract_buttons(window, status.fractionation_data)
+    tp_buttons(window, status.tp_data)
 
     for element in ["-marker_remove-", "-marker_manage-", "-marker_accept-"]:
         if status.marker_matched:
             window[element].update(disabled=True)
         else:
             window[element].update(disabled=not status.marker_file)
+
     for element in ["-marker_test-", "-marker_profiles-"]:
         window[element].update(disabled=not status.marker_file)
+
     for element in ["-marker_reset-"]:
         window[element].update(disabled=not status.marker_matched)
+
     for element in ["-marker_add-", "-marker_parameters-", "-marker_preset-"]:
         window[element].update(disabled=status.marker_matched)
 
@@ -3358,18 +3367,22 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
         window["-status_fract-"].update("ready", text_color="dark green")
     else:
         window["-status_fract-"].update("none", text_color="black")
+
     if status.tp_data:
         window["-status_tp-"].update("ready", text_color="dark green")
     else:
         window["-status_tp-"].update("none", text_color="black")
+
     if status.lipidome_data:
         window["-status_fract_lipid-"].update("ready", text_color="dark green")
     else:
         window["-status_fract_lipid-"].update("none", text_color="black")
+
     if status.marker_matched:
         window["-status_marker-"].update("ready", text_color="dark green")
     else:
         window["-status_marker-"].update("none", text_color="black")
+
     if status.lipidome_total:
         window["-status_total_lipid-"].update("ready", text_color="dark green")
     else:
@@ -3387,6 +3400,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
     if status.training:
         for element in ["-statistic_predict-"]:
             window[element].update(disabled=status.proteome_prediction)
+
         for element in [
             "-statistic_export-",
             "-statistic_report-",
@@ -3399,6 +3413,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
         if status.proteome_prediction:
             for element in ["-global_run-"]:
                 window[element].update(disabled=status.comparison_global)
+
             for element in [
                 "-global_heatmap-",
                 "-global_distance-",
@@ -3410,6 +3425,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
             if status.comparison_global and status.tp_data:
                 for element in ["-class_run-"]:
                     window[element].update(disabled=status.comparison_class)
+
                 for element in [
                     "-class_heatmap-",
                     "-class_reorganization-",
@@ -3434,6 +3450,7 @@ def refresh_window(window: sg.Window, status: SessionStatusModel):
                         window[element].update(
                             disabled=status.lipidome_prediction
                         )
+
                     for element in [
                         "-lipidome_report-",
                         "-lipidome_reset-",
