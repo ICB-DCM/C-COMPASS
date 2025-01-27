@@ -1254,11 +1254,10 @@ class MainController:
 
                     self.model.status.tp_data = False
                     if self.model.status.comparison_class:
-                        self.model.results, self.model.comparison = (
-                            MOA.class_reset(
-                                self.model.results, self.model.comparison
-                            )
+                        MOA.class_reset(
+                            self.model.results, self.model.comparison
                         )
+
                         self.model.status.comparison_class = False
             elif event == "-tp_start-":
                 if self.model.tp_paths:
