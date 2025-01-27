@@ -197,7 +197,7 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
 def create_total_proteome_tab(tp_paths) -> sg.Tab:
     """Create the "Total Proteome" tab."""
 
-    layout_TP = [
+    layout = [
         [
             sg.Button(
                 "Add file...",
@@ -356,14 +356,14 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
 
     return sg.Tab(
         " - TotalProteomes - ",
-        layout_TP,
+        layout,
         key="-total_tab-",
         expand_x=True,
         expand_y=True,
     )
 
 
-def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
+def create_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
     """Create the "Data Import" frame."""
 
     # The fractionation tab
@@ -418,8 +418,241 @@ def get_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
     )
 
 
-def get_spatial_prediction_frame() -> sg.Frame:
+def create_spatial_prediction_frame() -> sg.Frame:
     """Create the "Spatial Prediction" frame."""
+    static_statistics_frame = sg.Frame(
+        layout=[
+            [
+                sg.Frame(
+                    layout=[
+                        [
+                            sg.Button(
+                                "Predict Proteome!",
+                                size=(32, 1),
+                                key="-statistic_predict-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="dark blue",
+                            )
+                        ],
+                        [sg.HSep()],
+                        [
+                            sg.Button(
+                                "Export Prediction",
+                                size=(15, 1),
+                                key="-statistic_export-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="black",
+                            ),
+                            sg.Button(
+                                "Import Prediction",
+                                size=(15, 1),
+                                key="-statistic_import-",
+                                disabled=False,
+                                enable_events=True,
+                                button_color="black",
+                            ),
+                        ],
+                        [sg.HSep()],
+                        [sg.VPush()],
+                        [
+                            sg.Button(
+                                "Report...",
+                                size=(15, 1),
+                                key="-statistic_report-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="grey",
+                            ),
+                            sg.Button(
+                                "Reset",
+                                size=(15, 1),
+                                key="-statistic_reset-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="dark red",
+                            ),
+                        ],
+                        [
+                            sg.Button(
+                                "Static Heatmap",
+                                size=(15, 1),
+                                key="-statistic_heatmap-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                            sg.Button(
+                                "Distribution Plots",
+                                size=(15, 1),
+                                key="-statistic_distribution-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                        ],
+                    ],
+                    title="Proteome",
+                    size=(280, 195),
+                ),
+                sg.Frame(
+                    layout=[
+                        [
+                            sg.Button(
+                                "Predict Lipidome!",
+                                size=(32, 1),
+                                key="-lipidome_predict-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="dark blue",
+                            )
+                        ],
+                        [sg.VPush()],
+                        [sg.HSep()],
+                        [
+                            sg.Button(
+                                "Report...",
+                                size=(15, 1),
+                                key="-lipidome_report-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="grey",
+                            ),
+                            sg.Button(
+                                "Reset",
+                                size=(15, 1),
+                                key="-lipidome_reset-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="dark red",
+                            ),
+                        ],
+                        [
+                            sg.Button(
+                                "Heatmap",
+                                size=(15, 1),
+                                key="-lipidome_heatmap-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                            sg.Button(
+                                "Reorganization Plot",
+                                size=(15, 1),
+                                key="-lipidome_reorganization-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                        ],
+                        [
+                            sg.Button(
+                                "Density Plot",
+                                size=(15, 1),
+                                key="-lipidome_density-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                            sg.Button(
+                                "Class Compositions",
+                                size=(15, 1),
+                                key="-lipidome_composition-",
+                                disabled=True,
+                                enable_events=True,
+                            ),
+                        ],
+                    ],
+                    title="Lipidome",
+                    size=(290, 195),
+                    visible=False,
+                ),
+            ],
+        ],
+        title="Static Statistics",
+        size=(580, 230),
+    )
+    status_column = sg.Column(
+        [
+            [
+                sg.Text("Prot. Fractionation:"),
+                sg.Push(),
+                sg.Text(
+                    "none",
+                    key="-status_fract-",
+                    text_color="black",
+                ),
+            ],  # or: 'ready'
+            [
+                sg.Text("Total Proteome:"),
+                sg.Push(),
+                sg.Text(
+                    "none",
+                    key="-status_tp-",
+                    text_color="black",
+                ),
+            ],  # or: 'ready'
+            [
+                sg.Text("Marker Proteins:"),
+                sg.Push(),
+                sg.Text(
+                    "none",
+                    key="-status_marker-",
+                    text_color="black",
+                ),
+            ],  # or: 'ready'
+            [
+                sg.Text("Lipidome Fractionation:"),
+                sg.Push(),
+                sg.Text(
+                    "none",
+                    key="-status_fract_lipid-",
+                    text_color="black",
+                ),
+            ],
+            [
+                sg.Text("Total Lipidome:"),
+                sg.Push(),
+                sg.Text(
+                    "none",
+                    key="-status_total_lipid-",
+                    text_color="black",
+                ),
+            ],
+        ],
+        size=(240, 180),
+    )
+    additional_import_frame = sg.Frame(
+        layout=[
+            [
+                sg.Text("Data Type:"),
+                sg.Push(),
+                sg.Combo(
+                    [
+                        "Lipidomics",
+                    ],
+                    default_value="Lipidomics",
+                    size=(15, 1),
+                    readonly=True,
+                ),
+            ],
+            [sg.HSep()],
+            [sg.VPush()],
+            [
+                sg.Button(
+                    "Import/Edit Fractionation...",
+                    size=(39, 1),
+                )
+            ],
+            [
+                sg.Button(
+                    "Import/Edit Total Lysate...",
+                    size=(39, 1),
+                )
+            ],
+        ],
+        title="Additional Import",
+        size=(340, 130),
+        vertical_alignment="top",
+        visible=False,
+    )
+
     return sg.Frame(
         layout=[
             [
@@ -457,92 +690,7 @@ def get_spatial_prediction_frame() -> sg.Frame:
                 ),
             ],
             [sg.HSep()],
-            [
-                sg.Column(
-                    [
-                        [
-                            sg.Text("Prot. Fractionation:"),
-                            sg.Push(),
-                            sg.Text(
-                                "none",
-                                key="-status_fract-",
-                                text_color="black",
-                            ),
-                        ],  # or: 'ready'
-                        [
-                            sg.Text("Total Proteome:"),
-                            sg.Push(),
-                            sg.Text(
-                                "none",
-                                key="-status_tp-",
-                                text_color="black",
-                            ),
-                        ],  # or: 'ready'
-                        [
-                            sg.Text("Marker Proteins:"),
-                            sg.Push(),
-                            sg.Text(
-                                "none",
-                                key="-status_marker-",
-                                text_color="black",
-                            ),
-                        ],  # or: 'ready'
-                        [
-                            sg.Text("Lipidome Fractionation:"),
-                            sg.Push(),
-                            sg.Text(
-                                "none",
-                                key="-status_fract_lipid-",
-                                text_color="black",
-                            ),
-                        ],
-                        [
-                            sg.Text("Total Lipidome:"),
-                            sg.Push(),
-                            sg.Text(
-                                "none",
-                                key="-status_total_lipid-",
-                                text_color="black",
-                            ),
-                        ],
-                    ],
-                    size=(240, 180),
-                ),
-                sg.Frame(
-                    layout=[
-                        [
-                            sg.Text("Data Type:"),
-                            sg.Push(),
-                            sg.Combo(
-                                [
-                                    "Lipidomics",
-                                ],
-                                default_value="Lipidomics",
-                                size=(15, 1),
-                                readonly=True,
-                            ),
-                        ],
-                        [sg.HSep()],
-                        [sg.VPush()],
-                        [
-                            sg.Button(
-                                "Import/Edit Fractionation...",
-                                size=(39, 1),
-                            )
-                        ],
-                        [
-                            sg.Button(
-                                "Import/Edit Total Lysate...",
-                                size=(39, 1),
-                            )
-                        ],
-                    ],
-                    title="Additional Import",
-                    size=(340, 130),
-                    vertical_alignment="top",
-                    visible=False,
-                ),
-            ],
+            [status_column, additional_import_frame],
             # [sg.Frame(layout = [
             #     [sg.Button('calculate full static Statistics', size = (25,1), key = '-classification_statistics-', disabled = True, enable_events = True, button_color = 'dark blue'),
             #      sg.Text('(TP required!)', font = ('Helvetica', 8)),
@@ -557,156 +705,7 @@ def get_spatial_prediction_frame() -> sg.Frame:
             #     [sg.Text('missing', key = '-status_comparison-')],
             #     ], title = 'Statistics', size = (590,150))],
             [sg.VPush()],
-            [
-                sg.Frame(
-                    layout=[
-                        [
-                            sg.Frame(
-                                layout=[
-                                    [
-                                        sg.Button(
-                                            "Predict Proteome!",
-                                            size=(32, 1),
-                                            key="-statistic_predict-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="dark blue",
-                                        )
-                                    ],
-                                    [sg.HSep()],
-                                    [
-                                        sg.Button(
-                                            "Export Prediction",
-                                            size=(15, 1),
-                                            key="-statistic_export-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="black",
-                                        ),
-                                        sg.Button(
-                                            "Import Prediction",
-                                            size=(15, 1),
-                                            key="-statistic_import-",
-                                            disabled=False,
-                                            enable_events=True,
-                                            button_color="black",
-                                        ),
-                                    ],
-                                    [sg.HSep()],
-                                    [sg.VPush()],
-                                    [
-                                        sg.Button(
-                                            "Report...",
-                                            size=(15, 1),
-                                            key="-statistic_report-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="grey",
-                                        ),
-                                        sg.Button(
-                                            "Reset",
-                                            size=(15, 1),
-                                            key="-statistic_reset-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="dark red",
-                                        ),
-                                    ],
-                                    [
-                                        sg.Button(
-                                            "Static Heatmap",
-                                            size=(15, 1),
-                                            key="-statistic_heatmap-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                        sg.Button(
-                                            "Distribution Plots",
-                                            size=(15, 1),
-                                            key="-statistic_distribution-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                    ],
-                                ],
-                                title="Proteome",
-                                size=(280, 195),
-                            ),
-                            sg.Frame(
-                                layout=[
-                                    [
-                                        sg.Button(
-                                            "Predict Lipidome!",
-                                            size=(32, 1),
-                                            key="-lipidome_predict-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="dark blue",
-                                        )
-                                    ],
-                                    [sg.VPush()],
-                                    [sg.HSep()],
-                                    [
-                                        sg.Button(
-                                            "Report...",
-                                            size=(15, 1),
-                                            key="-lipidome_report-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="grey",
-                                        ),
-                                        sg.Button(
-                                            "Reset",
-                                            size=(15, 1),
-                                            key="-lipidome_reset-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="dark red",
-                                        ),
-                                    ],
-                                    [
-                                        sg.Button(
-                                            "Heatmap",
-                                            size=(15, 1),
-                                            key="-lipidome_heatmap-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                        sg.Button(
-                                            "Reorganization Plot",
-                                            size=(15, 1),
-                                            key="-lipidome_reorganization-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                    ],
-                                    [
-                                        sg.Button(
-                                            "Density Plot",
-                                            size=(15, 1),
-                                            key="-lipidome_density-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                        sg.Button(
-                                            "Class Compositions",
-                                            size=(15, 1),
-                                            key="-lipidome_composition-",
-                                            disabled=True,
-                                            enable_events=True,
-                                        ),
-                                    ],
-                                ],
-                                title="Lipidome",
-                                size=(290, 195),
-                                visible=False,
-                            ),
-                        ],
-                    ],
-                    title="Static Statistics",
-                    size=(580, 230),
-                )
-            ],
+            [static_statistics_frame],
         ],
         title="Spatial Prediction",
         size=(600, 480),
@@ -715,78 +714,80 @@ def get_spatial_prediction_frame() -> sg.Frame:
     )
 
 
-def get_marker_selection_frame() -> sg.Frame:
+def create_marker_selection_frame() -> sg.Frame:
     """Create the "Marker Selection" frame."""
-    return sg.Frame(
+    import_frame = sg.Frame(
         layout=[
             [
-                sg.Frame(
+                sg.Listbox(
+                    values=[],
+                    size=(40, 4),
+                    key="-marker_list-",
+                    disabled=False,
+                    enable_events=True,
+                    horizontal_scroll=True,
+                )
+            ],
+            [
+                sg.Column(
                     layout=[
                         [
-                            sg.Listbox(
-                                values=[],
-                                size=(40, 4),
-                                key="-marker_list-",
+                            sg.Button(
+                                "Add...",
+                                size=(7, 1),
+                                key="-marker_add-",
                                 disabled=False,
                                 enable_events=True,
-                                horizontal_scroll=True,
                             )
                         ],
                         [
-                            sg.Column(
-                                layout=[
-                                    [
-                                        sg.Button(
-                                            "Add...",
-                                            size=(7, 1),
-                                            key="-marker_add-",
-                                            disabled=False,
-                                            enable_events=True,
-                                        )
-                                    ],
-                                    [
-                                        sg.Button(
-                                            "Remove",
-                                            size=(7, 1),
-                                            key="-marker_remove-",
-                                            disabled=True,
-                                            enable_events=True,
-                                            button_color="dark red",
-                                        )
-                                    ],
-                                ],
-                                size=(72, 70),
+                            sg.Button(
+                                "Remove",
+                                size=(7, 1),
+                                key="-marker_remove-",
+                                disabled=True,
+                                enable_events=True,
+                                button_color="dark red",
+                            )
+                        ],
+                    ],
+                    size=(72, 70),
+                ),
+                sg.Column(
+                    layout=[
+                        [
+                            sg.Text("key column:\t"),
+                            sg.Combo(
+                                [],
+                                size=(10, 1),
+                                key="-marker_key-",
+                                enable_events=True,
+                                readonly=True,
                             ),
-                            sg.Column(
-                                layout=[
-                                    [
-                                        sg.Text("key column:\t"),
-                                        sg.Combo(
-                                            [],
-                                            size=(10, 1),
-                                            key="-marker_key-",
-                                            enable_events=True,
-                                            readonly=True,
-                                        ),
-                                    ],
-                                    [
-                                        sg.Text("class column:\t"),
-                                        sg.Combo(
-                                            [],
-                                            size=(10, 1),
-                                            key="-marker_class-",
-                                            enable_events=True,
-                                            readonly=True,
-                                        ),
-                                    ],
-                                ],
-                                size=(220, 70),
+                        ],
+                        [
+                            sg.Text("class column:\t"),
+                            sg.Combo(
+                                [],
+                                size=(10, 1),
+                                key="-marker_class-",
+                                enable_events=True,
+                                readonly=True,
                             ),
                         ],
                     ],
-                    title="Import",
-                    size=(320, 190),
+                    size=(220, 70),
                 ),
+            ],
+        ],
+        title="Import",
+        size=(320, 190),
+    )
+
+    return sg.Frame(
+        layout=[
+            [
+                import_frame,
                 sg.Column(
                     layout=[
                         [
@@ -878,118 +879,115 @@ def get_marker_selection_frame() -> sg.Frame:
     )
 
 
-def get_conditional_comparison_frame() -> sg.Frame:
+def create_conditional_comparison_frame() -> sg.Frame:
     """Create the "Conditional Comparison" frame."""
-    return sg.Frame(
+    global_changes_frame = sg.Frame(
+        layout=[
+            # [sg.Text('Statistics required!')],
+            [
+                sg.Button(
+                    "Calculate global Changes!",
+                    size=(32, 1),
+                    key="-global_run-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="dark blue",
+                )
+            ],
+            [sg.HSep()],
+            [
+                sg.Button(
+                    "Change Heatmap",
+                    size=(15, 1),
+                    key="-global_heatmap-",
+                    disabled=True,
+                    enable_events=True,
+                ),
+                sg.Button(
+                    "Distance Plot",
+                    size=(15, 1),
+                    key="-global_distance-",
+                    disabled=True,
+                    enable_events=True,
+                ),
+            ],
+            [
+                sg.Button(
+                    "Report...",
+                    size=(15, 1),
+                    key="-global_report-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="grey",
+                ),
+                sg.Button(
+                    "Reset",
+                    size=(15, 1),
+                    key="-global_reset-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="dark red",
+                ),
+            ],
+        ],
+        title="Global Changes",
+        size=(290, 190),
+    )
+    class_centric_changes_frame = sg.Frame(
         layout=[
             [
-                sg.Frame(
-                    layout=[
-                        # [sg.Text('Statistics required!')],
-                        [
-                            sg.Button(
-                                "Calculate global Changes!",
-                                size=(32, 1),
-                                key="-global_run-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="dark blue",
-                            )
-                        ],
-                        [sg.HSep()],
-                        [
-                            sg.Button(
-                                "Change Heatmap",
-                                size=(15, 1),
-                                key="-global_heatmap-",
-                                disabled=True,
-                                enable_events=True,
-                            ),
-                            sg.Button(
-                                "Distance Plot",
-                                size=(15, 1),
-                                key="-global_distance-",
-                                disabled=True,
-                                enable_events=True,
-                            ),
-                        ],
-                        [
-                            sg.Button(
-                                "Report...",
-                                size=(15, 1),
-                                key="-global_report-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="grey",
-                            ),
-                            sg.Button(
-                                "Reset",
-                                size=(15, 1),
-                                key="-global_reset-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="dark red",
-                            ),
-                        ],
-                    ],
-                    title="Global Changes",
-                    size=(290, 190),
+                sg.Button(
+                    "Calculate class-centric Changes!",
+                    size=(32, 1),
+                    key="-class_run-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="dark blue",
+                )
+            ],
+            [sg.HSep()],
+            [
+                sg.Button(
+                    "Class Heatmaps",
+                    size=(15, 1),
+                    key="-class_heatmap-",
+                    disabled=True,
+                    enable_events=True,
+                    visible=False,
                 ),
-                sg.Frame(
-                    layout=[
-                        [
-                            sg.Button(
-                                "Calculate class-centric Changes!",
-                                size=(32, 1),
-                                key="-class_run-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="dark blue",
-                            )
-                        ],
-                        [sg.HSep()],
-                        [
-                            sg.Button(
-                                "Class Heatmaps",
-                                size=(15, 1),
-                                key="-class_heatmap-",
-                                disabled=True,
-                                enable_events=True,
-                                visible=False,
-                            ),
-                            sg.Button(
-                                "Class Reorg. Plots",
-                                size=(15, 1),
-                                key="-class_reorganization-",
-                                disabled=True,
-                                enable_events=True,
-                                visible=False,
-                            ),
-                        ],
-                        [
-                            sg.Button(
-                                "Report...",
-                                size=(15, 1),
-                                key="-class_report-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="grey",
-                            ),
-                            sg.Button(
-                                "Reset",
-                                size=(15, 1),
-                                key="-class_reset-",
-                                disabled=True,
-                                enable_events=True,
-                                button_color="dark red",
-                            ),
-                        ],
-                    ],
-                    title="Class-centric Changes",
-                    size=(290, 190),
+                sg.Button(
+                    "Class Reorg. Plots",
+                    size=(15, 1),
+                    key="-class_reorganization-",
+                    disabled=True,
+                    enable_events=True,
+                    visible=False,
                 ),
-            ]
+            ],
+            [
+                sg.Button(
+                    "Report...",
+                    size=(15, 1),
+                    key="-class_report-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="grey",
+                ),
+                sg.Button(
+                    "Reset",
+                    size=(15, 1),
+                    key="-class_reset-",
+                    disabled=True,
+                    enable_events=True,
+                    button_color="dark red",
+                ),
+            ],
         ],
+        title="Class-centric Changes",
+        size=(290, 190),
+    )
+    return sg.Frame(
+        layout=[[global_changes_frame, class_centric_changes_frame]],
         title="Conditional Comparison",
         size=(600, 220),
         expand_x=True,
@@ -1009,14 +1007,14 @@ def create_main_window(model: SessionModel) -> sg.Window:
     layout = [
         [sg.Menu(menu_def, tearoff=False)],
         [
-            get_data_import_frame(
+            create_data_import_frame(
                 fract_paths=model.fract_paths, tp_paths=model.tp_paths
             ),
-            get_spatial_prediction_frame(),
+            create_spatial_prediction_frame(),
         ],
         [
-            get_marker_selection_frame(),
-            get_conditional_comparison_frame(),
+            create_marker_selection_frame(),
+            create_conditional_comparison_frame(),
         ],
     ]
 
