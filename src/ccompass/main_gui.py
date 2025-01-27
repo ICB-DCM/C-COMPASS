@@ -2574,7 +2574,7 @@ def create_markerlist(
     for marker_set in marker_sets.values():
         id_col = marker_set["identifier_col"]
         class_col = marker_set["class_col"]
-        cur_df = marker_set["table"][[id_col, class_col]]
+        cur_df = marker_set["table"][[id_col, class_col]].copy()
         cur_df.rename(
             columns={
                 id_col: "name",

@@ -14,16 +14,48 @@ def test_create_markerlist():
             "identifier_col": "Genename",
             "table": pd.DataFrame(
                 {
-                    "Genename": ["AAGAB", "AAK1", "AARS1"],
+                    "Genename": [
+                        "AAGAB",
+                        "AAK1",
+                        "AARS1",
+                        "only_in_first",
+                        "mismatch",
+                    ],
                     "MarkerCompartment": [
                         "CYTOPLASM",
                         "PROTEIN - COMPLEX",
                         "CYTOPLASM",
+                        "PROTEIN - COMPLEX",
+                        "CYTOPLASM",
                     ],
-                    "ignored...": [np.nan, np.nan, np.nan],
+                    "ignored...": [np.nan] * 5,
                 }
             ),
-        }
+        },
+        "somefile2": {
+            "class_col": "MarkerCompartment",
+            "classes": ["PROTEIN - COMPLEX", "CYTOPLASM", "LYSOSOME"],
+            "identifier_col": "Genename",
+            "table": pd.DataFrame(
+                {
+                    "Genename": [
+                        "AAGAB",
+                        "AAK1",
+                        "AARS1",
+                        "only_in_second",
+                        "mismatch",
+                    ],
+                    "MarkerCompartment": [
+                        "CYTOPLASM",
+                        "PROTEIN - COMPLEX",
+                        "CYTOPLASM",
+                        "PROTEIN - COMPLEX",
+                        "PROTEIN - COMPLEX",
+                    ],
+                    "ignored...": [np.nan] * 5,
+                }
+            ),
+        },
     }
     marker_conv = {
         "PROTEIN - COMPLEX": "PROTEIN_COMPLEX",
@@ -31,12 +63,42 @@ def test_create_markerlist():
         "LYSOSOME": "LYSOSOME",
         "ignored...": np.nan,
     }
-    marker_params = {"how": "exclude", "what": "unite"}
-    markerlist = create_markerlist(marker_sets, marker_conv, **marker_params)
+
+    markerlist = create_markerlist(
+        marker_sets, marker_conv, what="unite", how="exclude"
+    )
     assert markerlist.to_dict() == {
         "class": {
             "AAGAB": "CYTOPLASM",
             "AAK1": "PROTEIN_COMPLEX",
             "AARS1": "CYTOPLASM",
+            "only_in_first": "PROTEIN_COMPLEX",
+            "only_in_second": "PROTEIN_COMPLEX",
+        }
+    }
+
+    markerlist = create_markerlist(
+        marker_sets, marker_conv, what="intersect", how="exclude"
+    )
+    assert markerlist.to_dict() == {
+        "class": {
+            "AAGAB": "CYTOPLASM",
+            "AAK1": "PROTEIN_COMPLEX",
+            "AARS1": "CYTOPLASM",
+        }
+    }
+
+    # FIXME: what to do in case of a tie and "majority"?
+    #  Currently, the first marker set wins.
+    marker_sets["somefile3"] = marker_sets["somefile2"].copy()
+    markerlist = create_markerlist(
+        marker_sets, marker_conv, what="intersect", how="majority"
+    )
+    assert markerlist.to_dict() == {
+        "class": {
+            "AAGAB": "CYTOPLASM",
+            "AAK1": "PROTEIN_COMPLEX",
+            "AARS1": "CYTOPLASM",
+            "mismatch": "PROTEIN_COMPLEX",
         }
     }
