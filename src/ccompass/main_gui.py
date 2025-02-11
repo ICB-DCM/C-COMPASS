@@ -402,11 +402,11 @@ def create_spatial_prediction_frame() -> sg.Frame:
                         [
                             sg.Button(
                                 "Predict Proteome!",
-                                size=(32, 1),
                                 key="-statistic_predict-",
                                 disabled=True,
                                 enable_events=True,
                                 button_color="dark blue",
+                                expand_x=True,
                             )
                         ],
                         [sg.HSep()],
@@ -725,7 +725,6 @@ def create_marker_selection_frame() -> sg.Frame:
                             )
                         ],
                     ],
-                    size=(72, 70),
                 ),
                 sg.Column(
                     layout=[
@@ -848,7 +847,6 @@ def create_marker_selection_frame() -> sg.Frame:
                             ),
                         ],
                     ],
-                    size=(280, 180),
                 ),
             ],
         ],
@@ -867,11 +865,11 @@ def create_conditional_comparison_frame() -> sg.Frame:
             [
                 sg.Button(
                     "Calculate global Changes!",
-                    size=(32, 1),
                     key="-global_run-",
                     disabled=True,
                     enable_events=True,
                     button_color="dark blue",
+                    expand_x=True,
                 )
             ],
             [sg.HSep()],
@@ -918,11 +916,11 @@ def create_conditional_comparison_frame() -> sg.Frame:
             [
                 sg.Button(
                     "Calculate class-centric Changes!",
-                    size=(32, 1),
                     key="-class_run-",
                     disabled=True,
                     enable_events=True,
                     button_color="dark blue",
+                    expand_x=True,
                 )
             ],
             [sg.HSep()],
