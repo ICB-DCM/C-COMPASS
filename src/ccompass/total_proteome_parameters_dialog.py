@@ -15,7 +15,7 @@ def _create_window(params_old) -> sg.Window:
     is_normal = params_old["imputation"] == "normal"
     is_constant = params_old["imputation"] == "constant"
 
-    layout_TPPM = [
+    layout = [
         [
             sg.Text("found in at least"),
             sg.Spin(
@@ -64,7 +64,7 @@ def _create_window(params_old) -> sg.Window:
         ],
     ]
 
-    return sg.Window("TP Parameters", layout_TPPM, size=(500, 100), modal=True)
+    return sg.Window("TP Parameters", layout, size=(500, 100), modal=True)
 
 
 def show_dialog(params_old) -> dict:
@@ -72,10 +72,10 @@ def show_dialog(params_old) -> dict:
     Show the total proteome parameters dialog.
     """
     tp_params = copy.deepcopy(params_old)
-    window_TPPM = _create_window(tp_params)
+    window = _create_window(tp_params)
 
     while True:
-        event, values = window_TPPM.read()
+        event, values = window.read()
 
         if event == sg.WIN_CLOSED or event == "--TPPM_cancel--":
             tp_params = params_old
@@ -86,12 +86,12 @@ def show_dialog(params_old) -> dict:
 
         if event == "--normal--":
             tp_params["imputation"] = "normal"
-            window_TPPM["--normal--"].update(value=True)
-            window_TPPM["--constant--"].update(value=False)
+            window["--normal--"].update(value=True)
+            window["--constant--"].update(value=False)
         elif event == "--constant--":
             tp_params["imputation"] = "constant"
-            window_TPPM["--constant--"].update(value=True)
-            window_TPPM["--normal--"].update(value=False)
+            window["--constant--"].update(value=True)
+            window["--normal--"].update(value=False)
 
-    window_TPPM.close()
+    window.close()
     return tp_params
