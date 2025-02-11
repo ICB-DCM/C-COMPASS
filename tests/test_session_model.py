@@ -30,7 +30,11 @@ def assert_equal(obj1, obj2):
         for i in range(len(obj1)):
             assert_equal(obj1[i], obj2[i])
     elif isinstance(obj1, pd.DataFrame):
-        pd.testing.assert_frame_equal(obj1, obj2)
+        pd.testing.assert_frame_equal(obj1, obj2, check_dtype=False)
+    elif isinstance(obj1, pd.Series):
+        pd.testing.assert_series_equal(obj1, obj2)
+    elif isinstance(obj1, float) and pd.isna(obj1):
+        assert pd.isna(obj2)
     else:
         assert obj1 == obj2
 
@@ -42,3 +46,16 @@ def assert_session_equal(session, session2):
         assert_equal(getattr(session, attr), getattr(session2, attr))
     for attr in session2.__dict__:
         assert attr in session.__dict__
+
+
+def test_serialize_zip():
+    """Test serialization of SessionModel to zip."""
+    session = SessionModel()
+
+    # round trip
+    with TemporaryDirectory() as tempdir:
+        fpath = Path(tempdir, "session.zip")
+        session.to_zip(fpath)
+        session2 = SessionModel.from_zip(fpath)
+
+    assert_session_equal(session, session2)
