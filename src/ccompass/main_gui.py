@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from . import MOA, RP, app_name, readthedocs_url, repository_url
+from ._gui_utils import wait_cursor
 from .core import (
     AppSettings,
     SessionModel,
@@ -1312,12 +1313,13 @@ class MainController:
                 self.model.reset_classification()
 
             elif event == "-statistic_predict-":
-                self.model.results = MOA.stats_proteome(
-                    self.model.learning_xyz,
-                    self.model.fract_data,
-                    self.model.fract_conditions,
-                    self.model.NN_params.reliability,
-                )
+                with wait_cursor(self.main_window):
+                    self.model.results = MOA.stats_proteome(
+                        self.model.learning_xyz,
+                        self.model.fract_data,
+                        self.model.fract_conditions,
+                        self.model.NN_params.reliability,
+                    )
                 self.model.status.proteome_prediction = True
 
             elif event == "-statistic_export-":
@@ -1363,10 +1365,11 @@ class MainController:
                 RP.RP_class_reorganization(self.model.comparison)
 
             elif event == "-global_run-":
-                self.model.comparison = MOA.global_comparison(
-                    self.model.results
-                )
-                self.model.status.comparison_global = True
+                with wait_cursor(self.main_window):
+                    self.model.comparison = MOA.global_comparison(
+                        self.model.results
+                    )
+                    self.model.status.comparison_global = True
 
             elif event == "-global_reset-":
                 self.model.reset_global_changes()
@@ -1591,23 +1594,24 @@ class MainController:
 
         from .MOP import MOP_exec
 
-        (
-            self.model.learning_xyz,
-            self.model.fract_full_up,
-            self.model.fract_marker_up,
-            self.model.fract_mixed_up,
-            self.model.fract_unmixed_up,
-            self.model.svm_marker,
-            self.model.svm_test,
-            self.model.svm_metrics,
-        ) = MOP_exec(
-            self.model.fract_full,
-            self.model.fract_marker,
-            self.model.fract_test,
-            stds,
-            self.model.NN_params,
-        )
-        self.model.status.training = True
+        with wait_cursor(self.main_window):
+            (
+                self.model.learning_xyz,
+                self.model.fract_full_up,
+                self.model.fract_marker_up,
+                self.model.fract_mixed_up,
+                self.model.fract_unmixed_up,
+                self.model.svm_marker,
+                self.model.svm_test,
+                self.model.svm_metrics,
+            ) = MOP_exec(
+                self.model.fract_full,
+                self.model.fract_marker,
+                self.model.fract_test,
+                stds,
+                self.model.NN_params,
+            )
+            self.model.status.training = True
 
     def _handle_import_prediction(self):
         filename = sg.popup_get_file(
