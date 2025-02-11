@@ -9,7 +9,6 @@ import keras_tuner as kt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from scipy import stats
 from sklearn import svm
 from sklearn.metrics import (
     accuracy_score,
@@ -56,8 +55,6 @@ def _create_classifier_hypermodel(
                     (self.set_shapes[0],),
                 )
             )
-            # units_init = np.shape(y_train_mixed_up)[1]
-            # model.add(tf.keras.Input(units_init,))
 
             # fixed or tunable hyperparameters
             if self.fixed_hp:
@@ -98,6 +95,7 @@ def _create_classifier_hypermodel(
                     raise ValueError(
                         f"Unknown optimization: {NN_params.NN_optimization}"
                     )
+
             # dense layer 1 with tunable size
             if NN_params.NN_activation == "relu":
                 model.add(keras.layers.Dense(units, activation="relu"))
@@ -313,9 +311,6 @@ def upsampling(
                     axis=0,
                     ignore_index=False,
                 )
-                # print(len(class_up))
-                # print(len(fract_marker_up[condition]['class']))
-                # print(fract_marker_up[condition])
                 fract_full_up[condition] = pd.concat(
                     [fract_full_up[condition], class_up],
                     axis=0,
@@ -329,75 +324,6 @@ def upsampling(
 def sum1_normalization(x):
     """Normalize the input to sum to 1."""
     return x / (ops.sum(x, axis=1, keepdims=True) + epsilon())
-
-
-def combine_rounds(data):
-    concatenated_df = pd.concat(list(data.values()), axis=0)
-
-    mean_df = concatenated_df.groupby(level=0).mean()
-    std_df = concatenated_df.groupby(level=0).std()
-
-    count_non_na = concatenated_df.groupby(level=0).apply(
-        lambda x: x.notna().sum()
-    )
-
-    count_df = pd.DataFrame(index=mean_df.index)
-    count_df["count"] = count_non_na.max(axis=1)
-
-    return mean_df, std_df, count_df
-
-
-def pairwise_t_test(
-    conditions_values, conditions_std, conditions_count, rounds, alpha=0.05
-):
-    significant_changes = []
-    num_conditions = len(conditions_values)
-
-    for i in range(num_conditions):
-        for j in range(i + 1, num_conditions):
-            values_df1, values_df2 = conditions_values[i], conditions_values[j]
-            std_df1, std_df2 = conditions_std[i], conditions_std[j]
-            count_df1, count_df2 = conditions_count[i], conditions_count[j]
-
-            common_indices = values_df1.index.intersection(values_df2.index)
-
-            for idx in common_indices:
-                for col in values_df1.columns:
-                    mean1, std1 = values_df1.at[idx, col], std_df1.at[idx, col]
-                    mean2, std2 = values_df2.at[idx, col], std_df2.at[idx, col]
-                    n1, n2 = (
-                        count_df1.at[idx, "count"] / rounds,
-                        count_df2.at[idx, "count"] / rounds,
-                    )
-
-                    t_stat, p_value = stats.ttest_ind_from_stats(
-                        mean1, std1, n1, mean2, std2, n2
-                    )
-
-                    if p_value < alpha:
-                        magnitude_of_change = mean1 - mean2
-                        significant_changes.append(
-                            (
-                                idx,
-                                col,
-                                f"Condition {i + 1} vs {j + 1}",
-                                t_stat,
-                                p_value,
-                                magnitude_of_change,
-                            )
-                        )
-
-    return pd.DataFrame(
-        significant_changes,
-        columns=[
-            "Index",
-            "Class",
-            "Comparison",
-            "T-Stat",
-            "P-Value",
-            "MagnitudeOfChange",
-        ],
-    )
 
 
 def MOP_exec(
@@ -434,9 +360,7 @@ def MOP_exec(
         learning_xyz[condition]["x_train_up"] = {}
         learning_xyz[condition]["Z_train_df"] = {}
         learning_xyz[condition]["Z_train"] = {}
-        # learning_xyz[condition]['Z_train_up_df'] = {}
         learning_xyz[condition]["Z_train_up"] = {}
-        # learning_xyz[condition]['V_full_up_df'] = {}
         learning_xyz[condition]["V_full_up"] = {}
         learning_xyz[condition]["x_train_mixed_up_df"] = {}
         learning_xyz[condition]["x_train_mixed_up"] = {}
@@ -444,21 +368,13 @@ def MOP_exec(
         learning_xyz[condition]["Z_train_mixed_up"] = {}
         learning_xyz[condition]["AE_summary"] = {}
         learning_xyz[condition]["AE_history"] = {}
-        # learning_xyz[condition]['v_full_df'] = {}
-        # learning_xyz[condition]['v_full'] = {}
-        # learning_xyz[condition]['v_full_up_df'] = {}
-        # learning_xyz[condition]['v_full_up'] = {}
         learning_xyz[condition]["y_full_df"] = {}
         learning_xyz[condition]["y_full"] = {}
-        # learning_xyz[condition]['y_full_up_df'] = {}
         learning_xyz[condition]["y_full_up"] = {}
         learning_xyz[condition]["y_train_df"] = {}
         learning_xyz[condition]["y_train"] = {}
-        # learning_xyz[condition]['y_train_up_df'] = {}
         learning_xyz[condition]["y_train_up"] = {}
-        # learning_xyz[condition]['y_train_mixed_up_df'] = {}
         learning_xyz[condition]["y_train_mixed_up"] = {}
-        # learning_xyz[condition]['y_test_df'] = {}
         learning_xyz[condition]["y_test"] = {}
         learning_xyz[condition]["FNN_summary"] = {}
         learning_xyz[condition]["FNN_history"] = {}
@@ -466,17 +382,9 @@ def MOP_exec(
         learning_xyz[condition]["z_full"] = {}
         learning_xyz[condition]["z_train_df"] = {}
         learning_xyz[condition]["z_train"] = {}
-        # learning_xyz[condition]['z_train_up_df'] = {}
-        # learning_xyz[condition]['z_train_up'] = {}
-        # learning_xyz[condition]['z_train_mixed_up_df'] = {}
-        # learning_xyz[condition]['z_train_mixed_up'] = {}
-        # learning_xyz[condition]['z_test_df'] = {}
-        # learning_xyz[condition]['z_test'] = {}
 
     for R in range(1, NN_params.rounds + 1):
         logger.info(f"Executing round {R}...")
-        # fract_full_up = copy.deepcopy(fract_full)
-        # fract_marker_up = copy.deepcopy(fract_marker_old)
 
         fract_full_up = {}
         fract_marker_up = {}
@@ -548,9 +456,6 @@ def MOP_exec(
                 fract_marker_filtered[condition] = fract_marker[condition][
                     rows_to_keep
                 ]
-                # fract_full_up = copy.deepcopy(fract_full)
-                # fract_marker_up = copy.deepcopy(fract_marker_old)
-                # fract_marker = copy.deepcopy(fract_marker_old)
                 fract_marker_up, fract_full_up = upsampling(
                     NN_params,
                     stds,
@@ -565,7 +470,7 @@ def MOP_exec(
         for condition in conditions:
             unmixed_dummies = pd.get_dummies(
                 fract_marker_up[condition]["class"]
-            )  # [learning_xyz[condition]['classes']]
+            )
             fract_unmixed_up[condition] = pd.concat(
                 [
                     fract_marker_up[condition].drop("class", axis=1),
@@ -579,8 +484,8 @@ def MOP_exec(
         else:
             fract_mixed_up = {}
             mix_steps = [
-                i / (NN_params.mixed_part)
-                for i in range(1, (NN_params.mixed_part))
+                i / NN_params.mixed_part
+                for i in range(1, NN_params.mixed_part)
             ]
             for condition in conditions:
                 fract_mixed_up = mix_profiles(
@@ -667,49 +572,6 @@ def MOP_exec(
                 FNN_classifier, learning_xyz, NN_params, condition, R
             )
 
-    # print('post-processing...')
-    # for condition in conditions:
-    #     print(condition)
-    #     learning_xyz[condition]['z_full_mean_df'], learning_xyz[condition]['z_full_std_df'], learning_xyz[condition]['n_full_df'] = combine_rounds(learning_xyz[condition]['z_full_df'])
-    #     learning_xyz[condition]['z_train_mean_df'], learning_xyz[condition]['z_train_std_df'], learning_xyz[condition]['n_train_df'] = combine_rounds(learning_xyz[condition]['z_train_df'])
-    #     learning_xyz[condition]['z_train_mixed_up_mean_df'], learning_xyz[condition]['z_train_mixed_up_std_df'], learning_xyz[condition]['n_train_mixed_up_df'] = combine_rounds(learning_xyz[condition]['z_train_mixed_up_df'])
-    #     learning_xyz[condition]['z_test_mean_df'], learning_xyz[condition]['z_test_std_df'], learning_xyz[condition]['n_test_df'] = combine_rounds(learning_xyz[condition]['z_test_df'])
-
-    #     learning_xyz[condition]['z_full_mean_filtered_df'] = learning_xyz[condition]['z_full_mean_df']
-    #     learning_xyz[condition]['z_train_mean_filtered_df'] = learning_xyz[condition]['z_train_mean_df']
-    #     learning_xyz[condition]['z_test_mean_filtered_df'] = learning_xyz[condition]['z_test_mean_df']
-    #     learning_xyz[condition]['Z_train_df'] = learning_xyz[condition]['Z_train_df'][~learning_xyz[condition]['Z_train_df'].index.duplicated(keep='first')]
-    #     for class_act in learning_xyz[condition]['classes']:
-    #         nonmarker_pred = learning_xyz[condition]['z_train_mean_df'].loc[learning_xyz[condition]['Z_train_df'][class_act] != 1]
-    #         thresh = np.percentile(nonmarker_pred[class_act].tolist(), NN_params['reliability'])
-    #         learning_xyz[condition]['z_full_mean_filtered_df'].loc[learning_xyz[condition]['z_full_mean_filtered_df'][class_act] < thresh, class_act] = 0.
-    #         learning_xyz[condition]['z_train_mean_filtered_df'].loc[learning_xyz[condition]['z_train_mean_filtered_df'][class_act] < thresh, class_act] = 0.
-    #         learning_xyz[condition]['z_test_mean_filtered_df'].loc[learning_xyz[condition]['z_test_mean_filtered_df'][class_act] < thresh, class_act] = 0.
-
-    # print('')
-    # print('making statistics...')
-    # prediction_train = []
-    # prediction_test = []
-    # std_train = []
-    # std_test = []
-    # count_train = []
-    # count_test = []
-    # for condition in conditions:
-    #     print(condition)
-    #     prediction_train.append(learning_xyz[condition]['z_train_mean_filtered_df'])
-    #     prediction_test.append(learning_xyz[condition]['z_test_mean_filtered_df'])
-    #     std_train.append(learning_xyz[condition]['z_train_std_df'])
-    #     std_test.append(learning_xyz[condition]['z_test_std_df'])
-    #     count_train.append(learning_xyz[condition]['n_train_df'])
-    #     count_test.append(learning_xyz[condition]['n_test_df'])
-
-    # print('testing significance...')
-    # significant_train = pairwise_t_test(prediction_train, std_train, count_train, NN_params['rounds'])
-    # significant_test = pairwise_t_test(prediction_test, std_test, count_test, NN_params['rounds'])
-    # print('DONE!')
-
-    # now = datetime.now()
-    # print(now.strftime("%Y%m%d%H%M%S"))
     return (
         learning_xyz,
         fract_full_up,
@@ -732,11 +594,9 @@ def multi_predictions(
     logger.info(f"Training classifier for condition {condition}...")
     y_full = learning_xyz[condition]["y_full"][f"ROUND_{roundn}_0"]
     y_train = learning_xyz[condition]["y_train"][f"ROUND_{roundn}_0"]
-    y_train_up = learning_xyz[condition]["y_train_up"][f"ROUND_{roundn}_0"]
     y_train_mixed_up = learning_xyz[condition]["y_train_mixed_up"][
         f"ROUND_{roundn}_0"
     ]
-    y_test = learning_xyz[condition]["y_test"][f"ROUND_{roundn}_0"]
 
     Z_train_mixed_up = learning_xyz[condition]["Z_train_mixed_up"][
         f"ROUND_{roundn}"
@@ -775,8 +635,6 @@ def multi_predictions(
     best_hp = FNN_tuner.get_best_hyperparameters(num_trials=1)[0].values
 
     FNN_ens = [FNN_best]
-    # FNN_ens[0] = copy.deepcopy(FNN_best)
-    # FNN_best.build(y_train_mixed_up.shape)
 
     stringlist = []
     FNN_best.summary(print_fn=lambda x: stringlist.append(x))
@@ -786,17 +644,11 @@ def multi_predictions(
 
     z_full = FNN_best.predict(y_full)
     z_train = FNN_best.predict(y_train)
-    z_train_up = FNN_best.predict(y_train_up)
-    z_train_mixed_up = FNN_best.predict(y_train_mixed_up)
-    z_test = FNN_best.predict(y_test)
 
     learning_xyz = add_Z(
         learning_xyz,
         z_full,
         z_train,
-        z_train_up,
-        z_train_mixed_up,
-        z_test,
         condition,
         roundn,
         0,
@@ -811,11 +663,9 @@ def multi_predictions(
         subround_id = f"ROUND_{roundn}_{subround}"
         y_full = learning_xyz[condition]["y_full"][subround_id]
         y_train = learning_xyz[condition]["y_train"][subround_id]
-        y_train_up = learning_xyz[condition]["y_train_up"][subround_id]
         y_train_mixed_up = learning_xyz[condition]["y_train_mixed_up"][
             subround_id
         ]
-        y_test = learning_xyz[condition]["y_test"][subround_id]
 
         fixed_model = FNN_classifier(
             fixed_hp=best_hp, set_shapes=set_shapes
@@ -831,17 +681,11 @@ def multi_predictions(
 
         z_full = fixed_model.predict(y_full)
         z_train = fixed_model.predict(y_train)
-        z_train_up = fixed_model.predict(y_train_up)
-        z_train_mixed_up = fixed_model.predict(y_train_mixed_up)
-        z_test = fixed_model.predict(y_test)
 
         learning_xyz = add_Z(
             learning_xyz,
             z_full,
             z_train,
-            z_train_up,
-            Z_train_mixed_up,
-            z_test,
             condition,
             roundn,
             subround,
@@ -854,9 +698,6 @@ def add_Z(
     learning_xyz,
     z_full,
     z_train,
-    z_train_up,
-    z_train_mixed_up,
-    z_test,
     condition,
     roundn: int,
     subroundn: int,
@@ -875,21 +716,6 @@ def add_Z(
         columns=learning_xyz[condition]["classes"],
     )
     learning_xyz[condition]["z_train"][subround_id] = z_train
-
-    # learning_xyz[condition]['z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_train_up,
-    #                                                                            index = learning_xyz[condition]['y_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
-    #                                                                            columns = learning_xyz[condition]['classes'])
-    # learning_xyz[condition]['z_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_train_up
-
-    # learning_xyz[condition]['z_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_train_mixed_up,
-    #                                                                                  index = learning_xyz[condition]['y_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
-    #                                                                                  columns = learning_xyz[condition]['classes'])
-    # learning_xyz[condition]['z_train_mixed_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_train_mixed_up
-
-    # learning_xyz[condition]['z_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(z_test,
-    #                                                                        index = learning_xyz[condition]['y_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].index,
-    #                                                                        columns = learning_xyz[condition]['classes'])
-    # learning_xyz[condition]['z_test']['ROUND_' + str(roundn) + '_' + str(subroundn)] = z_test
 
     return learning_xyz
 
@@ -912,8 +738,6 @@ def add_Y(
     )
     learning_xyz[condition]["y_full"][subround_id] = y_full
 
-    # learning_xyz[condition]['y_full_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_full_up,
-    #                                                                           index = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)].index)
     learning_xyz[condition]["y_full_up"][subround_id] = y_full_up
 
     learning_xyz[condition]["y_train_df"][subround_id] = pd.DataFrame(
@@ -921,16 +745,10 @@ def add_Y(
     )
     learning_xyz[condition]["y_train"][subround_id] = y_train
 
-    # learning_xyz[condition]['y_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_train_up,
-    #                                                                            index = learning_xyz[condition]['x_train_up_df']['ROUND_' + str(roundn)].index)
     learning_xyz[condition]["y_train_up"][subround_id] = y_train_up
 
-    # learning_xyz[condition]['y_train_mixed_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_train_mixed_up,
-    #                                                                                  index = learning_xyz[condition]['x_train_mixed_up_df']['ROUND_' + str(roundn)].index)
     learning_xyz[condition]["y_train_mixed_up"][subround_id] = y_train_mixed_up
 
-    # learning_xyz[condition]['y_test_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.DataFrame(y_test,
-    #                                                                        index = learning_xyz[condition]['x_test_df'].index)
     learning_xyz[condition]["y_test"][subround_id] = y_test
 
     return learning_xyz
@@ -1009,10 +827,6 @@ def create_learninglist(
     learning_xyz[condition]["Z_train"] = learning_xyz[condition][
         "Z_train_df"
     ].to_numpy(dtype=float)
-    # learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)] = pd.get_dummies(fract_marker_up[condition]['class'])[learning_xyz[condition]['classes']]
-    # learning_xyz[condition]['Z_train_up']['ROUND_' + str(roundn) + '_' + str(subroundn)] = learning_xyz[condition]['Z_train_up_df']['ROUND_' + str(roundn) + '_' + str(subroundn)].to_numpy(dtype = float)
-
-    # learning_xyz[condition]['V_full_up_df']['ROUND_' + str(roundn)] = learning_xyz[condition]['x_full_up_df']['ROUND_' + str(roundn)]
     learning_xyz[condition]["V_full_up"][round_id] = learning_xyz[condition][
         "x_full_up"
     ][round_id]
@@ -1041,12 +855,8 @@ def mix_profiles(
     ]
 
     fract_mixed_up[condition] = copy.deepcopy(fract_unmixed_up[condition])
-    # print(condition)
-    # print(fract_unmixed_up[condition])
-    # print(fract_mixed_up[condition])
 
     cur = 1
-    # print(fract_marker_up[condition])
     for comb in combinations:
         profiles_own = (
             fract_marker_up[condition]
@@ -1164,9 +974,4 @@ def single_prediction(
     learning_xyz["w_full_prob_df"][round_id]["SVM_prob"] = w_full_prob
 
     learning_xyz["w_train"][round_id] = w_train
-    # learning_xyz['w_train_prob']['ROUND_' + str(roundn)] = w_train_prob
-
-    # learning_xyz['w_test']['ROUND_' + str(roundn)] = w_test
-    # learning_xyz['w_test_prob']['ROUND_' + str(roundn)] = w_test_prob
-
     return svm_metrics, svm_marker, svm_test
