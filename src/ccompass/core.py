@@ -471,7 +471,7 @@ def write_class_changes_reports(
         df_out.columns = [
             col.replace(
                 "nCPA_imp_",
-                "nCPA_normalizedClasscentrigProteinAmount_",
+                "nCPA_normalizedClasscentricProteinAmount_",
             )
             if col.startswith("nCPA_")
             else "TPA_TotalProteinAmount"
