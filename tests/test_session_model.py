@@ -42,3 +42,16 @@ def assert_session_equal(session, session2):
         assert_equal(getattr(session, attr), getattr(session2, attr))
     for attr in session2.__dict__:
         assert attr in session.__dict__
+
+
+def test_serialize_zip():
+    """Test serialization of SessionModel to zip."""
+    session = SessionModel()
+
+    # round trip
+    with TemporaryDirectory() as tempdir:
+        fpath = Path(tempdir, "session.zip")
+        session.to_zip(fpath)
+        session2 = SessionModel.from_zip(fpath)
+
+    assert_session_equal(session, session2)
