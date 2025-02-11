@@ -84,7 +84,7 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
                 key="-fractionation_edit_keep-",
                 disabled=False,
                 enable_events=True,
-                button_color="dark grey",
+                button_color="grey",
                 tooltip=" Try to keep gene names! ",
             ),
             sg.Button(
@@ -256,7 +256,7 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
                 key="-tp_edit_keep-",
                 disabled=False,
                 enable_events=True,
-                button_color="dark grey",
+                button_color="grey",
                 tooltip=" Try to keep gene names! ",
             ),
             sg.Button(
