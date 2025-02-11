@@ -49,11 +49,6 @@ def launch_gui():
     controller = MainController(model=model)
     controller.run()
 
-    # import dill
-    # filepath = 'session.pkl'
-    # dill.dump_session(filepath) # Save the session
-    # dill.load_session(filepath) # Load the session
-
 
 if __name__ == "__main__":
     main()

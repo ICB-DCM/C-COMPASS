@@ -258,104 +258,6 @@ def list_samples(data, window, progress):
     return fracts_con, fracts_count, fracts_corr, progress
 
 
-def calculate_icorr(data, fracts_corr, protlist_con, window):
-    icorr = {}
-    icorr_mean = {}
-    for condition in data:
-        icorr_sub = pd.DataFrame(index=protlist_con[condition])
-        for replicate in data[condition]:
-            window["--status2--"].update(" ".join([condition, replicate]))
-            window.read(timeout=50)
-            repdata_own = data[condition][replicate]
-            for fract in repdata_own.columns:
-                prefix = fract[: fract.find("_")]
-                if prefix not in fracts_corr[condition]:
-                    repdata_own = repdata_own.drop([fract], axis=1)
-            correls = pd.DataFrame(index=protlist_con[condition])
-            for rep in data[condition]:
-                if not rep == replicate:
-                    repdata_other = data[condition][rep]
-                    for fract in repdata_other.columns:
-                        prefix = fract[: fract.find("_")]
-                        if prefix not in fracts_corr[condition]:
-                            repdata_other = repdata_other.drop([fract], axis=1)
-
-                    # for fract in repdata_own.columns:
-                    #     prefix = fract[:fract.find('_')]
-                    #     if not prefix in fracts_corr[condition]:
-                    #         repdata_own = repdata_own.drop([fract], axis = 1)
-
-                    correls[rep] = np.nan
-                    for ID in protlist_con[condition]:
-                        if (
-                            ID in repdata_own.index
-                            and ID in repdata_other.index
-                        ):
-                            profile_own = repdata_own.loc[ID].tolist()
-                            profile_other = repdata_other.loc[ID].tolist()
-                            # print(len(profile_own))
-                            # print(len(profile_other))
-                            corr = pearsonr(profile_own, profile_other)[0]
-                            correls[rep][ID] = corr
-            correls[replicate] = correls.mean(axis=1)
-            icorr_sub = pd.merge(
-                icorr_sub,
-                correls[replicate],
-                left_index=True,
-                right_index=True,
-                how="outer",
-            )
-
-        icorr[condition] = icorr_sub
-        icorr[condition].fillna(0.0, inplace=True)
-        icorr_mean[condition] = pd.DataFrame()
-        icorr_mean[condition]["InnerCorrelation_" + condition] = icorr[
-            condition
-        ].mean(axis=1)
-    return icorr, icorr_mean
-
-
-def filter_corr(data, protlist_con, mincount, icorr, window):
-    check_IDs = {}
-    for condition in data:
-        window["--status1--"].update(value="checking IDs...")
-        window["--status2--"].update(condition)
-        window.read(timeout=100)
-
-        corr_IDs = []
-        for ID in protlist_con[condition]:
-            count = 0
-            for replicate in data[condition]:
-                if ID in data[condition][replicate].index:
-                    count = count + 1
-            if count > mincount:
-                corr_IDs.append(ID)
-        check_IDs[condition] = corr_IDs
-
-    for condition in data:
-        window["--status1--"].update(
-            value="removing worst InnerCorrelations..."
-        )
-        window["--status2--"].update(condition)
-        window.read(timeout=100)
-        correls = icorr[condition]
-        for ID in check_IDs[condition]:
-            minrep = correls.idxmin(axis=1)[ID]
-            if ID in data[condition][minrep].index:
-                data[condition][minrep].drop(ID, axis=0, inplace=True)
-            # else:
-            # pass
-    return data
-
-
-def implement_icorr(protein_info, icorr_mean, window):
-    for condition in icorr_mean:
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
-        protein_info["InnerCorrelation_" + condition] = icorr_mean[condition]
-    return protein_info
-
-
 def combine_median_std(data, fracts_con, window, progress):
     data_median = {}
     data_std = {}
@@ -705,30 +607,6 @@ def start_fract_data_processing(
     fracts_con, fracts_count, fracts_corr, progress = list_samples(
         data_ways["class"], window, progress
     )
-
-    # #---------------------------------------------------------------------
-    # print('calculating inner correlations...')
-    # window['--status1--'].update(value = 'calculating InnerCorrelations...')
-    # event, values = window.read(timeout = 50)
-    # icorr, icorr_mean = calculate_icorr(data_ways['vis'], fracts_corr, proteins_remaining, window)
-
-    # #---------------------------------------------------------------------
-    # print('filtering by inner correlations...')
-    # window['--status1--'].update(value = 'filtering by InnerCorrelations...')
-    # event, values = window.read(timeout = 50)
-
-    # for way in data_ways:
-    #     if preparams[way]['corrfilter']:
-    #         data_ways[way] = filter_corr(data_ways[way], proteins_remaining, int(preparams['global']['minrep'][1]), icorr, window)
-    # intermediate_data['[5] class_f_corr'] = copy.deepcopy(data_ways['class'])
-    # intermediate_data['[5] vis_f_corr'] = copy.deepcopy(data_ways['vis'])
-
-    # #---------------------------------------------------------------------
-    # print('implement inner correlations...')
-    # window['--status1--'].update(value = 'implement InnerCorrelations...')
-    # event, values = window.read(timeout = 50)
-
-    # protein_info = implement_icorr(protein_info, icorr_mean, window)
 
     # ---------------------------------------------------------------------
     logger.info("combining data...")

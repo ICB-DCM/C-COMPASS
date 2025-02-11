@@ -182,7 +182,6 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
                             button_color="grey",
                         )
                     ],
-                    # [sg.Button('Fract. Export...', size = (15,1), key = '-fractionation_export-', disabled = True, enable_events = True, button_color = 'grey')],
                 ],
                 size=(140, 70),
             ),
@@ -199,7 +198,6 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
 
 def create_total_proteome_tab(tp_paths) -> sg.Tab:
     """Create the "Total Proteome" tab."""
-
     layout = [
         [
             sg.Button(
@@ -368,34 +366,6 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
 
 def create_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
     """Create the "Data Import" frame."""
-
-    # The fractionation tab
-
-    # layout_additional =     [[sg.Button('Add file...', size = (8,1), key = '-additional_add-', disabled = False, enable_events = True, button_color = 'grey'),
-    #                         sg.Combo((fract_paths), size=(58, 1), key = '-additional_path-', disabled = False, enable_events = True, readonly = True),
-    #                         sg.Button('Remove', size = (8,1), key = '-additional_remove-', disabled = False, enable_events = True, button_color = 'darkred')],
-    #                         [sg.Table(values = [], num_rows = 15, headings = ['Sample', 'Condition', 'Replicate', 'Fraction'], col_widths = [34,10,10,9], max_col_width = 20, key = '-additional_table-', auto_size_columns = False, vertical_scroll_only = False)],
-    #                         [sg.Button('Remove', size = (8,1), key = '-additional_edit_remove-', disabled = False, enable_events = True, button_color = 'dark red'),
-    #                          sg.Button('Keep', size = (8,1), key = '-additional_edit_keep-', disabled = False, enable_events = True, button_color = 'dark grey', tooltip = ' Try to keep gene names! '),
-    #                          sg.Button('Set Condition', size = (11,1), key = '-additional_edit_condition-', disabled = False, enable_events = True),
-    #                          sg.Button('Set Replicate', size = (11,1), key = '-additional_edit_replicate-', disabled = False, enable_events = True),
-    #                          sg.Button('Set Fractions', size = (11,1), key = '-additional_edit_fractions-', disabled = False, enable_events = True),
-    #                          sg.Button('Set Identifier', size = (11,1), key = '-additional_edit_identifier-', disabled = False, enable_events = True, button_color = 'grey', tooltip = ' If possible, use protein groups! ')],
-    #                         [sg.HSep()],
-    #                         [sg.Column([
-    #                              [sg.Button('Parameters...', size = (15,1), key = '-additional_parameters-', disabled = False, enable_events = True, button_color = 'black')],
-    #                              [sg.Button('Reset Add.', size = (15,1), key = '-additional_reset-', disabled = True, enable_events = True, button_color = 'dark red')],
-    #                              ], size = (140,70)),
-    #                          sg.Column([
-    #                              [sg.Button('Process Add.!', size = (30,1), key = '-additional_start-', disabled = False, enable_events = True, button_color = 'darkgreen')],
-    #                              [sg.Text('...ready!', font = ('Arial', 8), size = (40,1), key = '-additional_status-', visible = True, justification = 'center')],
-    #                              ], size = (260,70)),
-    #                          sg.Column([
-    #                              [sg.Button('Add. Summary', size = (15,1), key = '-additional_summary-', disabled = True, enable_events = True, button_color = 'grey')],
-    #                              [sg.Button('Add. Export...', size = (15,1), key = '-additional_export-', disabled = True, enable_events = True, button_color = 'grey')],
-    #                              ], size = (140,70))],
-    #                         ]
-
     return sg.Frame(
         layout=[
             [
@@ -694,19 +664,6 @@ def create_spatial_prediction_frame() -> sg.Frame:
             ],
             [sg.HSep()],
             [status_column, additional_import_frame],
-            # [sg.Frame(layout = [
-            #     [sg.Button('calculate full static Statistics', size = (25,1), key = '-classification_statistics-', disabled = True, enable_events = True, button_color = 'dark blue'),
-            #      sg.Text('(TP required!)', font = ('Helvetica', 8)),
-            #      sg.Button('rouch statistics', size =(14,1), key = '-classification_statistics_rough-', disabled = False, enable_events = True, button_color = 'grey'),
-            #      sg.Text('(w/o TP but biased!)', font = ('Helvetica', 8))],
-            #     [sg.Text('missing', key = '-status_statistics-')],
-            #     [sg.HSep()],
-            #     [sg.Button('calculate conditional Changes', size = (25,1), key = '-classification_comparison-', disabled = False, enable_events = True, button_color = 'dark blue'),
-            #      sg.Text('(TP required!)', font = ('Helvetica', 8)),
-            #      sg.Button('rough Comparison', size = (14,1), key = '-classification_comparison_rough-', disabled = False, enable_events = True, button_color = 'grey'),
-            #      sg.Text('(w/o TP but biased!)', font = ('Helvetica', 8))],
-            #     [sg.Text('missing', key = '-status_comparison-')],
-            #     ], title = 'Statistics', size = (590,150))],
             [sg.VPush()],
             [static_statistics_frame],
         ],
@@ -1063,12 +1020,7 @@ class MainController:
         # The event loop
         while True:
             event, values = self.main_window.read()
-            # refresh_window(window, status)
 
-            # if status['fractionation_data']:
-            #     window['-status_fract-'].update('ready')
-            # else:
-            #     window['-status_fract-'].update('missing')
             if event == sg.WIN_CLOSED or event == "Exit":
                 break
 
@@ -1146,13 +1098,10 @@ class MainController:
                 if sure == "Yes":
                     self.model.reset_fractionation()
                     fract_buttons(self.main_window, False)
-                    # window['-marker_fractkey-'].update(values = ['[IDENTIFIER]'] + list(fract_info))
-                    # enable_markersettings(window, True)
 
                     self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"], value=""
                     )
-                    # window['-classification_SVM-'].update(disabled = True)
             elif event == "-fractionation_start-":
                 if self.model.fract_paths:
                     from .FDP import FDP_exec
@@ -1179,16 +1128,12 @@ class MainController:
                     )
                     if self.model.fract_data["class"]:
                         self.model.status.fractionation_data = True
-                    #     fract_buttons(window, True)
                 else:
                     messagebox.showerror(
                         "No dataset!", "Please import a fractionation dataset."
                     )
             elif event == "-fractionation_summary-":
                 RP.RP_gradient_heatmap(self.model.fract_data)
-                # FSD.FSD_exec(fract_preparams, fract_data)
-            # if event == '-fractionation_export-':
-            #     fract_export(values_CCMPS, fract_data, fract_info)
 
             elif event == "-tp_add-":
                 tp_add_dataset(
@@ -1438,31 +1383,10 @@ class MainController:
                 MOA.class_reset(self.model.results, self.model.comparison)
                 self.model.status.comparison_class = False
 
-            # if event == '-classification_comparison-':
-            #     # results = MOP_stats.comp_exec(learning_xyz, results)
-            #     comparison = MOP_stats.comp_exec3('deep', results, learning_xyz)
-
-            # if event == '-classification_comparison_rough-':
-            #     comparison = MOP_stats.comp_exec3('rough', results, learning_xyz)
-
             elif event == "-export_statistics-":
                 self._handle_export_statistics()
             elif event == "-export_comparison-":
                 self._handle_export_comparison()
-            # if event == '-export_statistics-':
-            # path = sg.popup_get_folder('Select a folder')
-            # print(path)
-            # if fract_data['class']:
-            #     path = sg.FolderBrowse()
-            #     for condition in fract_data['class']:
-            #         df_export_stats = pd.merge(fract_data['class'][condition], fract_data['vis'][condition], left_index = True, right_index = True, how = 'outer')
-            #         df_export_stats = pd.merge(df_export_stats, results[condition]['metrics'], left_index = True, right_index = True, how = 'outer')
-            #         full_path = path+'/CCMPS_export_CombinedData.tsv'
-            #         df_export_stats.to_csv(full_path, sep = '\t', index = False)
-            #     for comp in results:
-            #         df_export_part = results[comp]
-            #         full_path = path+'/CCMPS_export_'+comp+'.tsv'
-            #         df_export_part.to_csv(full_path, sep = '\t', index = False)
 
             elif event == "Save...":
                 filename = sg.popup_get_file(
@@ -1499,7 +1423,6 @@ class MainController:
                             + str(e),
                         )
 
-                    # window['-marker_tpkey-'].update(values = ['[IDENTIFIER]'] + tp_info.columns.tolist())
                     self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
                         value=self.model.marker_fractkey,
@@ -1643,12 +1566,6 @@ class MainController:
             )
             logger.info("Full profiles created")
             self.model.status.marker_matched = True
-            # enable_markersettings(window, False)
-            # print('check4: marker settings enabled')
-            # window['-classification_MOP-'].update(disabled = False)
-            # print('check5: classification MOP updated')
-            # window['-classification_SVM-'].update(disabled = False)
-            # print('check6: classification SVM updated')
         except Exception:
             logger.exception("Error matching markers")
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
@@ -1690,8 +1607,6 @@ class MainController:
             stds,
             self.model.NN_params,
         )
-        # window['-classification_statistics-'].update(disabled = False)
-        # window['-status_comparison-'].update('done!')
         self.model.status.training = True
 
     def _handle_import_prediction(self):
@@ -2037,94 +1952,6 @@ def fract_handle_set_identifier(
     return identifiers
 
 
-def fract_export(data, protein_info):
-    export_folder = sg.popup_get_folder("Export Folder")
-    if export_folder:
-        experiment = simpledialog.askstring("Export", "Experiment Name: ")
-        now = datetime.now()
-        time = now.strftime("%Y%m%d%H%M%S")
-        # export_full = {'class' : pd.DataFrame(),
-        #                'vis' : pd.DataFrame()}
-        for way in data:
-            data_way = pd.DataFrame()
-            for condition in data[way]:
-                path = (
-                    export_folder
-                    + "/"
-                    + time
-                    + "_"
-                    + experiment
-                    + "_"
-                    + way
-                    + "_"
-                    + condition
-                    + ".txt"
-                )
-                export_data = data[way][condition]
-                for info in protein_info:
-                    export_data = pd.merge(
-                        export_data,
-                        protein_info[info],
-                        left_index=True,
-                        right_index=True,
-                        how="left",
-                    )
-                export_data.to_csv(
-                    path,
-                    header=True,
-                    index=True,
-                    index_label="Identifier",
-                    sep="\t",
-                    mode="a",
-                )
-
-                data_way = pd.merge(
-                    data_way,
-                    data[way][condition],
-                    left_index=True,
-                    right_index=True,
-                    how="outer",
-                )
-
-                # for replicate in data[way][condition]:
-                #     path = export_folder + '/' + time + '_' + experiment + '_' + way + '_' + condition + '_' + replicate + '.txt'
-                #     data[way][condition][replicate].to_csv(path, header = True, index = True, index_label = 'Identifier', sep = '\t', mode = 'a')
-                #     export_full[way] = pd.merge(export_full[way], data[way][condition][replicate], left_index = True, right_index = True, how = 'outer')
-
-            # for info in protein_info:
-            #     export_full[way] = pd.merge(export_full[way], protein_info[info], left_index = True, right_index = True, how = 'left')
-
-            for info in protein_info:
-                data_way = pd.merge(
-                    data_way,
-                    protein_info[info],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                )
-
-            path = (
-                export_folder
-                + "/"
-                + time
-                + "_"
-                + experiment
-                + "_"
-                + way
-                + "_"
-                + "COMBINED"
-                + ".txt"
-            )
-            data_way.to_csv(
-                path,
-                header=True,
-                index=True,
-                index_label="Identifier",
-                sep="\t",
-                mode="a",
-            )
-
-
 def is_float(element):
     try:
         float(element)
@@ -2378,10 +2205,6 @@ def marker_add(window, values, marker_sets):
     marker_sets[filename]["classes"] = []
     refresh_markertable(window, marker_sets)
 
-    # window['-marker_test-'].update(disabled = False)
-    # window['-marker_profiles-'].update(disabled = False)
-    # window['-marker_remove-'].update(disabled = False)
-
 
 def marker_remove(window, values, marker_sets):
     marker_filename = values["-marker_list-"][0]
@@ -2535,57 +2358,7 @@ def session_open(window: sg.Window, filename: str, model: SessionModel):
         refresh_markertable(window, model.marker_sets)
 
         event, values = window.read(timeout=50)
-        # marker_setkey(values, marker_sets)
-        # marker_setclass(values, marker_sets)
         refresh_markercols(window, values, model.marker_sets)
-
-    # if marker_list.empty:
-    #     enable_markersettings(window, True)
-    #     window['-marker_test-'].update(disabled = False)
-    #     window['-marker_profiles-'].update(disabled = False)
-    #     window['-marker_remove-'].update(disabled = False)
-    # else:
-    #     enable_markersettings(window, False)
-    #     window['-marker_test-'].update(disabled = True)
-    #     window['-marker_profiles-'].update(disabled = True)
-    #     window['-marker_remove-'].update(disabled = True)
-
-    # if fract_data['class'] and not marker_list.empty:
-    #     # print('positive')
-    #     window['-classification_MOP-'].update(disabled = False)
-    #     #window['-classification_SVM-'].update(disabled = False)
-    # else:
-    #     # print('negative')
-    #     window['-classification_MOP-'].update(disabled = True)
-    # window['-classification_SVM-'].update(disabled = True)
-
-    # window['-marker_fractkey-'].update(values = ['[IDENTIFIER]'] + list(fract_info))
-
-    # if fract_data['class']:
-    #     window['-classification_MOP-'].update(disabled = False)
-    # else:
-    #     window['-classification_MOP-'].update(disabled = True)
-
-    # if learning_xyz:
-    #     window['-classification_statistics-'].update(disabled = False)
-    # else:
-    #     window['-classification_statistics-'].update(disabled = True)
-
-    # if results:
-    #     #window['-classification_comparison-'].update(disabled = False)
-    #     window['-status_statistics-'].update('done!')
-    #     window['-export_statistics-'].update(disabled = False)
-    # else:
-    #     #window['-classification_comparison-'].update(disabled = True)
-    #     window['-status_statistics-'].update('missing')
-    #     window['-export_statistics-'].update(disabled = True)
-
-    # if comparison:
-    #     window['-status_comparison-'].update('done!')
-    #     window['-export_comparison-'].update(disabled = False)
-    # else:
-    #     window['-status_comparison-'].update('missing')
-    #     window['-export_comparison-'].update(disabled = True)
 
 
 def create_marker_profiles(fract_data, key: str, fract_info, marker_list):
