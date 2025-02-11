@@ -1438,10 +1438,13 @@ class MainController:
                     self.model.reset()
                     fract_clearinput(self.main_window)
                     tp_clearinput(self.main_window)
-
                     self.main_window["-marker_list-"].update(values=[])
-                    self.main_window["-marker_key-"].update(values=[])
-                    self.main_window["-marker_class-"].update(values=[])
+                    self.main_window["-marker_key-"].update(
+                        values=[], size=self.main_window["-marker_key-"].Size
+                    )
+                    self.main_window["-marker_class-"].update(
+                        values=[], size=self.main_window["-marker_class-"].Size
+                    )
                     self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
@@ -1792,12 +1795,14 @@ def tp_buttons(window: sg.Window, status: bool) -> None:
 
 
 def fract_clearinput(window):
-    window["-fractionation_path-"].update(values=[])
+    window["-fractionation_path-"].update(
+        values=[], size=window["-fractionation_path-"].Size
+    )
     window["-fractionation_table-"].update(values=[])
 
 
 def tp_clearinput(window):
-    window["-tp_path-"].update(values=[])
+    window["-tp_path-"].update(values=[], size=window["-tp_path-"].Size)
     window["-tp_table-"].update(values=[])
 
 
