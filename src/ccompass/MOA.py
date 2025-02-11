@@ -497,8 +497,15 @@ def stats_proteome(
                 if col.startswith("fCC_")
             ]
         ]
-        fmax_col = fcc_columns.idxmax(axis=1)
-        fmax_col = fmax_col.astype(str)
+        # compute idxmax(axis=1), but only for rows that aren't all NaN
+        #  (The behavior of DataFrame.idxmax with all-NA values,
+        #   or any-NA and skipna=False, is deprecated.)
+        fmax_col = pd.Series(
+            "nan",
+            index=fcc_columns.index,
+        )
+        not_all_na_mask = ~fcc_columns.isna().all(axis=1)
+        fmax_col[not_all_na_mask] = fcc_columns[not_all_na_mask].idxmax(axis=1)
         results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace(
             "fCC_", ""
         )
