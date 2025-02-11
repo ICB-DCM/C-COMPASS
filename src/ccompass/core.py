@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import copy
 import logging
+import tempfile
+import uuid
+import zipfile
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
+import yaml
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -724,6 +728,121 @@ class SessionModel(BaseModel):
         with open(filepath, "rb") as f:
             data = np.load(f, allow_pickle=True).item()
             return cls(**data)
+
+    def to_zip(self, filepath: Path | str):
+        """Serialize the model to a zip file with YAML, TSV, and numpy files."""
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir)
+
+            def dataframe_representer(dumper, data: pd.DataFrame):
+                """Custom YAML representer for pandas DataFrames."""
+                if data.empty:
+                    return dumper.represent_scalar("!pandas.DataFrame", "")
+
+                file_id = str(uuid.uuid4())
+                file_path = temp_dir / f"{file_id}.tsv"
+                data.to_csv(file_path, sep="\t", index=True)
+                return dumper.represent_scalar(
+                    "!pandas.DataFrame", file_path.name
+                )
+
+            def ndarray_representer(dumper, data):
+                """Custom YAML representer for numpy arrays."""
+                file_id = str(uuid.uuid4())
+                file_path = temp_dir / f"{file_id}.npy"
+                np.save(file_path, data, allow_pickle=False)
+                return dumper.represent_scalar(
+                    "!numpy.ndarray", file_path.name
+                )
+
+            def series_representer(dumper, data):
+                """Custom YAML representer for pandas Series."""
+                file_id = str(uuid.uuid4())
+                file_path = temp_dir / f"{file_id}.tsv"
+                data.to_csv(file_path, sep="\t", index=True)
+                return dumper.represent_scalar(
+                    "!pandas.Series", file_path.name
+                )
+
+            def float64_representer(dumper, data):
+                return dumper.represent_float(float(data))
+
+            yaml.add_representer(
+                np.float64, float64_representer, Dumper=yaml.SafeDumper
+            )
+            yaml.add_representer(
+                pd.DataFrame, dataframe_representer, Dumper=yaml.SafeDumper
+            )
+            yaml.add_representer(
+                np.ndarray, ndarray_representer, Dumper=yaml.SafeDumper
+            )
+            yaml.add_representer(
+                pd.Series, series_representer, Dumper=yaml.SafeDumper
+            )
+
+            with open(temp_dir / "session.yaml", "w") as f:
+                yaml.safe_dump(self.model_dump(), f)
+
+            with zipfile.ZipFile(filepath, "w") as zipf:
+                for item in temp_dir.iterdir():
+                    zipf.write(item, item.name)
+
+    @classmethod
+    def from_zip(cls, filepath: Path | str):
+        """Deserialize the model from a zip file with YAML and TSV files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir)
+
+            with zipfile.ZipFile(filepath, "r") as zipf:
+                zipf.extractall(temp_dir)
+
+            def dataframe_constructor(loader, node):
+                """Custom YAML constructor for pandas DataFrames."""
+                if not (filename := loader.construct_scalar(node)):
+                    return pd.DataFrame()
+
+                file_path = temp_dir / filename
+                try:
+                    return pd.read_csv(file_path, sep="\t", index_col=0)
+                except pd.errors.EmptyDataError:
+                    return pd.DataFrame()
+
+            def ndarray_constructor(loader, node):
+                """Custom YAML constructor for numpy arrays."""
+                file_path = temp_dir / loader.construct_scalar(node)
+                return np.load(file_path, allow_pickle=False)
+
+            def series_constructor(loader, node):
+                """Custom YAML constructor for pandas Series."""
+                file_path = temp_dir / loader.construct_scalar(node)
+                df = pd.read_csv(
+                    file_path,
+                    sep="\t",
+                    index_col=0,
+                    header=0,
+                    float_precision="round_trip",
+                )
+                assert df.shape[1] == 1
+                return df.iloc[:, 0]
+
+            yaml.add_constructor(
+                "!pandas.DataFrame",
+                dataframe_constructor,
+                Loader=yaml.SafeLoader,
+            )
+            yaml.add_constructor(
+                "!numpy.ndarray", ndarray_constructor, Loader=yaml.SafeLoader
+            )
+            yaml.add_constructor(
+                "!pandas.Series", series_constructor, Loader=yaml.SafeLoader
+            )
+
+            with open(temp_dir / "session.yaml") as f:
+                data = yaml.safe_load(f)
+                return cls(**data)
 
 
 def write_global_changes_reports(
