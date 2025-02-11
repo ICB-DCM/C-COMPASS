@@ -22,6 +22,13 @@ Usage Guide
   * One column containing the **same unique identifier** as used in the fractionation samples (see above).
 
 
+Sample data files are available for download at |sample_data|.
+
+.. |sample_data| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.13901167.svg
+  :target: https://doi.org/10.5281/zenodo.13901167
+
+
+
 Additional Notes
 ----------------
 
