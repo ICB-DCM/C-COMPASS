@@ -161,16 +161,6 @@ def stats_proteome(
     for condition in conditions:
         subcons = [x for x in learning_xyz if x.startswith(condition + "_")]
 
-        # ---------------
-        ### if mode == 'deep':
-        ###     combined_index = tp_data[condition].index
-        # ---------------
-
-        # elif mode == 'rough':
-        #     empty_index = []
-        #     df = pd.DataFrame(index = empty_index)
-        #     combined_index = df.index
-
         empty_index = []
         df = pd.DataFrame(index=empty_index)
         combined_index = df.index
@@ -183,24 +173,8 @@ def stats_proteome(
         results[condition] = {}
         results[condition]["metrics"] = pd.DataFrame(index=combined_index)
 
-        # ---------------
-        ### TPA_list = []
-        ### ## add TPA:
-        ### if mode == 'deep':
-        ###     TPA_list = []
-        ###     tp_nontrans = tp_data[condition].map(lambda x: 2 ** x)
-        ###     for replicate in tp_data[condition]:
-        ###         TPA_list.append(tp_nontrans[replicate])
-        ###     combined_TPA = pd.concat(TPA_list, axis = 1)
-        ###     results[condition]['metrics']['TPA'] = combined_TPA.mean(axis = 1)
-        ###     results[condition]['metrics'] = results[condition]['metrics'].loc[~results[condition]['metrics'].index.duplicated(keep='first')]
-        ### elif mode == 'rough':
-        ###     pass
-        # ---------------
-
         ## add marker:
         results[condition]["metrics"]["marker"] = np.nan
-        # df_2 = df_2[~df_2.index.duplicated(keep='first')]
 
         for subcon in subcons:
             marker_df = learning_xyz[subcon]["W_train_df"][
@@ -410,7 +384,6 @@ def stats_proteome(
 
         ## add CC:
         for classname in classnames:
-            # results[condition]['metrics']['CC_'+classname] = results[condition]['metrics']['CClist_'+classname].apply(lambda x: np.mean(x) if x else np.nan)
             results[condition]["metrics"]["CC_" + classname] = results[
                 condition
             ]["metrics"]["CClist_" + classname].apply(
@@ -424,7 +397,6 @@ def stats_proteome(
         cc_sums = results[condition]["metrics"][cc_cols].sum(
             axis=1, skipna=True
         )
-        # cc_sums = results[condition]['metrics'][cc_cols].map(safe_sum)
         results[condition]["metrics"][cc_cols] = results[condition]["metrics"][
             cc_cols
         ].div(cc_sums, axis=0)
@@ -442,23 +414,6 @@ def stats_proteome(
         results[condition]["metrics"]["NN_winner"] = max_col.str.replace(
             "CC_", ""
         )
-
-        # ---------------
-        ### ## add CA:
-        ### if mode == 'deep':
-        ###     results[condition]['metrics']['CA_relevant'] = 'no'
-        ###     results[condition]['class_abundance'] = {}
-        ###     for classname in classnames:
-        ###     # for classname in [classname for classname in results[condition]['metrics']['SVM_winner'] if not pd.isnull(classname)]:
-        ###         results_class = results[condition]['metrics'][(results[condition]['metrics']['NN_winner'] == classname) &
-        ###                                                       (~results[condition]['metrics']['TPA'].isnull())]
-        ###         results[condition]['metrics'].loc[results_class.index, 'CA_relevant'] = 'yes'
-        ###         results[condition]['class_abundance'][classname] = {}
-        ###         results[condition]['class_abundance'][classname]['CA'] = np.median(results_class['TPA'])
-        ###         results[condition]['class_abundance'][classname]['count'] = len(results_class)
-        ### elif mode == 'rough':
-        ###     pass
-        # ---------------
 
         # add fCC:
         for class_act in classnames:
@@ -484,7 +439,6 @@ def stats_proteome(
             if col.startswith("fCC_")
         ]
         fcc_sums = results[condition]["metrics"][fcc_cols].sum(axis=1)
-        # fcc_sums[fcc_sums == 0] = 1
         results[condition]["metrics"][fcc_cols] = results[condition][
             "metrics"
         ][fcc_cols].div(fcc_sums, axis=0)
@@ -509,34 +463,6 @@ def stats_proteome(
         results[condition]["metrics"]["fNN_winner"] = fmax_col.str.replace(
             "fCC_", ""
         )
-
-        # ---------------
-        ## add nCClist:
-        ### if mode == 'deep':
-        ###     for classname in classnames:
-        ###         results[condition]['metrics']['nCClist_'+classname] = results[condition]['metrics']['CClist_'+classname].apply(lambda lst: [x * results[condition]['class_abundance'][classname]['CA'] if not np.isnan(x) else np.nan for x in lst])
-        ###
-        ###     #nCClist_df = results[condition]['metrics'][]
-        ###
-        ###
-        ###     ## add nCC:
-        ###     for classname in classnames:
-        ###         results[condition]['metrics']['nCC_'+classname] = results[condition]['metrics']['fCC_'+classname] * results[condition]['class_abundance'][classname]['CA']
-        ###     # normalize:
-        ###     nCC_cols = [col for col in results[condition]['metrics'] if col.startswith('nCC_')]
-        ###     nCC_sums = results[condition]['metrics'][nCC_cols].sum(axis=1)
-        ###     nCC_sums[nCC_sums == 0] = 1
-        ###     results[condition]['metrics'][nCC_cols] = results[condition]['metrics'][nCC_cols].div(nCC_sums, axis=0)
-        ###
-        # ## add CPA
-        ###     for classname in classnames:
-        ###         results[condition]['metrics']['CPA_'+classname] = results[condition]['metrics']['CC_'+classname] * results[condition]['metrics']['TPA']
-        ###     for classname in classnames:
-        ###         results[condition]['metrics']['nCPA_'+classname] = results[condition]['metrics']['nCC_'+classname] * results[condition]['metrics']['TPA']
-        ### elif mode == 'rough':
-        ###     pass
-        # ---------------
-
         results[condition]["classnames"] = classnames
 
     return results
@@ -551,11 +477,6 @@ def global_comparison(results):
         results[condition]["metrics"] = results[condition]["metrics"][
             ~results[condition]["metrics"].index.duplicated(keep="first")
         ]
-
-    # class_lists = []
-    # for condition in conditions:
-    #     class_lists.append(results[condition]['classnames'])
-    # classnames = list(set(class_lists[0]).intersection(*class_lists[1:]))
 
     combinations = [
         (con_1, con_2)
@@ -590,16 +511,6 @@ def global_comparison(results):
 
         logger.info("performing t-tests...")
 
-        # --------------
-        # ## create RL, nRL, RLS, and nRLS:
-        # for classname in classnames:
-        #     comparison[comb]['metrics']['RL_'+classname] = results[comb[1]]['metrics']['CC_'+classname] - results[comb[0]]['metrics']['CC_'+classname]
-        #     if mode == 'deep':
-        #         comparison[comb]['metrics']['nRL_'+classname] = results[comb[1]]['metrics']['nCC_'+classname] - results[comb[0]]['metrics']['nCC_'+classname]
-        #     elif mode == 'rough':
-        #         pass
-        # --------------
-
         for classname in classnames:
             comparison[comb]["metrics"]["RL_" + classname] = (
                 metrics_other["CC_" + classname]
@@ -614,14 +525,6 @@ def global_comparison(results):
         comparison[comb]["metrics"]["RLS"] = (
             comparison[comb]["metrics"][rl_cols].abs().sum(axis=1)
         )
-
-        # --------------
-        # if mode == 'deep':
-        #     nrl_cols = [col for col in comparison[comb]['metrics'].columns if col.startswith('nRL_')]
-        #     comparison[comb]['metrics']['nRLS'] = comparison[comb]['metrics'][nrl_cols].abs().sum(axis=1)
-        # elif mode == 'rough':
-        #     pass
-        # --------------
 
         for classname in classnames:
             comparison[comb]["metrics"]["fRL_" + classname] = (
@@ -741,87 +644,11 @@ def global_comparison(results):
                 comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = pd.NA
                 comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
 
-        logger.info("calculate nRLS lists...")
-
-        # --------------
-        # if mode == 'deep':
-        #     nRLS_results = {}
-        #     nRLS_null = {}
-        #     for ID in common_indices:
-        #         ncclists_own = [metrics_own.loc[ID, 'nCClist_' + classname] for classname in classnames]
-        #         ncclists_other = [metrics_other.loc[ID, 'nCClist_' + classname] for classname in classnames]
-
-        #         ncclists_own_transposed = [list(values) for values in zip(*ncclists_own)]
-        #         ncclists_other_transposed = [list(values) for values in zip(*ncclists_other)]
-
-        #         nRLS_results[ID] = []
-        #         nRLS_null[ID] = []
-
-        #         for i in range(len(ncclists_own_transposed)):
-        #             for j in range(i+1, len(ncclists_own_transposed)):
-        #                 null_result = compare_lists(ncclists_own_transposed[i], ncclists_own_transposed[j])
-        #                 nRLS_null[ID].append(null_result)
-        #         for i in range(len(ncclists_other_transposed)):
-        #             for j in range(i+1, len(ncclists_other_transposed)):
-        #                 null_result = compare_lists(ncclists_other_transposed[i], ncclists_other_transposed[j])
-        #                 nRLS_null[ID].append(null_result)
-
-        #         for own_list in ncclists_own_transposed:
-        #             for other_list in ncclists_other_transposed:
-        #                 comparison_result = compare_lists(own_list, other_list)
-        #                 nRLS_results[ID].append(comparison_result)
-        #     comparison[comb]['nRLS_results'] = pd.Series(nRLS_results)
-        #     comparison[comb]['nRLS_null'] = pd.Series(nRLS_null)
-
-        #     comparison[comb]['metrics']['P(t)_nRLS'] = np.nan
-        #     comparison[comb]['metrics']['P(u)_nRLS'] = np.nan
-        #     for index in comparison[comb]['metrics'].index:
-        #         if index in common_indices:
-        #             # Perform the t-test
-        #             stat, p_value = ttest_ind(comparison[comb]['nRLS_results'].loc[index], comparison[comb]['nRLS_null'].loc[index], nan_policy='omit')
-        #             comparison[comb]['metrics'].loc[index, 'P(t)_nRLS'] = p_value
-        #             if is_all_nan(comparison[comb]['nRLS_results'].loc[index]) or is_all_nan(comparison[comb]['nRLS_null'].loc[index]) or len(set(comparison[comb]['nRLS_results'].loc[index])) == 1 or len(set(comparison[comb]['nRLS_null'].loc[index])) == 1:
-        #                 comparison[comb]['metrics'].loc[index, 'P(u)_nRLS'] = pd.NA
-        #             else:
-        #                 stat_u, p_value_u = stats.mannwhitneyu(comparison[comb]['nRLS_results'].loc[index], comparison[comb]['nRLS_null'].loc[index], alternative='two-sided')
-        #                 comparison[comb]['metrics'].loc[index, 'P(u)_nRLS'] = p_value_u
-        #         else:
-        #             comparison[comb]['metrics'].loc[index, 'P(t)_nRLS'] = pd.NA
-        #             comparison[comb]['metrics'].loc[index, 'P(u)_nRLS'] = pd.NA
-        # elif mode == 'rough':
-        #     pass
-        # --------------
-
-        logger.info("calculate CPAs...")
-
-        # --------------
-        # if mode == 'deep':
-        #     for classname in classnames:
-        #         metrics_own['CPA_log_'+classname] = np.log2(metrics_own['CPA_'+classname])
-        #         metrics_own = impute_data(metrics_own, 'CPA_log_'+classname, 'CPA_imp_'+classname)
-
-        #         metrics_other['CPA_log_'+classname] = np.log2(metrics_other['CPA_'+classname])
-        #         metrics_other = impute_data(metrics_other, 'CPA_log_'+classname, 'CPA_imp_'+classname)
-
-        #         comparison[comb]['metrics']['CFC_'+classname] = metrics_other['CPA_imp_'+classname] - metrics_own['CPA_imp_'+classname]
-
-        #         metrics_own['nCPA_log_'+classname] = np.log2(metrics_own['nCPA_'+classname])
-        #         metrics_own = impute_data(metrics_own, 'nCPA_log_'+classname, 'nCPA_imp_'+classname)
-
-        #         metrics_other['nCPA_log_'+classname] = np.log2(metrics_other['nCPA_'+classname])
-        #         metrics_other = impute_data(metrics_other, 'nCPA_log_'+classname, 'nCPA_imp_'+classname)
-
-        #         comparison[comb]['metrics']['nCFC_'+classname] = metrics_other['nCPA_imp_'+classname] - metrics_own['nCPA_imp_'+classname]
-        # elif mode == 'rough':
-        #     pass
-        # --------------
-
     return comparison
 
 
 def class_comparison(tp_data, results, comparison):
     for condition in results:
-        # combined_index = tp_data[condition].index
         classnames = results[condition]["classnames"]
 
         ## add TPA:
@@ -903,7 +730,7 @@ def class_comparison(tp_data, results, comparison):
         (con1, con2) for con1 in results for con2 in results if con1 != con2
     ]
 
-    ## create , nRL, , and nRLS:
+    ## create nRL and nRLS:
     for comb in combinations:
         metrics_own = results[comb[0]]["metrics"]
         metrics_other = results[comb[1]]["metrics"]
