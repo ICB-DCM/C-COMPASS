@@ -1576,7 +1576,6 @@ class MainController:
 
     def _handle_training(self, key: str):
         """Handle click on "Train C-COMPASS!" button."""
-        # FIXME: `stds` is not in the format expected for upsampling
         if key == "[IDENTIFIER]":
             stds = self.model.fract_std
         else:
