@@ -177,7 +177,7 @@ def upsample_condition(
 
             for i in range(class_difference):
                 if NN_params.upsampling_method == "noised":
-                    ID_rnd = random.choice(list(data_class.index))
+                    ID_rnd = random.choice(data_class.index)
                     name_up = f"up_{k}_{ID_rnd}"
                     k += 1
 
@@ -205,71 +205,24 @@ def upsample_condition(
                     profile_up = pd.DataFrame(nv, columns=profile_rnd.columns)
 
                 elif NN_params.upsampling_method == "average":
-                    ID_rnd_1 = random.choice(list(data_class.index))
-                    ID_rnd_2 = random.choice(list(data_class.index))
-                    ID_rnd_3 = random.choice(list(data_class.index))
-                    name_up = f"up_{k}_{ID_rnd_1}_{ID_rnd_2}_{ID_rnd_3}"
+                    sample = data_class.sample(n=3, replace=True)
+                    name_up = f"up_{k}_{'_'.join(sample.index)}"
                     k += 1
-
-                    profile_rnd_1 = data_class.loc[[ID_rnd_1]]
-                    profile_rnd_1 = profile_rnd_1[
-                        ~profile_rnd_1.index.duplicated(keep="first")
-                    ]
-                    profile_rnd_2 = data_class.loc[[ID_rnd_2]]
-                    profile_rnd_2 = profile_rnd_2[
-                        ~profile_rnd_2.index.duplicated(keep="first")
-                    ]
-                    profile_rnd_3 = data_class.loc[[ID_rnd_3]]
-                    profile_rnd_3 = profile_rnd_3[
-                        ~profile_rnd_3.index.duplicated(keep="first")
-                    ]
-
-                    profile_up = (
-                        pd.concat(
-                            [profile_rnd_1, profile_rnd_2, profile_rnd_3]
-                        )
-                        .median(axis=0)
-                        .to_frame()
-                        .transpose()
-                    )
+                    profile_up = sample.median(axis=0).to_frame().transpose()
 
                 elif NN_params.upsampling_method == "noisedaverage":
-                    ID_rnd_1 = random.choice(list(data_class.index))
-                    ID_rnd_2 = random.choice(list(data_class.index))
-                    ID_rnd_3 = random.choice(list(data_class.index))
-                    name_up = f"up_{k}_{ID_rnd_1}_{ID_rnd_2}_{ID_rnd_3}"
+                    sample = data_class.sample(n=3, replace=True)
+                    name_up = f"up_{k}_{'_'.join(sample.index)}"
                     k += 1
 
-                    profile_rnd_1 = data_class.loc[[ID_rnd_1]]
-                    profile_rnd_1 = profile_rnd_1[
-                        ~profile_rnd_1.index.duplicated(keep="first")
-                    ]
-                    profile_rnd_2 = data_class.loc[[ID_rnd_2]]
-                    profile_rnd_2 = profile_rnd_2[
-                        ~profile_rnd_2.index.duplicated(keep="first")
-                    ]
-                    profile_rnd_3 = data_class.loc[[ID_rnd_3]]
-                    profile_rnd_3 = profile_rnd_3[
-                        ~profile_rnd_3.index.duplicated(keep="first")
-                    ]
-
-                    profile_av = (
-                        pd.concat(
-                            [profile_rnd_1, profile_rnd_2, profile_rnd_3]
-                        )
-                        .median(axis=0)
-                        .to_frame()
-                        .transpose()
-                    )
+                    profile_av = sample.median(axis=0).to_frame().transpose()
                     profile_av_flat = profile_av.values.flatten()
-
                     nv = np.random.normal(
                         profile_av_flat,
                         NN_params.upsampling_noise * class_std_flat,
                         size=profile_av.shape,
                     )
                     nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-
                     profile_up = pd.DataFrame(nv, columns=profile_av.columns)
                 else:
                     raise ValueError(
