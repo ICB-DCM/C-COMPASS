@@ -250,20 +250,7 @@ def sum1_normalization(x):
     return x / (ops.sum(x, axis=1, keepdims=True) + epsilon())
 
 
-def MOP_exec(
-    fract_full,
-    fract_marker_old,
-    fract_test,
-    stds,
-    NN_params: NeuralNetworkParametersModel,
-):
-    """Perform multi-organelle prediction.
-
-    :param fract_full: dictionary of full profiles
-    """
-    conditions = list(fract_full.keys())
-
-    ## UPSAMPLING START
+def init_learning_xyz(conditions: list[str]) -> dict[str, dict[str, dict]]:
     learning_xyz = {}
     for condition in conditions:
         learning_xyz[condition] = {}
@@ -307,8 +294,25 @@ def MOP_exec(
         learning_xyz[condition]["z_train_df"] = {}
         learning_xyz[condition]["z_train"] = {}
 
-    for R in range(1, NN_params.rounds + 1):
-        logger.info(f"Executing round {R}...")
+    return learning_xyz
+
+
+def MOP_exec(
+    fract_full: dict[str, pd.DataFrame],
+    fract_marker_old: dict[str, pd.DataFrame],
+    fract_test: dict[str, pd.DataFrame],
+    stds: dict[str, pd.DataFrame],
+    NN_params: NeuralNetworkParametersModel,
+):
+    """Perform multi-organelle prediction.
+
+    :param fract_full: dictionary of full profiles
+    """
+    conditions = list(fract_full.keys())
+    learning_xyz = init_learning_xyz(conditions)
+
+    for i_round in range(1, NN_params.rounds + 1):
+        logger.info(f"Executing round {i_round}...")
 
         fract_full_up = {}
         fract_marker_up = {}
@@ -327,11 +331,10 @@ def MOP_exec(
                         fract_marker[condition],
                     )
                 )
+            logger.info("upsampling done!")
         else:
             fract_marker_up = copy.deepcopy(fract_marker)
             fract_full_up = copy.deepcopy(fract_full)
-
-        logger.info("upsampling done!")
 
         logger.info("creating data...")
         for condition in conditions:
@@ -343,10 +346,8 @@ def MOP_exec(
                 fract_marker_up,
                 fract_test,
                 condition,
-                R,
-                0,
+                i_round,
             )
-
         logger.info("data complete!")
 
         svm_metrics = {}
@@ -364,10 +365,11 @@ def MOP_exec(
                 fract_test,
                 svm_test,
                 condition,
-                R,
+                i_round,
             )
 
         if NN_params.svm_filter:
+            logger.info("Applying SVM filter...")
             # Remove the markers that are not predicted correctly by the SVM
             #  and upsample the rest
             fract_full_up = {}
@@ -390,6 +392,7 @@ def MOP_exec(
                         fract_marker_filtered[condition],
                     )
                 )
+            logger.info("SVM filtering done.")
 
         fract_unmixed_up = {}
         for condition in conditions:
@@ -407,6 +410,7 @@ def MOP_exec(
         if NN_params.mixed_part == "none":
             fract_mixed_up = copy.deepcopy(fract_unmixed_up)
         else:
+            logger.info("Mixing profiles...")
             fract_mixed_up = {}
             mix_steps = [
                 i / NN_params.mixed_part
@@ -421,7 +425,8 @@ def MOP_exec(
                     fract_mixed_up,
                     condition,
                 )
-        round_id = f"ROUND_{R}"
+
+        round_id = f"ROUND_{i_round}"
         for condition in conditions:
             learning_xyz[condition]["x_train_mixed_up_df"][round_id] = (
                 fract_mixed_up[condition].drop(columns=classes)
@@ -471,7 +476,7 @@ def MOP_exec(
                     y_train_mixed_up,
                     y_test,
                     condition,
-                    R,
+                    i_round,
                     0,
                 )
                 for SR in range(1, NN_params.subrounds + 1):
@@ -484,7 +489,7 @@ def MOP_exec(
                         y_train_mixed_up,
                         y_test,
                         condition,
-                        R,
+                        i_round,
                         SR,
                     )
             else:
@@ -493,10 +498,11 @@ def MOP_exec(
 
         FNN_classifier = _create_classifier_hypermodel(NN_params)
         for condition in conditions:
-            FNN_ens, learning_xyz = multi_predictions(
-                FNN_classifier, learning_xyz, NN_params, condition, R
+            learning_xyz = multi_predictions(
+                FNN_classifier, learning_xyz, NN_params, condition, i_round
             )
-
+    # TODO: no need to return / store fract_mixed_up, fract_unmixed_up, ...
+    #  they are not used anymore
     return (
         learning_xyz,
         fract_full_up,
@@ -516,6 +522,7 @@ def multi_predictions(
     condition: str,
     roundn: int,
 ):
+    """Perform multi organelle predictions."""
     logger.info(f"Training classifier for condition {condition}...")
     y_full = learning_xyz[condition]["y_full"][f"ROUND_{roundn}_0"]
     y_train = learning_xyz[condition]["y_train"][f"ROUND_{roundn}_0"]
@@ -534,7 +541,7 @@ def multi_predictions(
 
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
-    FNN_tuner = kt.Hyperband(
+    tuner = kt.Hyperband(
         hypermodel=FNN_classifier(set_shapes=set_shapes),
         hyperparameters=kt.HyperParameters(),
         objective="val_mean_squared_error",
@@ -548,7 +555,7 @@ def multi_predictions(
         monitor="val_loss", patience=5
     )
 
-    FNN_tuner.search(
+    tuner.search(
         y_train_mixed_up,
         Z_train_mixed_up,
         epochs=NN_params.NN_epochs,
@@ -556,19 +563,17 @@ def multi_predictions(
         callbacks=[stop_early],
     )
     logger.info("Hyperparameter tuning done!")
-    FNN_best = FNN_tuner.get_best_models(num_models=1)[0]
-    best_hp = FNN_tuner.get_best_hyperparameters(num_trials=1)[0].values
-
-    FNN_ens = [FNN_best]
+    best_model = tuner.get_best_models(num_models=1)[0]
+    best_hp = tuner.get_best_hyperparameters(num_trials=1)[0].values
 
     stringlist = []
-    FNN_best.summary(print_fn=lambda x: stringlist.append(x))
+    best_model.summary(print_fn=lambda x: stringlist.append(x))
     FNN_summary = "\n".join(stringlist)
 
     learning_xyz[condition]["FNN_summary"]["ROUND_roundn"] = FNN_summary
 
-    z_full = FNN_best.predict(y_full)
-    z_train = FNN_best.predict(y_train)
+    z_full = best_model.predict(y_full)
+    z_train = best_model.predict(y_train)
 
     learning_xyz = add_Z(
         learning_xyz,
@@ -602,7 +607,6 @@ def multi_predictions(
             validation_split=0.2,
             callbacks=[stop_early],
         )
-        FNN_ens.append(fixed_model)
 
         z_full = fixed_model.predict(y_full)
         z_train = fixed_model.predict(y_train)
@@ -616,7 +620,7 @@ def multi_predictions(
             subround,
         )
 
-    return FNN_ens, learning_xyz
+    return learning_xyz
 
 
 def add_Z(
@@ -680,20 +684,21 @@ def add_Y(
 
 
 def create_learninglist(
-    learning_xyz,
-    fract_full,
-    fract_full_up,
-    fract_marker,
-    fract_marker_up,
-    fract_test,
-    condition,
+    learning_xyz: dict[str, dict[str, dict]],
+    fract_full: dict[str, pd.DataFrame],
+    fract_full_up: dict[str, pd.DataFrame],
+    fract_marker: dict[str, pd.DataFrame],
+    fract_marker_up: dict[str, pd.DataFrame],
+    fract_test: dict[str, pd.DataFrame],
+    condition: str,
     roundn: int,
-    subroundn: int,
 ):
     round_id = f"ROUND_{roundn}"
-    classes = list(set(fract_marker[condition]["class"]))
+    classes = fract_marker[condition]["class"].unique().tolist()
     learning_xyz[condition]["classes"] = classes
 
+    # TODO(performance): not all of those need to be stored or be converted
+    #  to lists
     learning_xyz[condition]["W_full_df"] = fract_full[condition]["class"]
     learning_xyz[condition]["W_full"] = list(
         learning_xyz[condition]["W_full_df"]

@@ -1594,9 +1594,9 @@ class MainController:
                     how="left",
                 ).set_index(key)
 
-        from .MOP import MOP_exec
-
         with wait_cursor(self.main_window):
+            from .MOP import MOP_exec
+
             (
                 self.model.learning_xyz,
                 self.model.fract_full_up,
