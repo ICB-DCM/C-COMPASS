@@ -2,7 +2,6 @@
 
 import copy
 import logging
-import random
 from datetime import datetime
 
 import keras_tuner as kt
@@ -162,84 +161,72 @@ def upsample_condition(
         data_class = data_class.drop(columns=["class"])
         class_difference = abs(class_maxsize - class_sizes[classname])
 
-        if class_sizes[classname] > class_maxsize:
-            # TODO: Why would this ever happen?
-            ID_rnd = random.sample(
-                list(data_class.index), class_difference - 1
-            )
-            fract_marker_up.drop(ID_rnd, inplace=True)
-        elif class_sizes[classname] < class_maxsize:
-            class_up = pd.DataFrame(columns=data_class.columns)
+        if not class_difference:
+            continue
 
-            # TODO only compute where necessary
-            class_std = data_class.std(axis=0).to_frame().transpose()
-            class_std_flat = class_std.values.flatten()
+        class_up = pd.DataFrame(columns=data_class.columns)
+        # TODO only compute where necessary
+        class_std = data_class.std(axis=0).to_frame().transpose()
+        class_std_flat = class_std.values.flatten()
 
-            for i in range(class_difference):
-                if NN_params.upsampling_method == "noised":
-                    ID_rnd = random.choice(data_class.index)
-                    name_up = f"up_{k}_{ID_rnd}"
-                    k += 1
+        for i in range(class_difference):
+            if NN_params.upsampling_method == "noised":
+                sample = data_class.sample(n=1)
+                ID_rnd = sample.index[0]
+                name_up = f"up_{k}_{ID_rnd}"
+                k += 1
 
-                    profile_rnd = data_class.loc[[ID_rnd]]
-                    profile_rnd = profile_rnd[
-                        ~profile_rnd.index.duplicated(keep="first")
-                    ]
-                    profile_rnd_flat = profile_rnd.values.flatten()
-
-                    std_rnd = stds.loc[[ID_rnd]]
-                    std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
-                    std_rnd_flat = std_rnd.values.flatten()
-                    std_rnd_flat = np.tile(
-                        std_rnd_flat,
-                        int(profile_rnd_flat.size / std_rnd_flat.size),
-                    )
-
-                    nv = np.random.normal(
-                        profile_rnd_flat,
-                        NN_params.upsampling_noise * std_rnd_flat,
-                        size=profile_rnd.shape,
-                    )
-                    nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-
-                    profile_up = pd.DataFrame(nv, columns=profile_rnd.columns)
-
-                elif NN_params.upsampling_method == "average":
-                    sample = data_class.sample(n=3, replace=True)
-                    name_up = f"up_{k}_{'_'.join(sample.index)}"
-                    k += 1
-                    profile_up = sample.median(axis=0).to_frame().transpose()
-
-                elif NN_params.upsampling_method == "noisedaverage":
-                    sample = data_class.sample(n=3, replace=True)
-                    name_up = f"up_{k}_{'_'.join(sample.index)}"
-                    k += 1
-
-                    profile_av = sample.median(axis=0).to_frame().transpose()
-                    profile_av_flat = profile_av.values.flatten()
-                    nv = np.random.normal(
-                        profile_av_flat,
-                        NN_params.upsampling_noise * class_std_flat,
-                        size=profile_av.shape,
-                    )
-                    nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-                    profile_up = pd.DataFrame(nv, columns=profile_av.columns)
-                else:
-                    raise ValueError(
-                        f"Unknown upsampling method: {NN_params.upsampling_method}"
-                    )
-
-                profile_up.index = [name_up]
-                profile_up["class"] = [classname]
-
-                # TODO(performances) use concat only once
-                class_up = (
-                    pd.concat(
-                        [class_up, profile_up], axis=0, ignore_index=False
-                    )
-                    if not class_up.empty
-                    else profile_up
+                profile_rnd_flat = sample.values.flatten()
+                std_rnd = stds.loc[[ID_rnd]]
+                std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
+                std_rnd_flat = std_rnd.values.flatten()
+                std_rnd_flat = np.tile(
+                    std_rnd_flat,
+                    int(profile_rnd_flat.size / std_rnd_flat.size),
                 )
+
+                nv = np.random.normal(
+                    profile_rnd_flat,
+                    NN_params.upsampling_noise * std_rnd_flat,
+                    size=sample.shape,
+                )
+                nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
+                profile_up = pd.DataFrame(nv, columns=sample.columns)
+
+            elif NN_params.upsampling_method == "average":
+                sample = data_class.sample(n=3, replace=True)
+                name_up = f"up_{k}_{'_'.join(sample.index)}"
+                k += 1
+                profile_up = sample.median(axis=0).to_frame().transpose()
+
+            elif NN_params.upsampling_method == "noisedaverage":
+                sample = data_class.sample(n=3, replace=True)
+                name_up = f"up_{k}_{'_'.join(sample.index)}"
+                k += 1
+
+                profile_av = sample.median(axis=0).to_frame().transpose()
+                profile_av_flat = profile_av.values.flatten()
+                nv = np.random.normal(
+                    profile_av_flat,
+                    NN_params.upsampling_noise * class_std_flat,
+                    size=profile_av.shape,
+                )
+                nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
+                profile_up = pd.DataFrame(nv, columns=profile_av.columns)
+            else:
+                raise ValueError(
+                    f"Unknown upsampling method: {NN_params.upsampling_method}"
+                )
+
+            profile_up.index = [name_up]
+            profile_up["class"] = [classname]
+
+            # TODO(performance) use concat only once
+            class_up = (
+                pd.concat([class_up, profile_up], axis=0, ignore_index=False)
+                if not class_up.empty
+                else profile_up
+            )
 
             fract_marker_up = pd.concat(
                 [fract_marker_up, class_up],
@@ -251,8 +238,10 @@ def upsample_condition(
                 axis=0,
                 ignore_index=False,
             )
+    # TODO: seems unnecessary?!
     fract_marker_up = fract_marker_up.sample(frac=1)
     fract_full_up = fract_full_up.sample(frac=1)
+
     return fract_marker_up, fract_full_up
 
 
