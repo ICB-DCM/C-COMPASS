@@ -258,7 +258,12 @@ def list_samples(data, window, progress):
     return fracts_con, fracts_count, fracts_corr, progress
 
 
-def combine_median_std(data, fracts_con, window, progress):
+def combine_median_std(
+    data: dict[str, dict[str, pd.DataFrame]],
+    fracts_con: dict[str, list[int]],
+    window: sg.Window,
+    progress: float,
+) -> tuple[dict[str, dict[str, pd.DataFrame]], dict[str, pd.DataFrame], float]:
     data_median = {}
     data_std = {}
     stepsize = 5.0 / len(data)
@@ -274,7 +279,7 @@ def combine_median_std(data, fracts_con, window, progress):
         for fract in fracts_con[condition]:
             fract_vals = pd.DataFrame()
             fract_std = pd.DataFrame()
-            prefix = "Fr." + str(fract)
+            prefix = f"Fr.{fract}"
             for replicate in data[condition]:
                 for sample in data[condition][replicate]:
                     if sample[: sample.find("_")] == prefix:
@@ -292,30 +297,27 @@ def combine_median_std(data, fracts_con, window, progress):
                             right_index=True,
                             how="outer",
                         )
-            cols = [col for col in fract_vals.columns]
-            fract_vals[condition + "_median_" + prefix] = fract_vals[
-                cols
-            ].median(axis=1)
-            fract_std[condition + "_std_" + prefix] = fract_std[cols].std(
-                axis=1
-            )
+            col_median = f"{condition}_median_{prefix}"
+            col_std = f"{condition}_std_{prefix}"
+            fract_vals[col_median] = fract_vals.median(axis=1)
+            fract_std[col_std] = fract_std.std(axis=1)
             con_vals = pd.merge(
                 con_vals,
-                fract_vals[condition + "_median_" + prefix],
+                fract_vals[col_median],
                 left_index=True,
                 right_index=True,
                 how="outer",
             ).fillna(0.0)
             con_std = pd.merge(
                 con_std,
-                fract_std[condition + "_std_" + prefix],
+                fract_std[col_std],
                 left_index=True,
                 right_index=True,
                 how="outer",
             ).fillna(0.0)
-            data_std[condition] = con_std
-            # data_median[condition+'_median'] = con_vals
-            data_median[condition] = {"median": con_vals}
+        data_std[condition] = con_std
+        # data_median[condition+'_median'] = con_vals
+        data_median[condition] = {"median": con_vals}
     return data_median, data_std, progress
 
 
