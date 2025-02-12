@@ -402,11 +402,11 @@ def create_spatial_prediction_frame() -> sg.Frame:
                         [
                             sg.Button(
                                 "Predict Proteome!",
-                                size=(32, 1),
                                 key="-statistic_predict-",
                                 disabled=True,
                                 enable_events=True,
                                 button_color="dark blue",
+                                expand_x=True,
                             )
                         ],
                         [sg.HSep()],
@@ -725,7 +725,6 @@ def create_marker_selection_frame() -> sg.Frame:
                             )
                         ],
                     ],
-                    size=(72, 70),
                 ),
                 sg.Column(
                     layout=[
@@ -848,7 +847,6 @@ def create_marker_selection_frame() -> sg.Frame:
                             ),
                         ],
                     ],
-                    size=(280, 180),
                 ),
             ],
         ],
@@ -867,11 +865,11 @@ def create_conditional_comparison_frame() -> sg.Frame:
             [
                 sg.Button(
                     "Calculate global Changes!",
-                    size=(32, 1),
                     key="-global_run-",
                     disabled=True,
                     enable_events=True,
                     button_color="dark blue",
+                    expand_x=True,
                 )
             ],
             [sg.HSep()],
@@ -918,11 +916,11 @@ def create_conditional_comparison_frame() -> sg.Frame:
             [
                 sg.Button(
                     "Calculate class-centric Changes!",
-                    size=(32, 1),
                     key="-class_run-",
                     disabled=True,
                     enable_events=True,
                     button_color="dark blue",
+                    expand_x=True,
                 )
             ],
             [sg.HSep()],
@@ -1440,10 +1438,13 @@ class MainController:
                     self.model.reset()
                     fract_clearinput(self.main_window)
                     tp_clearinput(self.main_window)
-
                     self.main_window["-marker_list-"].update(values=[])
-                    self.main_window["-marker_key-"].update(values=[])
-                    self.main_window["-marker_class-"].update(values=[])
+                    self.main_window["-marker_key-"].update(
+                        values=[], size=self.main_window["-marker_key-"].Size
+                    )
+                    self.main_window["-marker_class-"].update(
+                        values=[], size=self.main_window["-marker_class-"].Size
+                    )
                     self.main_window["-marker_fractkey-"].update(
                         values=["[IDENTIFIER]"] + list(self.model.fract_info)
                     )
@@ -1794,12 +1795,14 @@ def tp_buttons(window: sg.Window, status: bool) -> None:
 
 
 def fract_clearinput(window):
-    window["-fractionation_path-"].update(values=[])
+    window["-fractionation_path-"].update(
+        values=[], size=window["-fractionation_path-"].Size
+    )
     window["-fractionation_table-"].update(values=[])
 
 
 def tp_clearinput(window):
-    window["-tp_path-"].update(values=[])
+    window["-tp_path-"].update(values=[], size=window["-tp_path-"].Size)
     window["-tp_table-"].update(values=[])
 
 
