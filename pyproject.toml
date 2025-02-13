@@ -68,6 +68,13 @@ lint.extend-select = [
 ]
 
 [tool.pytest.ini_options]
+addopts = [
+    "-s",
+    "-v",
+    "--durations=0",
+    "--durations-min=5"
+]
+
 testpaths = [
     "tests",
     "src",
