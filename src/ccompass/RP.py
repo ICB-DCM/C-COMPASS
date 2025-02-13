@@ -550,7 +550,7 @@ def RP_global_heatmap(comparison):
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each comparison and save the filtered and renamed DataFrame
             for comp in comparison:
-                df = comparison[comp]["metrics"]
+                df = comparison[comp].metrics
 
                 # Apply the filtering and renaming step for Excel export
                 df_filtered = filter_and_prepare_data(df)
@@ -580,8 +580,7 @@ def RP_global_heatmap(comparison):
             selected_comparison = values["-COMPARISON-"]
 
             if selected_comparison:
-                # Load the corresponding pandas DataFrame from comparison['metrics']
-                df = comparison[selected_comparison]["metrics"]
+                df = comparison[selected_comparison].metrics
 
                 # Apply the filtering and renaming step for plotting
                 df_filtered_for_plot = filter_and_prepare_data(df)
@@ -708,7 +707,7 @@ def RP_global_distance(comparison):
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each comparison and save the filtered DataFrame
             for comp in comparison:
-                df = comparison[comp]["metrics"]
+                df = comparison[comp].metrics
 
                 # Filter the data before exporting
                 df_filtered = filter_data(df)
@@ -740,8 +739,7 @@ def RP_global_distance(comparison):
             selected_comparison = values["-COMPARISON-"]
 
             if selected_comparison:
-                # Load the corresponding pandas DataFrame from comparison['metrics']
-                df = comparison[selected_comparison]["metrics"]
+                df = comparison[selected_comparison].metrics
 
                 # Generate the scatter plot with the selected comparison name
                 scatter_image = plot_scatter(df, selected_comparison)

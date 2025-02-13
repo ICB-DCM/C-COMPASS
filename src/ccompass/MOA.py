@@ -7,7 +7,7 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
-from .core import ResultsModel, XYZ_Model
+from .core import ComparisonModel, ResultsModel, XYZ_Model
 
 logger = logging.getLogger(__package__)
 
@@ -160,6 +160,7 @@ def stats_proteome(
     reliability: float,
 ):
     """Proteome prediction / statistics."""
+    logger.info("Performing proteome prediction...")
     conditions = [x for x in fract_conditions if x != "[KEEP]"]
     results = {}
 
@@ -408,11 +409,17 @@ def stats_proteome(
         fmax_col[not_all_na_mask] = fcc_columns[not_all_na_mask].idxmax(axis=1)
         result.metrics["fNN_winner"] = fmax_col.str.replace("fCC_", "")
 
+    logger.info("Proteome prediction done.")
+
     return results
 
 
-def global_comparison(results: dict[str, ResultsModel]):
+def global_comparison(
+    results: dict[str, ResultsModel],
+) -> dict[tuple[str, str], ComparisonModel]:
     """Compute global changes."""
+    logger.info("Calculating global changes...")
+
     conditions = list(results)
 
     # deduplicate indices
@@ -428,58 +435,55 @@ def global_comparison(results: dict[str, ResultsModel]):
         if con_1 != con_2
     ]
 
-    comparison = {}
+    comparisons = {}
     for comb in combinations:
-        logger.info(f"Processing {comb}...")
-        classnames = list(
-            set(results[comb[0]].classnames) & set(results[comb[1]].classnames)
-        )
-        comparison[comb] = {}
+        cond1, cond2 = comb
+        result1, result2 = results[cond1], results[cond2]
 
-        metrics_own = results[comb[0]].metrics
-        metrics_other = results[comb[1]].metrics
+        logger.info(f"Processing {comb}...")
+        classnames = list(set(result1.classnames) & set(result2.classnames))
+        comparison = comparisons[comb] = ComparisonModel()
+
+        metrics_own = result1.metrics
+        metrics_other = result2.metrics
 
         ## prepare data:
-        comparison[comb]["intersection_data"] = pd.merge(
+        comparison.intersection_data = pd.merge(
             metrics_own,
             metrics_other,
             left_index=True,
             right_index=True,
             how="inner",
         )
-        comparison[comb]["metrics"] = pd.DataFrame(
-            index=comparison[comb]["intersection_data"].index
+        comparison.metrics = pd.DataFrame(
+            index=comparison.intersection_data.index
         )
 
         logger.info("performing t-tests...")
 
         for classname in classnames:
-            comparison[comb]["metrics"]["RL_" + classname] = (
+            comparison.metrics["RL_" + classname] = (
                 metrics_other["CC_" + classname]
                 - metrics_own["CC_" + classname]
             )
 
         rl_cols = [
-            col
-            for col in comparison[comb]["metrics"].columns
-            if col.startswith("RL_")
+            col for col in comparison.metrics.columns if col.startswith("RL_")
         ]
-        comparison[comb]["metrics"]["RLS"] = (
-            comparison[comb]["metrics"][rl_cols].abs().sum(axis=1)
+        comparison.metrics["RLS"] = (
+            comparison.metrics[rl_cols].abs().sum(axis=1)
         )
 
         for classname in classnames:
-            comparison[comb]["metrics"]["fRL_" + classname] = (
+            comparison.metrics["fRL_" + classname] = (
                 metrics_other["fCC_" + classname]
                 - metrics_own["fCC_" + classname]
             )
         frl_cols = [
-            col
-            for col in comparison[comb]["metrics"].columns
-            if col.startswith("fRL_")
+            col for col in comparison.metrics.columns if col.startswith("fRL_")
         ]
-        comparison[comb]["metrics"]["fRLS"] = (
-            comparison[comb]["metrics"][frl_cols].abs().sum(axis=1)
+        comparison.metrics["fRLS"] = (
+            comparison.metrics[frl_cols].abs().sum(axis=1)
         )
 
         test_df = perform_mann_whitney_t_tests_per_cell(
@@ -497,13 +501,13 @@ def global_comparison(results: dict[str, ResultsModel]):
                 },
                 inplace=True,
             )
-            # calculate DS:
+        # calculate DS:
         d_columns = [col for col in test_df.columns if col.startswith("D_")]
         test_df["DS"] = test_df[d_columns].abs().sum(axis=1)
 
         # add statistics to metrics:
-        comparison[comb]["metrics"] = pd.merge(
-            comparison[comb]["metrics"],
+        comparison.metrics = pd.merge(
+            comparison.metrics,
             test_df,
             left_index=True,
             right_index=True,
@@ -551,45 +555,50 @@ def global_comparison(results: dict[str, ResultsModel]):
                 for other_list in cclists_other_transposed:
                     comparison_result = compare_lists(own_list, other_list)
                     RLS_results[ID].append(comparison_result)
-        comparison[comb]["RLS_results"] = pd.Series(RLS_results)
-        comparison[comb]["RLS_null"] = pd.Series(RLS_null)
+        comparison.RLS_results = pd.Series(RLS_results)
+        comparison.RLS_null = pd.Series(RLS_null)
 
-        comparison[comb]["metrics"]["P(t)_RLS"] = np.nan
-        comparison[comb]["metrics"]["P(u)_RLS"] = np.nan
-        for index in comparison[comb]["metrics"].index:
+        comparison.metrics["P(t)_RLS"] = np.nan
+        comparison.metrics["P(u)_RLS"] = np.nan
+        for index in comparison.metrics.index:
             if index in common_indices:
                 # Perform the t-test
                 stat, p_value = ttest_ind(
-                    comparison[comb]["RLS_results"].loc[index],
-                    comparison[comb]["RLS_null"].loc[index],
+                    comparison.RLS_results.loc[index],
+                    comparison.RLS_null.loc[index],
                     nan_policy="omit",
                 )
-                comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = p_value
+                comparison.metrics.loc[index, "P(t)_RLS"] = p_value
                 if (
-                    is_all_nan(comparison[comb]["RLS_results"].loc[index])
-                    or is_all_nan(comparison[comb]["RLS_null"].loc[index])
-                    or len(set(comparison[comb]["RLS_results"].loc[index]))
-                    == 1
-                    or len(set(comparison[comb]["RLS_null"].loc[index])) == 1
+                    is_all_nan(comparison.RLS_results.loc[index])
+                    or is_all_nan(comparison.RLS_null.loc[index])
+                    or len(set(comparison.RLS_results.loc[index])) == 1
+                    or len(set(comparison.RLS_null.loc[index])) == 1
                 ):
-                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
+                    comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
                 else:
                     stat_u, p_value_u = stats.mannwhitneyu(
-                        comparison[comb]["RLS_results"].loc[index],
-                        comparison[comb]["RLS_null"].loc[index],
+                        comparison.RLS_results.loc[index],
+                        comparison.RLS_null.loc[index],
                         alternative="two-sided",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = (
-                        p_value_u
-                    )
+                    comparison.metrics.loc[index, "P(u)_RLS"] = p_value_u
             else:
-                comparison[comb]["metrics"].loc[index, "P(t)_RLS"] = pd.NA
-                comparison[comb]["metrics"].loc[index, "P(u)_RLS"] = pd.NA
+                comparison.metrics.loc[index, "P(t)_RLS"] = pd.NA
+                comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
 
-    return comparison
+    logger.info("Global changes calculated.")
+
+    return comparisons
 
 
-def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
+def class_comparison(
+    tp_data,
+    results: dict[str, ResultsModel],
+    comparisons: dict[tuple[str, str], ComparisonModel],
+) -> None:
+    logger.info("Calculating class-centric changes...")
+
     for condition, result in results.items():
         ## add TPA:
         logger.info("creating total protein amount...")
@@ -601,7 +610,7 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
             ~result.metrics.index.duplicated(keep="first")
         ]
 
-        ## add CA:
+        # add class abundance:
         logger.info("adding class abundance...")
         result.metrics["CA_relevant"] = "no"
         result.class_abundance = {}
@@ -631,7 +640,7 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
             )
 
         logger.info("adding normalized class contributions...")
-        ## add nCC:
+        ## add normalized class contributions:
         for classname in result.classnames:
             result.metrics["nCC_" + classname] = (
                 result.metrics["fCC_" + classname]
@@ -664,24 +673,23 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
 
     ## create nRL and nRLS:
     for comb in combinations:
+        comparison = comparisons[comb]
         metrics_own = results[comb[0]].metrics
         metrics_other = results[comb[1]].metrics
         common_indices = calculate_common_indices(metrics_own, metrics_other)
         # TODO assert same classnames
         for classname in result.classnames:
-            comparison[comb]["metrics"]["nRL_" + classname] = (
-                results[comb[1]].metrics["nCC_" + classname]
-                - results[comb[0]].metrics["nCC_" + classname]
+            comparison.metrics["nRL_" + classname] = (
+                metrics_other["nCC_" + classname]
+                - metrics_own["nCC_" + classname]
             )
 
         logger.info("calculating nRL values...")
         nrl_cols = [
-            col
-            for col in comparison[comb]["metrics"].columns
-            if col.startswith("nRL_")
+            col for col in comparison.metrics.columns if col.startswith("nRL_")
         ]
-        comparison[comb]["metrics"]["nRLS"] = (
-            comparison[comb]["metrics"][nrl_cols].abs().sum(axis=1)
+        comparison.metrics["nRLS"] = (
+            comparison.metrics[nrl_cols].abs().sum(axis=1)
         )
 
         nRLS_results = {}
@@ -724,40 +732,38 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
                 for other_list in ncclists_other_transposed:
                     comparison_result = compare_lists(own_list, other_list)
                     nRLS_results[ID].append(comparison_result)
-        comparison[comb]["nRLS_results"] = pd.Series(nRLS_results)
-        comparison[comb]["nRLS_null"] = pd.Series(nRLS_null)
+        comparison.nRLS_results = pd.Series(nRLS_results)
+        comparison.nRLS_null = pd.Series(nRLS_null)
 
-        comparison[comb]["metrics"]["P(t)_nRLS"] = np.nan
-        comparison[comb]["metrics"]["P(u)_nRLS"] = np.nan
-        for index in comparison[comb]["metrics"].index:
+        comparison.metrics["P(t)_nRLS"] = np.nan
+        comparison.metrics["P(u)_nRLS"] = np.nan
+        # TODO(performance): vectorize
+        for index in comparison.metrics.index:
             if index in common_indices:
                 # Perform the t-test
                 stat, p_value = ttest_ind(
-                    comparison[comb]["nRLS_results"].loc[index],
-                    comparison[comb]["nRLS_null"].loc[index],
+                    comparison.nRLS_results.loc[index],
+                    comparison.nRLS_null.loc[index],
                     nan_policy="omit",
                 )
-                comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = p_value
+                comparison.metrics.loc[index, "P(t)_nRLS"] = p_value
                 if (
-                    is_all_nan(comparison[comb]["nRLS_results"].loc[index])
-                    or is_all_nan(comparison[comb]["nRLS_null"].loc[index])
-                    or len(set(comparison[comb]["nRLS_results"].loc[index]))
-                    == 1
-                    or len(set(comparison[comb]["nRLS_null"].loc[index])) == 1
+                    is_all_nan(comparison.nRLS_results.loc[index])
+                    or is_all_nan(comparison.nRLS_null.loc[index])
+                    or len(set(comparison.nRLS_results.loc[index])) == 1
+                    or len(set(comparison.nRLS_null.loc[index])) == 1
                 ):
-                    comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
+                    comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
                 else:
                     stat_u, p_value_u = stats.mannwhitneyu(
-                        comparison[comb]["nRLS_results"].loc[index],
-                        comparison[comb]["nRLS_null"].loc[index],
+                        comparison.nRLS_results.loc[index],
+                        comparison.nRLS_null.loc[index],
                         alternative="two-sided",
                     )
-                    comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = (
-                        p_value_u
-                    )
+                    comparison.metrics.loc[index, "P(u)_nRLS"] = p_value_u
             else:
-                comparison[comb]["metrics"].loc[index, "P(t)_nRLS"] = pd.NA
-                comparison[comb]["metrics"].loc[index, "P(u)_nRLS"] = pd.NA
+                comparison.metrics.loc[index, "P(t)_nRLS"] = pd.NA
+                comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
 
         logger.info("calculating CPA values...")
 
@@ -776,7 +782,7 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
                 metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
             )
 
-            comparison[comb]["metrics"]["CFC_" + classname] = (
+            comparison.metrics["CFC_" + classname] = (
                 metrics_other["CPA_imp_" + classname]
                 - metrics_own["CPA_imp_" + classname]
             )
@@ -795,20 +801,18 @@ def class_comparison(tp_data, results: dict[str, ResultsModel], comparison):
                 metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
             )
 
-            comparison[comb]["metrics"]["nCFC_" + classname] = (
+            comparison.metrics["nCFC_" + classname] = (
                 metrics_other["nCPA_imp_" + classname]
                 - metrics_own["nCPA_imp_" + classname]
             )
+    logger.info("Class-centric changes calculated.")
 
-    return comparison
 
-
-def class_reset(results: dict[str, ResultsModel], comparison) -> None:
-    """Reset classification results.
-
-    Resets the classification results in the results and comparison
-    dictionaries.
-    """
+def class_reset(
+    results: dict[str, ResultsModel],
+    comparisons: dict[tuple[str, str], ComparisonModel],
+) -> None:
+    """Reset class-centric analysis results."""
     for condition, result in results.items():
         result.class_abundance = {}
         result.metrics.drop(["TPA", "CA_relevant"], axis=1, inplace=True)
@@ -829,17 +833,15 @@ def class_reset(results: dict[str, ResultsModel], comparison) -> None:
                 inplace=True,
             )
 
-    for comb in comparison:
-        comparison[comb]["metrics"].drop(
+    for comb, comparison in comparisons.items():
+        comparison.metrics.drop(
             ["nRLS", "P(t)_nRLS", "P(u)_nRLS"], axis=1, inplace=True
         )
-        comparison[comb] = {
-            k: v
-            for k, v in comparison[comb].items()
-            if k not in ["nRLS_results", "nRLS_null"]
-        }
+        comparison.nRLS_null = pd.Series()
+        comparison.nRLS_results = pd.Series()
+
         for classname in results[comb[0]].classnames:
-            comparison[comb]["metrics"].drop(
+            comparison.metrics.drop(
                 ["nRL_" + classname, "CFC_" + classname, "nCFC_" + classname],
                 axis=1,
                 inplace=True,

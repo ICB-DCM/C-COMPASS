@@ -1368,16 +1368,16 @@ class MainController:
                         self.model.results
                     )
                     self.model.status.comparison_global = True
-
             elif event == "-global_reset-":
                 self.model.reset_global_changes()
 
             elif event == "-class_run-":
-                self.model.comparison = MOA.class_comparison(
-                    self.model.tp_data,
-                    self.model.results,
-                    self.model.comparison,
-                )
+                with wait_cursor(self.main_window):
+                    MOA.class_comparison(
+                        self.model.tp_data,
+                        self.model.results,
+                        self.model.comparison,
+                    )
                 self.model.status.comparison_class = True
 
             elif event == "-class_reset-":
