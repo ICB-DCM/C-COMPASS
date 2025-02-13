@@ -158,12 +158,10 @@ def upsample_condition(
     class_maxsize = class_sizes.max()
     k = 1
     for classname, data_class in fract_marker.groupby("class"):
-        data_class = data_class.drop(columns=["class"])
-        class_difference = abs(class_maxsize - class_sizes[classname])
-
-        if not class_difference:
+        if not (class_difference := class_maxsize - class_sizes[classname]):
             continue
 
+        data_class = data_class.drop(columns=["class"])
         class_up = pd.DataFrame(columns=data_class.columns)
         # TODO only compute where necessary
         class_std = data_class.std(axis=0).to_frame().transpose()
@@ -220,7 +218,7 @@ def upsample_condition(
 
             profile_up.index = [name_up]
             profile_up["class"] = [classname]
-
+            assert len(profile_up) == 1
             # TODO(performance) use concat only once
             class_up = (
                 pd.concat([class_up, profile_up], axis=0, ignore_index=False)
@@ -228,19 +226,22 @@ def upsample_condition(
                 else profile_up
             )
 
-            fract_marker_up = pd.concat(
-                [fract_marker_up, class_up],
-                axis=0,
-                ignore_index=False,
-            )
-            fract_full_up = pd.concat(
-                [fract_full_up, class_up],
-                axis=0,
-                ignore_index=False,
-            )
+        fract_marker_up = pd.concat(
+            [fract_marker_up, class_up],
+            axis=0,
+            ignore_index=False,
+        )
+        fract_full_up = pd.concat(
+            [fract_full_up, class_up],
+            axis=0,
+            ignore_index=False,
+        )
     # TODO: seems unnecessary?!
     fract_marker_up = fract_marker_up.sample(frac=1)
     fract_full_up = fract_full_up.sample(frac=1)
+
+    assert len(fract_marker_up["class"].value_counts().unique()) == 1
+    assert len(fract_full_up["class"].value_counts().unique()) == 1
 
     return fract_marker_up, fract_full_up
 
