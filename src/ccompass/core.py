@@ -231,6 +231,20 @@ class XYZ_Model(BaseModel):
     w_train: dict[str, list] = {}
 
 
+class ResultsModel(BaseModel):
+    """Results for a single condition."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    metrics: pd.DataFrame = pd.DataFrame()
+    class_abundance: dict[str, dict[str, dict[str, Any]]] = {}
+    classnames: list[str] = []
+    #: SVM results
+    # * winner_combined: DataFrame
+    # * prob_combined: DataFrame
+    SVM: dict[str, pd.DataFrame] = {}
+
+
 def fract_default():
     """Default settings for fractionation data processing."""
     params_default = {
@@ -413,15 +427,8 @@ class SessionModel(BaseModel):
     #: Nerural network hyperparameters
     NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
-    #: SVM results (?)
-    # "{condition}" => dict(
-    #  "metrics" -> DataFrame,
-    #  "SVM" -> dict("winner_combined" => DataFrame,
-    #                "prob_combined" => DataFrame),
-    #  "classnames" -> list[str],
-    #  "class_abundance -> dict[class_id, dict(CA:float, count: int)]
-    # )
-    results: dict[ConditionId, dict[str, Any]] = {}
+    #: `stats_proteome` results for the different conditions
+    results: dict[ConditionId, ResultsModel] = {}
     #: Pairwise comparisons of conditions
     # (condition1, condition2) => dict(
     #  "intersection_data",
@@ -569,17 +576,15 @@ def write_class_changes_reports(
     model: SessionModel, outdir: Path | str
 ) -> None:
     """Create Excel reports for the class changes."""
-    for condition in model.results:
+    for condition, result in model.results.items():
         fname = Path(
             outdir,
             f"CCMPS_ClassComposition_{condition}.xlsx",
         )
         selected_columns = [
-            col
-            for col in model.results[condition]["metrics"].columns
-            if col.startswith("nCPA")
+            col for col in result.metrics.columns if col.startswith("nCPA")
         ] + ["TPA"]
-        df_out = model.results[condition]["metrics"][selected_columns]
+        df_out = result.metrics[selected_columns]
         df_out.columns = [
             col.replace(
                 "nCPA_imp_",
@@ -650,11 +655,11 @@ def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
 
 
 def write_statistics_reports(model: SessionModel, outdir: str | Path) -> None:
-    for condition in model.results:
+    for condition, result in model.results.items():
         fname = Path(outdir, f"CCMPS_statistics_{condition}.tsv")
         df_out = pd.merge(
             model.fract_data["vis"][condition + "_median"],
-            model.results[condition]["metrics"],
+            result.metrics,
             left_index=True,
             right_index=True,
             how="outer",

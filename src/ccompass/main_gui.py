@@ -1632,8 +1632,7 @@ class MainController:
                     messagebox.showerror(
                         "Error",
                         "There are already statistics for "
-                        + condition
-                        + " in your current session.",
+                        f"{condition} in your current session.",
                     )
                 else:
                     self.model.results[condition] = copy.deepcopy(
@@ -1651,14 +1650,12 @@ class MainController:
         if not export_folder:
             return
 
-        for condition in self.model.results:
+        for condition, result in self.model.results.items():
             fname = Path(export_folder, f"CCMPS_statistics_{condition}.xlsx")
             selected_columns = [
-                col
-                for col in self.model.results[condition]["metrics"].columns
-                if col.startswith("fCC_")
+                col for col in result.metrics.columns if col.startswith("fCC_")
             ] + ["SVM_winner", "fNN_winner", "marker"]
-            df_out = self.model.results[condition]["metrics"][selected_columns]
+            df_out = result.metrics[selected_columns]
             df_out.columns = [
                 col.replace("fCC_", "CC_ClassContribution_")
                 if col.startswith("fCC_")
