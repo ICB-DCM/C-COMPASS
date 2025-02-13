@@ -14,6 +14,8 @@ from PIL import Image, ImageFile
 from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
 
+from ccompass.core import ResultsModel
+
 logger = logging.getLogger(__package__)
 
 
@@ -151,7 +153,7 @@ def RP_gradient_heatmap(fract_data):
     window.close()
 
 
-def RP_stats_heatmap(results):
+def RP_stats_heatmap(results: dict[str, ResultsModel]):
     """Create a GUI to display a heatmap with hierarchical clustering for each condition."""
     # Get the list of conditions from results
     conditions = list(results)
@@ -244,22 +246,20 @@ def RP_stats_heatmap(results):
         bio.seek(0)
         return Image.open(bio)
 
-    def export_results(results, folder_path):
+    def export_results(results: dict[str, ResultsModel], folder_path):
         """Export dataframes to Excel and heatmaps to PDFs"""
         # Create an Excel writer to save all conditions into one file
         excel_filename = os.path.join(folder_path, "results_data.xlsx")
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each condition and save the 'metrics' DataFrame
-            for condition in results:
-                df = results[condition]["metrics"]
-
+            for condition, result in results.items():
                 # Save the entire DataFrame to Excel
-                df.to_excel(writer, sheet_name=condition)
+                result.metrics.to_excel(writer, sheet_name=condition)
 
                 # Also generate and save the heatmap as a PDF using the fCC_ columns
                 plot_heatmap(
-                    df,
+                    result.metrics,
                     condition_name=condition,
                     save_as_pdf=True,
                     folder_path=folder_path,
@@ -278,7 +278,7 @@ def RP_stats_heatmap(results):
         if event == "-CONDITION-" and (
             selected_condition := values["-CONDITION-"]
         ):
-            df = results[selected_condition]["metrics"]
+            df = results[selected_condition].metrics
 
             # Generate the heatmap with hierarchical clustering and condition name as the title
             heatmap_image = plot_heatmap(df, selected_condition)
@@ -300,7 +300,7 @@ def RP_stats_heatmap(results):
     window.close()
 
 
-def RP_stats_distribution(results):
+def RP_stats_distribution(results: dict[str, ResultsModel]):
     conditions = list(results)
 
     # Define the layout
@@ -366,7 +366,7 @@ def RP_stats_distribution(results):
         return Image.open(bio)
 
     # Function to export pie charts and summary to Excel and PDFs
-    def export_pie_charts(results, folder_path):
+    def export_pie_charts(results: dict[str, ResultsModel], folder_path):
         # Create an Excel writer to save summary data
         excel_filename = os.path.join(
             folder_path, "class_distribution_summary.xlsx"
@@ -374,11 +374,9 @@ def RP_stats_distribution(results):
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
             # Loop through each condition and save the pie chart and class distribution
-            for condition in results:
-                df = results[condition]["metrics"]
-
+            for condition, result in results.items():
                 # Rename 'fNN_winner' column to 'main organelle' before exporting
-                df_export = df.rename(
+                df_export = result.metrics.rename(
                     columns={"fNN_winner": "main compartment"}
                 )
 
@@ -390,7 +388,7 @@ def RP_stats_distribution(results):
 
                 # Save the pie chart for each condition as a PDF
                 plot_pie_chart(
-                    df,
+                    result.metrics,
                     condition_name=condition,
                     save_as_pdf=True,
                     folder_path=folder_path,
@@ -410,8 +408,7 @@ def RP_stats_distribution(results):
             selected_condition = values["-CONDITION-"]
 
             if selected_condition:
-                # Load the corresponding pandas DataFrame from results['metrics']
-                df = results[selected_condition]["metrics"]
+                df = results[selected_condition].metrics
 
                 # Generate the pie chart for the class distribution
                 pie_chart_image = plot_pie_chart(df, selected_condition)
@@ -756,11 +753,11 @@ def RP_global_distance(comparison):
     window.close()
 
 
-def RP_class_heatmap(results):
+def RP_class_heatmap(results: dict[str, ResultsModel]):
     # Step 1: Get common classnames that are present in all conditions
     conditions = list(results.keys())
     classnames_lists = [
-        set(results[condition]["classnames"]) for condition in conditions
+        set(results[condition].classnames) for condition in conditions
     ]
 
     # Find the intersection of classnames across all conditions
@@ -860,7 +857,11 @@ def RP_class_heatmap(results):
             return None
 
     # Function to export heatmaps and data to PDF and Excel
-    def export_heatmaps(results, common_classnames, folder_path):
+    def export_heatmaps(
+        results: dict[str, ResultsModel],
+        common_classnames: list[str],
+        folder_path,
+    ):
         excel_filename = os.path.join(folder_path, "class_heatmap_data.xlsx")
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
@@ -869,7 +870,7 @@ def RP_class_heatmap(results):
                 # Create a DataFrame where columns are conditions and rows are the values from 'nCPA_' + classname
                 data_dict = {}
                 for condition in conditions:
-                    df_metrics = results[condition]["metrics"]
+                    df_metrics = results[condition].metrics
                     column_name = f"nCPA_{classname}"
                     if column_name in df_metrics.columns:
                         data_dict[condition] = df_metrics[column_name]
@@ -915,7 +916,7 @@ def RP_class_heatmap(results):
                 # Create a DataFrame where columns are conditions and rows are 'nCPA_' values for the selected classname
                 data_dict = {}
                 for condition in conditions:
-                    df_metrics = results[condition]["metrics"]
+                    df_metrics = results[condition].metrics
                     column_name = f"nCPA_{selected_classname}"
                     if column_name in df_metrics.columns:
                         data_dict[condition] = df_metrics[column_name]
