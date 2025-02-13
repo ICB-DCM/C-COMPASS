@@ -308,9 +308,8 @@ def stats_proteome(
             stacked_arrays = np.stack(
                 list(learning_xyz[subcon].z_full.values())
             )
-            learning_xyz[subcon].z_full_mean = np.mean(stacked_arrays, axis=0)
             learning_xyz[subcon].z_full_mean_df = pd.DataFrame(
-                learning_xyz[subcon].z_full_mean,
+                np.mean(stacked_arrays, axis=0),
                 index=learning_xyz[subcon].x_full_df.index,
                 columns=learning_xyz[subcon].Z_train_df.columns,
             )

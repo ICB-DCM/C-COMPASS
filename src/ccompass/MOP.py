@@ -152,7 +152,7 @@ def upsample_condition(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Perform upsampling for the given condition."""
     fract_full_up = fract_full
-    fract_marker_up = fract_marker
+    fract_marker_up = fract_marker.copy()
 
     class_sizes = fract_marker["class"].value_counts()
     class_maxsize = class_sizes.max()
@@ -253,7 +253,7 @@ def sum1_normalization(x):
 
 def MOP_exec(
     fract_full: dict[str, pd.DataFrame],
-    fract_marker_old: dict[str, pd.DataFrame],
+    fract_marker: dict[str, pd.DataFrame],
     fract_test: dict[str, pd.DataFrame],
     stds: dict[str, pd.DataFrame],
     NN_params: NeuralNetworkParametersModel,
@@ -263,15 +263,21 @@ def MOP_exec(
     :param fract_full: dictionary of full profiles
     """
     conditions = list(fract_full.keys())
+
     learning_xyz = {condition: XYZ_Model() for condition in conditions}
+    for condition in conditions:
+        update_learninglist_const(
+            learning_xyz[condition],
+            fract_full[condition],
+            fract_marker[condition],
+            fract_test[condition],
+        )
 
     for i_round in range(1, NN_params.rounds + 1):
         logger.info(f"Executing round {i_round}...")
 
         fract_full_up = {}
         fract_marker_up = {}
-
-        fract_marker = copy.deepcopy(fract_marker_old)
 
         if NN_params.upsampling:
             # upsample fractionation data for each condition x replicate
@@ -290,18 +296,13 @@ def MOP_exec(
             fract_marker_up = copy.deepcopy(fract_marker)
             fract_full_up = copy.deepcopy(fract_full)
 
-        logger.info("creating data...")
         for condition in conditions:
-            classes = create_learninglist(
+            update_learninglist_round(
                 learning_xyz[condition],
-                fract_full[condition],
                 fract_full_up[condition],
-                fract_marker[condition],
                 fract_marker_up[condition],
-                fract_test[condition],
                 i_round,
             )
-        logger.info("data complete!")
 
         svm_metrics = {}
         svm_marker = {}
@@ -349,6 +350,7 @@ def MOP_exec(
 
         fract_unmixed_up = {}
         for condition in conditions:
+            # One-hot encode the classes
             unmixed_dummies = pd.get_dummies(
                 fract_marker_up[condition]["class"]
             )
@@ -370,27 +372,23 @@ def MOP_exec(
                 for i in range(1, NN_params.mixed_part)
             ]
             for condition in conditions:
-                fract_mixed_up = mix_profiles(
+                fract_mixed_up[condition] = mix_profiles(
+                    fract_marker_up[condition],
+                    fract_unmixed_up[condition],
                     mix_steps,
-                    NN_params,
-                    fract_marker_up,
-                    fract_unmixed_up,
-                    fract_mixed_up,
-                    condition,
+                    NN_params.mixed_batch,
                 )
 
         round_id = f"ROUND_{i_round}"
         for condition, xyz in learning_xyz.items():
-            # FIXME: `classes` might be different for each condition,
-            #  and here we always use the classes from the last condition?!
             xyz.x_train_mixed_up_df[round_id] = fract_mixed_up[condition].drop(
-                columns=classes
+                columns=xyz.classes
             )
             xyz.x_train_mixed_up[round_id] = xyz.x_train_mixed_up_df[
                 round_id
             ].to_numpy(dtype=float)
             xyz.Z_train_mixed_up_df[round_id] = fract_mixed_up[condition][
-                classes
+                xyz.classes
             ]
             xyz.Z_train_mixed_up[round_id] = xyz.Z_train_mixed_up_df[
                 round_id
@@ -401,6 +399,8 @@ def MOP_exec(
             xyz.V_full_up[round_id] = xyz.x_full_up[round_id]
 
             if NN_params.AE == "none":
+                # TODO(performance): Is there anything happening here?
+                #  Just needless copying?
                 y_full = xyz.x_full
                 y_full_up = xyz.x_full_up[round_id]
                 y_train = xyz.x_train
@@ -577,7 +577,6 @@ def add_Z(
         index=learning_xyz.y_train_df[subround_id].index,
         columns=learning_xyz.classes,
     )
-    learning_xyz.z_train[subround_id] = z_train
 
 
 def add_Y(
@@ -606,94 +605,89 @@ def add_Y(
     learning_xyz.y_test[subround_id] = y_test
 
 
-def create_learninglist(
+def update_learninglist_const(
     learning_xyz: XYZ_Model,
     fract_full: pd.DataFrame,
-    fract_full_up: pd.DataFrame,
     fract_marker: pd.DataFrame,
-    fract_marker_up: pd.DataFrame,
     fract_test: pd.DataFrame,
-    roundn: int,
-):
-    round_id = f"ROUND_{roundn}"
-    classes = fract_marker["class"].unique().tolist()
-    learning_xyz.classes = classes
-
+) -> None:
+    """Populate `learning_xyz` with the learning data that is constant across
+    rounds."""
     # TODO(performance): not all of those need to be stored or be converted
     #  to lists
+    learning_xyz.classes = fract_marker["class"].unique().tolist()
     learning_xyz.W_full_df = fract_full["class"]
-    learning_xyz.W_full = list(learning_xyz.W_full_df)
-    learning_xyz.W_full_up_df[round_id] = fract_full_up["class"]
-    learning_xyz.W_full_up[round_id] = list(
-        learning_xyz.W_full_up_df[round_id]
-    )
     learning_xyz.W_train_df = fract_marker["class"]
     learning_xyz.W_train = list(learning_xyz.W_train_df)
+    learning_xyz.x_full_df = fract_full.drop(columns=["class"])
+    learning_xyz.x_full = learning_xyz.x_full_df.to_numpy(dtype=float)
+    learning_xyz.x_train_df = fract_marker.drop(columns=["class"])
+    learning_xyz.x_train = learning_xyz.x_train_df.to_numpy(dtype=float)
+    learning_xyz.x_test_df = fract_test.drop(columns=["class"])
+    learning_xyz.x_test = learning_xyz.x_test_df.to_numpy(dtype=float)
+    learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
+        learning_xyz.classes
+    ]
+
+
+def update_learninglist_round(
+    learning_xyz: XYZ_Model,
+    fract_full_up: pd.DataFrame,
+    fract_marker_up: pd.DataFrame,
+    roundn: int,
+) -> None:
+    """Populate `learning_xyz` with the learning data that is specific to the
+    given round."""
+    round_id = f"ROUND_{roundn}"
     learning_xyz.W_train_up_df[round_id] = fract_marker_up["class"]
     learning_xyz.W_train_up[round_id] = list(
         learning_xyz.W_train_up_df[round_id]
     )
 
-    learning_xyz.x_full_df = fract_full.drop(columns=["class"])
-    learning_xyz.x_full = learning_xyz.x_full_df.to_numpy(dtype=float)
     learning_xyz.x_full_up_df[round_id] = fract_full_up.drop(columns=["class"])
     learning_xyz.x_full_up[round_id] = learning_xyz.x_full_up_df[
         round_id
     ].to_numpy(dtype=float)
-    learning_xyz.x_train_df = fract_marker.drop(columns=["class"])
-    learning_xyz.x_train = learning_xyz.x_train_df.to_numpy(dtype=float)
     learning_xyz.x_train_up_df[round_id] = fract_marker_up.drop(
         columns=["class"]
     )
     learning_xyz.x_train_up[round_id] = learning_xyz.x_train_up_df[
         round_id
     ].to_numpy(dtype=float)
-    learning_xyz.x_test_df = fract_test.drop(columns=["class"])
-    learning_xyz.x_test = learning_xyz.x_test_df.to_numpy(dtype=float)
-
-    learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
-        learning_xyz.classes
-    ]
-    learning_xyz.Z_train = learning_xyz.Z_train_df.to_numpy(dtype=float)
     learning_xyz.V_full_up[round_id] = learning_xyz.x_full_up[round_id]
-
-    return classes
 
 
 def mix_profiles(
-    mix_steps: list[float],
-    NN_params: NeuralNetworkParametersModel,
     fract_marker_up,
     fract_unmixed_up,
-    fract_mixed_up,
-    condition: str,
-):
+    mix_steps: list[float],
+    mixed_batch: float,
+) -> pd.DataFrame:
     """Create mixed profiles.
 
     Create pairwise combinations of profiles and mix them according to the
     `mix_steps`. Return a random sample of the mixed profiles.
     """
-    class_list = list(set(list(fract_marker_up[condition]["class"])))
+    class_list = list(set(list(fract_marker_up["class"])))
     combinations = [
         (a, b)
         for idx, a in enumerate(class_list)
         for b in class_list[idx + 1 :]
     ]
 
-    fract_mixed_up[condition] = copy.deepcopy(fract_unmixed_up[condition])
+    fract_mixed_up = copy.deepcopy(fract_unmixed_up)
 
     cur = 1
     for comb in combinations:
+        # TODO (performance): We can avoid some copying here
         profiles_own = (
-            fract_marker_up[condition]
-            .copy()
-            .loc[fract_marker_up[condition]["class"] == comb[0]]
+            fract_marker_up.copy()
+            .loc[fract_marker_up["class"] == comb[0]]
             .drop(columns=["class"])
         )
         profiles_other = (
-            fract_marker_up[condition]
-            .copy()
-            .loc[fract_marker_up[condition]["class"] == comb[1]]
+            fract_marker_up.copy()
+            .loc[fract_marker_up["class"] == comb[1]]
             .drop(columns=["class"])
         )
 
@@ -719,9 +713,9 @@ def mix_profiles(
                     profiles_mixed[classname] = 1 - part
                 else:
                     profiles_mixed[classname] = 0.0
-            profiles_mixed = profiles_mixed.sample(frac=NN_params.mixed_batch)
-            fract_mixed_up[condition] = pd.concat(
-                [fract_mixed_up[condition], profiles_mixed]
+            profiles_mixed = profiles_mixed.sample(frac=mixed_batch)
+            fract_mixed_up = pd.concat(
+                [fract_mixed_up, profiles_mixed]
             ).sample(frac=1)
             cur += len(profiles_mixed)
     return fract_mixed_up
