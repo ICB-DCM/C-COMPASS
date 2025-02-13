@@ -121,7 +121,11 @@ class SessionStatusModel(BaseModel):
 
 
 class XYZ_Model(BaseModel):
-    """`learning_xyz` for a specific condition in `SessionModel`."""
+    """`learning_xyz` for a specific condition in `SessionModel`.
+
+    W, Y: true labels
+    w, y: predicted labels
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -243,6 +247,24 @@ class ResultsModel(BaseModel):
     # * winner_combined: DataFrame
     # * prob_combined: DataFrame
     SVM: dict[str, pd.DataFrame] = {}
+
+
+class ComparisonModel(BaseModel):
+    """Result of a comparison between two conditions."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    intersection_data: pd.DataFrame = pd.DataFrame()
+    metrics: pd.DataFrame = pd.DataFrame()
+
+    # global comparison results
+    #: Relocalization scores
+    RLS_results: pd.Series = pd.Series()
+    RLS_null: pd.Series = pd.Series()
+
+    # class-centric comparison results
+    nRLS_results: pd.Series = pd.Series()
+    nRLS_null: pd.Series = pd.Series()
 
 
 def fract_default():
@@ -430,17 +452,8 @@ class SessionModel(BaseModel):
     #: `stats_proteome` results for the different conditions
     results: dict[ConditionId, ResultsModel] = {}
     #: Pairwise comparisons of conditions
-    # (condition1, condition2) => dict(
-    #  "intersection_data",
-    #  "metrics",
-    #  "RLS_results", (RLS = Relocalization Score)
-    #  "RLS_null",
-    #  "nRLS_results",
-    #  "nRLS_null",
-    #  )
-    comparison: dict[
-        tuple[ConditionId, ConditionId], dict[str, pd.Series | pd.DataFrame]
-    ] = {}
+    # (condition1, condition2) => ComparisonModel
+    comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel] = {}
     #: Indicates which of the individual analysis steps
     #  have already been performed or not
     status: SessionStatusModel = SessionStatusModel()
@@ -555,10 +568,10 @@ def write_global_changes_reports(
         )
         selected_columns = [
             col
-            for col in comparison[comb]["metrics"].columns
+            for col in comparison[comb].metrics.columns
             if col.startswith("fRL_")
         ] + ["fRLS", "DS", "P(t)_RLS"]
-        df_out = comparison[comb]["metrics"][selected_columns]
+        df_out = comparison[comb].metrics[selected_columns]
         df_out.columns = [
             col.replace("fRL_", "RL_Relocalization_")
             if col.startswith("fRL_")
@@ -602,17 +615,15 @@ def write_class_changes_reports(
         ]
         df_out.to_excel(fname, index=True)
 
-    for comb in model.comparison:
+    for (cond1, cond2), comp in model.comparison.items():
         fname = Path(
             outdir,
-            f"CCMPS_ClassComparison_{comb[0]}_{comb[1]}.xlsx",
+            f"CCMPS_ClassComparison_{cond1}_{cond2}.xlsx",
         )
         selected_columns = [
-            col
-            for col in model.comparison[comb]["metrics"].columns
-            if col.startswith("nCFC_")
+            col for col in comp.metrics.columns if col.startswith("nCFC_")
         ]
-        df_out = model.comparison[comb]["metrics"][selected_columns]
+        df_out = comp.metrics[selected_columns]
         df_out.columns = [
             col.replace(
                 "nCFC_",
@@ -628,18 +639,16 @@ def write_class_changes_reports(
 def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
     Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    for comb in model.comparison:
+    for (cond1, cond2), comp in model.comparison.items():
         fname = Path(
             outdir,
-            f"CCMPS_comparison_{comb[0]}_{comb[1]}.tsv",
+            f"CCMPS_comparison_{cond1}_{cond2}.tsv",
         )
 
-        df_out = pd.DataFrame(
-            index=model.comparison[comb]["intersection_data"].index
-        )
+        df_out = pd.DataFrame(index=comp.intersection_data.index)
         df_out = pd.merge(
             df_out,
-            model.comparison[comb]["metrics"],
+            comp.metrics,
             left_index=True,
             right_index=True,
             how="left",
