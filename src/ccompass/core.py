@@ -220,11 +220,13 @@ class XYZ_Model(BaseModel):
     y_test: dict[str, np.ndarray] = {}
 
     #: SVM-predicted class labels for x_full for each round
+    # TODO: never read
     w_full: dict[str, list] = {}
     #: Probabilities for the SVM-predicted class labels in w_full
-    w_full_prob: dict[str, list] = {}
+    # TODO: never read
+    w_full_prob: dict[str, np.ndarray] = {}
     #: SVM-predicted class labels for x_train for each round
-    # TODO redundant with SessionModel.svm_marker
+    # TODO: never read
     w_train: dict[str, list] = {}
 
 
@@ -306,6 +308,8 @@ class SessionModel(BaseModel):
     """Data for a C-COMPASS session."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # TODO: consider grouping data by condition
 
     #: Filepaths for fractionation data
     fract_paths: list[Filepath] = []

@@ -263,8 +263,12 @@ def MOP_exec(
 
     :param fract_full: dictionary of full profiles
     """
-    conditions = list(fract_full.keys())
+    fract_full_up = {}
+    fract_marker_up = {}
+    fract_mixed_up = {}
+    fract_unmixed_up = {}
 
+    conditions = list(fract_full.keys())
     learning_xyz = {condition: XYZ_Model() for condition in conditions}
     for condition in conditions:
         update_learninglist_const(
@@ -275,7 +279,7 @@ def MOP_exec(
         )
 
     for i_round in range(1, NN_params.rounds + 1):
-        logger.info(f"Executing round {i_round}...")
+        logger.info(f"Executing round {i_round}/{NN_params.rounds}...")
         round_id = f"ROUND_{i_round}"
 
         fract_full_up = {}
@@ -303,18 +307,14 @@ def MOP_exec(
                 learning_xyz[condition],
                 fract_full_up[condition],
                 fract_marker_up[condition],
-                i_round,
+                round_id,
             )
 
-        # TODO (performance): can we skip SVM if svm_filter==False?
         svm_marker = {}
         for condition in conditions:
-            clf = svm.SVC(kernel="rbf", probability=True)
             logger.info(f"Performing single prediction for {condition}...")
-
             _, svm_marker[condition], _ = single_prediction(
                 learning_xyz[condition],
-                clf,
                 fract_marker[condition],
                 fract_test[condition],
                 round_id,
@@ -628,11 +628,10 @@ def update_learninglist_round(
     learning_xyz: XYZ_Model,
     fract_full_up: pd.DataFrame,
     fract_marker_up: pd.DataFrame,
-    roundn: int,
+    round_id: str,
 ) -> None:
     """Populate `learning_xyz` with the learning data that is specific to the
     given round."""
-    round_id = f"ROUND_{roundn}"
     learning_xyz.W_train_up_df[round_id] = fract_marker_up["class"]
     learning_xyz.W_train_up[round_id] = list(
         learning_xyz.W_train_up_df[round_id]
@@ -717,12 +716,11 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz: XYZ_Model,
-    clf: svm.SVC,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
     round_id: str,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
-    """Perform single prediction.
+    """Perform single-class (single-compartment) prediction.
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
@@ -736,16 +734,19 @@ def single_prediction(
     W_train_up = learning_xyz.W_train_up[round_id]
 
     # train classifier on the upsampled data
+    clf = svm.SVC(kernel="rbf", probability=True)
     clf.fit(x_train_up, W_train_up)
 
     # predict the classes
+    # TODO(performance): No need to predict x_full,
+    #  since that is x_train + x_test
     w_full = clf.predict(x_full).tolist()
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
 
-    w_full_prob = list(map(max, list(clf.predict_proba(x_full))))
-    w_train_prob = list(map(max, list(clf.predict_proba(x_train))))
-    w_test_prob = list(map(max, list(clf.predict_proba(x_test))))
+    w_full_prob = clf.predict_proba(x_full).max(axis=1)
+    w_train_prob = clf.predict_proba(x_train).max(axis=1)
+    w_test_prob = clf.predict_proba(x_test).max(axis=1)
 
     confusion = pd.DataFrame(
         confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
