@@ -129,53 +129,54 @@ class XYZ_Model(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    # TODO(performance): get rid of duplicate data in different formats
+    #: List of unique classes for which there are marker measurements
+    classes: list[str] = []
     #: class labels for the markers
     W_train_df: pd.Series = pd.Series()
     #: class labels for the markers as list
     W_train: list = []
+    #: Class labels for all proteins (NaN for non-marker proteins)
+    W_full_df: pd.Series = pd.Series()
+
     #: Combined classification results from different SVM rounds
     #  (w_full_prob_df)
     w_full_combined: pd.DataFrame = pd.DataFrame()
     #: Probabilities for the classifications in w_full_combined
     w_full_prob_combined: pd.DataFrame = pd.DataFrame()
+
     #: features (protein levels in the different fractions for one replicate,
     #  for proteins with known and unknown class labels)
     x_full_df: pd.DataFrame = pd.DataFrame()
     #: x_full_df, but as numpy array
     x_full: np.ndarray = np.array([])
+
+    #: Features for the proteins with known class labels
+    x_test_df: pd.DataFrame = pd.DataFrame()
+    #: x_test_df as numpy array
+    x_test: np.ndarray = np.array([])
+    #: Features for the training data (marker profiles)
+    x_train_df: pd.DataFrame = pd.DataFrame()
+    #: x_train_df as numpy array
+    x_train: np.ndarray = np.array([])
+
+    #: One-hot encoded labels for marker profiles
+    Z_train_df: pd.DataFrame = pd.DataFrame()
+    #: Means of the z_full values across the different rounds
+    z_full_mean_df: pd.DataFrame = pd.DataFrame()
+
     #: features and SVM classification results for the different rounds
     w_full_prob_df: dict[str, pd.DataFrame] = {}
     #: Neural network classification results for y_train
     #  (i.e. probabilities for the different classes for each protein)
     z_train_df: dict[str, pd.DataFrame] = {}
-    #: z_train_df, but as numpy array
-    z_train: dict[str, np.ndarray] = {}
     #: Neural network classification results for y_full
     #  (i.e. probabilities for the different classes for each protein)
     z_full_df: dict[str, pd.DataFrame] = {}
     #: z_full_df, but as numpy array
     z_full: dict[str, np.ndarray] = {}
-    #: z_full_mean_df as numpy array
-    z_full_mean: np.ndarray = np.array([])
-    #: Means of the z_full values across the different rounds
-    z_full_mean_df: pd.DataFrame = pd.DataFrame()
     #: Summary of the best neural network model in each round
     FNN_summary: dict[str, str] = {}
-    #: One-hot encoded labels for marker profiles
-    Z_train_df: pd.DataFrame = pd.DataFrame()
-    #: Z_train_df, but as numpy array
-    Z_train: np.ndarray = np.array([])
-    #: List of unique classes for which there are marker measurements
-    classes: list[str] = []
-    #: Class labels for all proteins (NaN for non-marker proteins)
-    W_full_df: pd.Series = pd.Series()
-    #: W_full_df as list
-    W_full: list = []
-    #: Class labels for the upsampled full dataset
-    #  for the different rounds
-    W_full_up_df: dict[str, pd.Series] = {}
-    #: W_full_up_df as list
-    W_full_up: dict[str, list] = {}
     #: Class labels for the upsampled training data
     #  for the different rounds
     W_train_up_df: dict[str, pd.Series] = {}
@@ -186,18 +187,10 @@ class XYZ_Model(BaseModel):
     x_full_up_df: dict[str, pd.DataFrame] = {}
     #: x_full_up_df as numpy array
     x_full_up: dict[str, np.ndarray] = {}
-    #: Features for the training data (marker profiles)
-    x_train_df: pd.DataFrame = pd.DataFrame()
-    #: x_train_df as numpy array
-    x_train: np.ndarray = np.array([])
     #: Features for the upsampled training data during the different rounds
     x_train_up_df: dict[str, pd.DataFrame] = {}
     #: x_train_up_df as numpy array
     x_train_up: dict[str, np.ndarray] = {}
-    #: Features for the proteins with known class labels
-    x_test_df: pd.DataFrame = pd.DataFrame()
-    #: x_test_df as numpy array
-    x_test: np.ndarray = np.array([])
     #: same as x_full_up
     V_full_up: dict[str, np.ndarray] = {}
     #: Features for the training data (marker profiles) after maxing
@@ -545,9 +538,7 @@ class SessionModel(BaseModel):
 
 
 def write_global_changes_reports(
-    comparison: dict[
-        tuple[ConditionId, ConditionId], dict[str, pd.Series | pd.DataFrame]
-    ],
+    comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel],
     outdir: Path | str,
 ) -> None:
     """Create Excel reports for the global changes."""
