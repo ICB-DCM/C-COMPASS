@@ -546,6 +546,8 @@ def write_global_changes_reports(
     outdir: Path | str,
 ) -> None:
     """Create Excel reports for the global changes."""
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
     for comb in comparison:
         fname = Path(
             outdir,
@@ -576,6 +578,8 @@ def write_class_changes_reports(
     model: SessionModel, outdir: Path | str
 ) -> None:
     """Create Excel reports for the class changes."""
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
     for condition, result in model.results.items():
         fname = Path(
             outdir,
@@ -622,6 +626,8 @@ def write_class_changes_reports(
 
 
 def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
     for comb in model.comparison:
         fname = Path(
             outdir,
@@ -655,6 +661,8 @@ def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
 
 
 def write_statistics_reports(model: SessionModel, outdir: str | Path) -> None:
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
     for condition, result in model.results.items():
         fname = Path(outdir, f"CCMPS_statistics_{condition}.tsv")
         df_out = pd.merge(

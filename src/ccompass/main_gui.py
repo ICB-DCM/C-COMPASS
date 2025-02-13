@@ -1650,6 +1650,8 @@ class MainController:
         if not export_folder:
             return
 
+        Path(export_folder).mkdir(parents=True, exist_ok=True)
+
         for condition, result in self.model.results.items():
             fname = Path(export_folder, f"CCMPS_statistics_{condition}.xlsx")
             selected_columns = [
@@ -2087,6 +2089,7 @@ def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
 def tp_export(export_folder: str | Path, experiment: str, tp_data, tp_info):
     """Export total proteome data."""
     export_folder = Path(export_folder)
+    export_folder.mkdir(parents=True, exist_ok=True)
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
 

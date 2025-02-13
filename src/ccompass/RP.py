@@ -3,6 +3,7 @@
 import logging
 import os
 from io import BytesIO
+from pathlib import Path
 
 import FreeSimpleGUI as sg
 import matplotlib.colors as mcolors
@@ -102,6 +103,7 @@ def RP_gradient_heatmap(fract_data):
 
     def export_results(fract_data, folder_path):
         """Export dataframes to Excel and heatmaps to PDFs."""
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
 
         # Create an Excel writer to save all conditions into one file
         excel_filename = os.path.join(folder_path, "conditions_data.xlsx")
@@ -248,6 +250,8 @@ def RP_stats_heatmap(results: dict[str, ResultsModel]):
 
     def export_results(results: dict[str, ResultsModel], folder_path):
         """Export dataframes to Excel and heatmaps to PDFs"""
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
         # Create an Excel writer to save all conditions into one file
         excel_filename = os.path.join(folder_path, "results_data.xlsx")
 
@@ -367,6 +371,8 @@ def RP_stats_distribution(results: dict[str, ResultsModel]):
 
     # Function to export pie charts and summary to Excel and PDFs
     def export_pie_charts(results: dict[str, ResultsModel], folder_path):
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
         # Create an Excel writer to save summary data
         excel_filename = os.path.join(
             folder_path, "class_distribution_summary.xlsx"
@@ -534,6 +540,8 @@ def RP_global_heatmap(comparison):
 
     # Function to export filtered and renamed dataframes to Excel and heatmaps to PDFs
     def export_heatmaps(comparison, folder_path):
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
         # Create an Excel writer to save all filtered data into one file
         excel_filename = os.path.join(
             folder_path, "filtered_comparison_data.xlsx"
@@ -690,6 +698,8 @@ def RP_global_distance(comparison):
 
     # Function to export scatter plot data and save to Excel and PDFs
     def export_scatter_data(comparison, folder_path):
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
         # Create an Excel writer to save all data into one file
         excel_filename = os.path.join(
             folder_path, "comparison_scatter_data.xlsx"
@@ -862,6 +872,8 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
         common_classnames: list[str],
         folder_path,
     ):
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
         excel_filename = os.path.join(folder_path, "class_heatmap_data.xlsx")
 
         with pd.ExcelWriter(excel_filename, engine="xlsxwriter") as writer:
