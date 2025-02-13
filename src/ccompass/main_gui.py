@@ -1108,7 +1108,6 @@ class MainController:
                     (
                         self.model.fract_data,
                         self.model.fract_std,
-                        self.model.fract_intermediate,
                         self.model.fract_info,
                         self.model.fract_conditions,
                     ) = FDP_exec(
@@ -1117,7 +1116,6 @@ class MainController:
                         self.model.fract_identifiers,
                         self.model.fract_data,
                         self.model.fract_std,
-                        self.model.fract_intermediate,
                         self.model.fract_info,
                         self.model.fract_conditions,
                         self.model.fract_indata,
@@ -1209,7 +1207,6 @@ class MainController:
 
                     (
                         self.model.tp_data,
-                        self.model.tp_intermediate,
                         self.model.tp_info,
                         self.model.tp_conditions,
                         self.model.tp_icorr,
@@ -1218,7 +1215,6 @@ class MainController:
                         self.model.tp_tables,
                         self.model.tp_preparams,
                         self.model.tp_identifiers,
-                        self.model.tp_intermediate,
                         self.model.tp_info,
                         self.model.tp_icorr,
                         self.model.tp_indata,
