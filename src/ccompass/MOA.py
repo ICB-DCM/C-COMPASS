@@ -7,6 +7,8 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
+from .core import XYZ_Model
+
 logger = logging.getLogger(__package__)
 
 
@@ -152,7 +154,10 @@ def impute_data(df: pd.DataFrame, colname: str, newcol: str):
 
 
 def stats_proteome(
-    learning_xyz, fract_data, fract_conditions, reliability: float
+    learning_xyz: dict[str, XYZ_Model],
+    fract_data,
+    fract_conditions,
+    reliability: float,
 ):
     """Proteome prediction / statistics."""
     conditions = [x for x in fract_conditions if x != "[KEEP]"]
@@ -177,10 +182,8 @@ def stats_proteome(
         results[condition]["metrics"]["marker"] = np.nan
 
         for subcon in subcons:
-            marker_df = learning_xyz[subcon]["W_train_df"][
-                ~learning_xyz[subcon]["W_train_df"].index.duplicated(
-                    keep="first"
-                )
+            marker_df = learning_xyz[subcon].W_train_df[
+                ~learning_xyz[subcon].W_train_df.index.duplicated(keep="first")
             ]
             results[condition]["metrics"]["marker"] = results[condition][
                 "metrics"
@@ -195,87 +198,70 @@ def stats_proteome(
             index=results[condition]["metrics"].index
         )
         for subcon in subcons:
+            xyz = learning_xyz[subcon]
             logger.info(f"Processing {condition} / {subcon}...")
-            learning_xyz[subcon]["w_full_combined"] = pd.DataFrame(
-                index=learning_xyz[subcon]["x_full_df"].index
-            )
-            learning_xyz[subcon]["w_full_prob_combined"] = pd.DataFrame(
-                index=learning_xyz[subcon]["x_full_df"].index
-            )
+            xyz.w_full_combined = pd.DataFrame(index=xyz.x_full_df.index)
+            xyz.w_full_prob_combined = pd.DataFrame(index=xyz.x_full_df.index)
 
-            for roundn in learning_xyz[subcon]["w_full_prob_df"]:
-                learning_xyz[subcon]["w_full_combined"] = pd.merge(
-                    learning_xyz[subcon]["w_full_combined"],
-                    learning_xyz[subcon]["w_full_prob_df"][roundn][
-                        "SVM_winner"
-                    ],
+            for roundn in xyz.w_full_prob_df:
+                xyz.w_full_combined = pd.merge(
+                    xyz.w_full_combined,
+                    xyz.w_full_prob_df[roundn]["SVM_winner"],
                     left_index=True,
                     right_index=True,
                     how="left",
                 )
-                learning_xyz[subcon]["w_full_combined"] = learning_xyz[subcon][
-                    "w_full_combined"
-                ].loc[
-                    ~learning_xyz[subcon]["w_full_combined"].index.duplicated(
-                        keep="first"
-                    )
+                xyz.w_full_combined = xyz.w_full_combined.loc[
+                    ~xyz.w_full_combined.index.duplicated(keep="first")
                 ]
-                learning_xyz[subcon]["w_full_combined"].rename(
+                xyz.w_full_combined.rename(
                     columns={"SVM_winner": roundn + "_SVM_winner"},
                     inplace=True,
                 )
-                learning_xyz[subcon]["w_full_prob_combined"] = pd.merge(
-                    learning_xyz[subcon]["w_full_prob_combined"],
-                    learning_xyz[subcon]["w_full_prob_df"][roundn]["SVM_prob"],
+                xyz.w_full_prob_combined = pd.merge(
+                    xyz.w_full_prob_combined,
+                    xyz.w_full_prob_df[roundn]["SVM_prob"],
                     left_index=True,
                     right_index=True,
                     how="left",
                 )
-                learning_xyz[subcon]["w_full_prob_combined"] = learning_xyz[
-                    subcon
-                ]["w_full_prob_combined"].loc[
-                    ~learning_xyz[subcon][
-                        "w_full_prob_combined"
-                    ].index.duplicated(keep="first")
+                xyz.w_full_prob_combined = xyz.w_full_prob_combined.loc[
+                    ~xyz.w_full_prob_combined.index.duplicated(keep="first")
                 ]
-                learning_xyz[subcon]["w_full_prob_combined"].rename(
+                xyz.w_full_prob_combined.rename(
                     columns={"SVM_prob": roundn + "_SVM_prob"}, inplace=True
                 )
 
-            SVM_equal = learning_xyz[subcon]["w_full_combined"].apply(
+            SVM_equal = xyz.w_full_combined.apply(
                 lambda row: row.nunique() == 1, axis=1
             )
-            learning_xyz[subcon]["w_full_combined"]["SVM_winner"] = np.where(
+            xyz.w_full_combined["SVM_winner"] = np.where(
                 SVM_equal,
-                learning_xyz[subcon]["w_full_combined"].iloc[:, 0],
+                xyz.w_full_combined.iloc[:, 0],
                 np.nan,
             )
-            learning_xyz[subcon]["w_full_prob_combined"]["SVM_prob"] = (
-                learning_xyz[subcon]["w_full_prob_combined"].mean(axis=1)
+            xyz.w_full_prob_combined["SVM_prob"] = (
+                xyz.w_full_prob_combined.mean(axis=1)
             )
 
-            learning_xyz[subcon]["w_full_combined"] = pd.merge(
-                learning_xyz[subcon]["w_full_combined"],
-                learning_xyz[subcon]["w_full_prob_combined"][["SVM_prob"]],
+            xyz.w_full_combined = pd.merge(
+                xyz.w_full_combined,
+                xyz.w_full_prob_combined[["SVM_prob"]],
                 left_index=True,
                 right_index=True,
                 how="left",
             )
-            learning_xyz[subcon]["w_full_combined"] = learning_xyz[subcon][
-                "w_full_combined"
-            ].loc[
-                ~learning_xyz[subcon]["w_full_combined"].index.duplicated(
-                    keep="first"
-                )
+            xyz.w_full_combined = xyz.w_full_combined.loc[
+                ~xyz.w_full_combined.index.duplicated(keep="first")
             ]
-            learning_xyz[subcon]["w_full_combined"].loc[
-                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].isna(),
+            xyz.w_full_combined.loc[
+                xyz.w_full_combined["SVM_winner"].isna(),
                 "SVM_prob",
             ] = np.nan
 
             results[condition]["SVM"]["winner_combined"] = pd.merge(
                 results[condition]["SVM"]["winner_combined"],
-                learning_xyz[subcon]["w_full_combined"]["SVM_winner"].rename(
+                xyz.w_full_combined["SVM_winner"].rename(
                     f"SVM_winner_{subcon}"
                 ),
                 left_index=True,
@@ -291,9 +277,7 @@ def stats_proteome(
             ]
             results[condition]["SVM"]["prob_combined"] = pd.merge(
                 results[condition]["SVM"]["prob_combined"],
-                learning_xyz[subcon]["w_full_combined"]["SVM_prob"].rename(
-                    f"SVM_prob_{subcon}"
-                ),
+                xyz.w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
                 left_index=True,
                 right_index=True,
                 how="left",
@@ -334,23 +318,22 @@ def stats_proteome(
 
         ## add CClist:
         for subcon in subcons:
+            #: TODO(performance): unnecessary conversions
             stacked_arrays = np.stack(
-                list(learning_xyz[subcon]["z_full"].values())
+                list(learning_xyz[subcon].z_full.values())
             )
-            learning_xyz[subcon]["z_full_mean"] = np.mean(
-                stacked_arrays, axis=0
-            )
-            learning_xyz[subcon]["z_full_mean_df"] = pd.DataFrame(
-                learning_xyz[subcon]["z_full_mean"],
-                index=learning_xyz[subcon]["x_full_df"].index,
-                columns=learning_xyz[subcon]["Z_train_df"].columns,
+            learning_xyz[subcon].z_full_mean = np.mean(stacked_arrays, axis=0)
+            learning_xyz[subcon].z_full_mean_df = pd.DataFrame(
+                learning_xyz[subcon].z_full_mean,
+                index=learning_xyz[subcon].x_full_df.index,
+                columns=learning_xyz[subcon].Z_train_df.columns,
             )
 
         classnames = list(
             set(
                 classname
                 for subcon in subcons
-                for classname in learning_xyz[subcon]["classes"]
+                for classname in learning_xyz[subcon].classes
             )
         )
 
@@ -359,9 +342,9 @@ def stats_proteome(
             for subcon in subcons:
                 CC_list = pd.merge(
                     CC_list,
-                    learning_xyz[subcon]["z_full_mean_df"][classname].rename(
-                        f"{classname}_{subcon}"
-                    ),
+                    learning_xyz[subcon]
+                    .z_full_mean_df[classname]
+                    .rename(f"{classname}_{subcon}"),
                     left_index=True,
                     right_index=True,
                     how="left",

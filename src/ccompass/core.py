@@ -120,6 +120,117 @@ class SessionStatusModel(BaseModel):
     comparison_class: bool = False
 
 
+class XYZ_Model(BaseModel):
+    """`learning_xyz` for a specific condition in `SessionModel`."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: class labels for the markers
+    W_train_df: pd.Series = pd.Series()
+    #: class labels for the markers as list
+    W_train: list = []
+    #: Combined classification results from different SVM rounds
+    #  (w_full_prob_df)
+    w_full_combined: pd.DataFrame = pd.DataFrame()
+    #: Probabilities for the classifications in w_full_combined
+    w_full_prob_combined: pd.DataFrame = pd.DataFrame()
+    #: features (protein levels in the different fractions for one replicate,
+    #  for proteins with known and unknown class labels)
+    x_full_df: pd.DataFrame = pd.DataFrame()
+    #: x_full_df, but as numpy array
+    x_full: np.ndarray = np.array([])
+    #: features and SVM classification results for the different rounds
+    w_full_prob_df: dict[str, pd.DataFrame] = {}
+    #: Neural network classification results for y_train
+    #  (i.e. probabilities for the different classes for each protein)
+    z_train_df: dict[str, pd.DataFrame] = {}
+    #: z_train_df, but as numpy array
+    z_train: dict[str, np.ndarray] = {}
+    #: Neural network classification results for y_full
+    #  (i.e. probabilities for the different classes for each protein)
+    z_full_df: dict[str, pd.DataFrame] = {}
+    #: z_full_df, but as numpy array
+    z_full: dict[str, np.ndarray] = {}
+    #: z_full_mean_df as numpy array
+    z_full_mean: np.ndarray = np.array([])
+    #: Means of the z_full values across the different rounds
+    z_full_mean_df: pd.DataFrame = pd.DataFrame()
+    #: Summary of the best neural network model in each round
+    FNN_summary: dict[str, str] = {}
+    #: One-hot encoded labels for marker profiles
+    Z_train_df: pd.DataFrame = pd.DataFrame()
+    #: Z_train_df, but as numpy array
+    Z_train: np.ndarray = np.array([])
+    #: List of unique classes for which there are marker measurements
+    classes: list[str] = []
+    #: Class labels for all proteins (NaN for non-marker proteins)
+    W_full_df: pd.Series = pd.Series()
+    #: W_full_df as list
+    W_full: list = []
+    #: Class labels for the upsampled full dataset
+    #  for the different rounds
+    W_full_up_df: dict[str, pd.Series] = {}
+    #: W_full_up_df as list
+    W_full_up: dict[str, list] = {}
+    #: Class labels for the upsampled training data
+    #  for the different rounds
+    W_train_up_df: dict[str, pd.Series] = {}
+    #: W_train_up_df as list
+    W_train_up: dict[str, list] = {}
+    #: Features for the upsampled full dataset
+    #  for the different rounds
+    x_full_up_df: dict[str, pd.DataFrame] = {}
+    #: x_full_up_df as numpy array
+    x_full_up: dict[str, np.ndarray] = {}
+    #: Features for the training data (marker profiles)
+    x_train_df: pd.DataFrame = pd.DataFrame()
+    #: x_train_df as numpy array
+    x_train: np.ndarray = np.array([])
+    #: Features for the upsampled training data during the different rounds
+    x_train_up_df: dict[str, pd.DataFrame] = {}
+    #: x_train_up_df as numpy array
+    x_train_up: dict[str, np.ndarray] = {}
+    #: Features for the proteins with known class labels
+    x_test_df: pd.DataFrame = pd.DataFrame()
+    #: x_test_df as numpy array
+    x_test: np.ndarray = np.array([])
+    #: same as x_full_up
+    V_full_up: dict[str, np.ndarray] = {}
+    #: Features for the training data (marker profiles) after maxing
+    #  for the different rounds
+    x_train_mixed_up_df: dict[str, pd.DataFrame] = {}
+    #: x_train_mixed_up_df as numpy
+    x_train_mixed_up: dict[str, np.ndarray] = {}
+    #: Class probabilities for mixed profiles (mixing ratios)
+    Z_train_mixed_up_df: dict[str, pd.DataFrame] = {}
+    #: Z_train_mixed_up_df as numpy array
+    Z_train_mixed_up: dict[str, np.ndarray] = {}
+    #: Class labels for the mixed profiles
+    y_full_df: dict[str, pd.DataFrame] = {}
+    #: same as x_full
+    y_full: dict[str, np.ndarray] = {}
+    #: same as x_full_up
+    y_full_up: dict[str, np.ndarray] = {}
+    #: same as x_train_df
+    y_train_df: dict[str, pd.DataFrame] = {}
+    #: same as x_train
+    y_train: dict[str, np.ndarray] = {}
+    #: same as x_train_up
+    y_train_up: dict[str, np.ndarray] = {}
+    #: same as x_train_mixed_up
+    y_train_mixed_up: dict[str, np.ndarray] = {}
+    #: same as x_test
+    y_test: dict[str, np.ndarray] = {}
+
+    #: SVM-predicted class labels for x_full for each round
+    w_full: dict[str, list] = {}
+    #: Probabilities for the SVM-predicted class labels in w_full
+    w_full_prob: dict[str, list] = {}
+    #: SVM-predicted class labels for x_train for each round
+    # TODO redundant with SessionModel.svm_marker
+    w_train: dict[str, list] = {}
+
+
 def fract_default():
     """Default settings for fractionation data processing."""
     params_default = {
@@ -298,7 +409,7 @@ class SessionModel(BaseModel):
     # "{condition}_Rep.{replicate}" => dict(
     #  {w,W,x,X,y,Y,z,Z}_... => ...
     # )
-    learning_xyz: dict[ConditionReplicate, dict[str, Any]] = {}
+    learning_xyz: dict[ConditionReplicate, XYZ_Model] = {}
     #: Nerural network hyperparameters
     NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
