@@ -222,6 +222,7 @@ class SessionModel(BaseModel):
     #: ??
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_mixed_up: dict[ConditionReplicate, pd.DataFrame] = {}
+    fract_unmixed_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_test: dict[ConditionReplicate, pd.DataFrame] = {}
