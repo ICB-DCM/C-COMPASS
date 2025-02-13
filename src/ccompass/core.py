@@ -336,9 +336,6 @@ class SessionModel(BaseModel):
     fract_std: dict[
         Literal["class", "vis"], dict[ConditionId, pd.DataFrame]
     ] = {"class": {}, "vis": {}}
-    #: ??
-    #  *something* => "{condition}" => "Rep.{replicate}" => DataFrame
-    fract_intermediate: dict[str, dict[str, dict[str, pd.DataFrame]]] = {}
     #: Identifier column of each fractionation data table:
     #   filepath => column id
     fract_identifiers: dict[Filepath, str] = {}
@@ -492,7 +489,6 @@ class SessionModel(BaseModel):
     def reset_fract(self):
         self.fract_data = {"class": {}, "vis": {}}
         self.fract_std = {"class": {}, "vis": {}}
-        self.fract_intermediate = {}
         self.fract_info = {}
         self.fract_conditions = []
 
