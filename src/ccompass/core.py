@@ -348,22 +348,12 @@ class SessionModel(BaseModel):
     #: Fractionation data for the different conditions x replicates
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Fractionation data after upsampling
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_full_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: Marker abundance in the different fractions
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_marker: dict[ConditionReplicate, pd.DataFrame] = {}
     #: Marker abundance in the different fractions for visualization
     #  "{condition}_median" => DataFrame
     fract_marker_vis: dict[str, pd.DataFrame] = {}
-    #: Marker abundance in the different fractions after upsampling
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_marker_up: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: ??
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_mixed_up: dict[ConditionReplicate, pd.DataFrame] = {}
-    fract_unmixed_up: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_test: dict[ConditionReplicate, pd.DataFrame] = {}

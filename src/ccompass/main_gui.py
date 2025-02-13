@@ -1593,13 +1593,7 @@ class MainController:
         with wait_cursor(self.main_window):
             from .MOP import MOP_exec
 
-            (
-                self.model.learning_xyz,
-                self.model.fract_full_up,
-                self.model.fract_marker_up,
-                self.model.fract_mixed_up,
-                self.model.fract_unmixed_up,
-            ) = MOP_exec(
+            (self.model.learning_xyz,) = MOP_exec(
                 self.model.fract_full,
                 self.model.fract_marker,
                 self.model.fract_test,

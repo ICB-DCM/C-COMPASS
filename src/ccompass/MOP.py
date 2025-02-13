@@ -151,7 +151,10 @@ def upsample_condition(
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Perform upsampling for the given condition."""
+    """Perform upsampling for the given condition.
+
+    :return: The upsampled marker and full profiles
+    """
     fract_full_up = fract_full
     fract_marker_up = fract_marker.copy()
 
@@ -441,15 +444,7 @@ def MOP_exec(
                 condition,
                 i_round,
             )
-    # TODO: no need to return / store fract_mixed_up, fract_unmixed_up, ...
-    #  they are not used anymore
-    return (
-        learning_xyz,
-        fract_full_up,
-        fract_marker_up,
-        fract_mixed_up,
-        fract_unmixed_up,
-    )
+    return learning_xyz
 
 
 def multi_predictions(
