@@ -525,10 +525,6 @@ def start_fract_data_processing(
         "class": copy.deepcopy(dataset),
         "vis": copy.deepcopy(dataset),
     }
-    intermediate_data = {
-        "[0] class_abs": copy.deepcopy(data_ways["class"]),
-        "[0] vis_abs": copy.deepcopy(data_ways["vis"]),
-    }
 
     # ---------------------------------------------------------------------
     logger.info("converting dataset...")
@@ -539,9 +535,6 @@ def start_fract_data_processing(
 
     for way in data_ways:
         data_ways[way] = remove_zeros(data_ways[way])
-        intermediate_data[f"[1] {way}_nozeros1"] = copy.deepcopy(
-            data_ways[way]
-        )
 
     # ---------------------------------------------------------------------
     logger.info("pre-scaling...")
@@ -558,9 +551,6 @@ def start_fract_data_processing(
                 window,
                 progress,
             )
-        intermediate_data[f"[2] {way}_prescaled"] = copy.deepcopy(
-            data_ways[way]
-        )
 
     # ---------------------------------------------------------------------
     logger.info("filtering by missing fractions...")
@@ -577,10 +567,6 @@ def start_fract_data_processing(
                 window,
                 progress,
             )
-    intermediate_data["[3] class_f_missing"] = copy.deepcopy(
-        data_ways["class"]
-    )
-    intermediate_data["[3] vis_f_missing"] = copy.deepcopy(data_ways["vis"])
 
     # ---------------------------------------------------------------------
     logger.info("finding IDs...")
@@ -596,8 +582,6 @@ def start_fract_data_processing(
             window,
             progress,
         )
-    intermediate_data["[4] class_f_count"] = copy.deepcopy(data_ways["class"])
-    intermediate_data["[4] vis_f_count"] = copy.deepcopy(data_ways["vis"])
 
     # ---------------------------------------------------------------------
     logger.info("detecting samples...")
@@ -629,9 +613,6 @@ def start_fract_data_processing(
             data_ways[way] = combine_concat(data_ways[way], window)
         elif preparams[way]["combination"] == "separate":
             pass
-        intermediate_data[f"[6] {way}_combined"] = copy.deepcopy(
-            data_ways[way]
-        )
 
     # ---------------------------------------------------------------------
     logger.info("post-scaling...")
@@ -648,10 +629,6 @@ def start_fract_data_processing(
                 window,
                 progress,
             )
-    intermediate_data["[7] class_postscaled"] = copy.deepcopy(
-        data_ways["class"]
-    )
-    intermediate_data["[7] vis_postscaled"] = copy.deepcopy(data_ways["vis"])
 
     # ---------------------------------------------------------------------
     logger.info("removing zeros...")
@@ -663,8 +640,6 @@ def start_fract_data_processing(
     for way in data_ways:
         if preparams[way]["zeros"]:
             data_ways[way] = remove_zeros(data_ways[way])
-    intermediate_data["[8] class_nozeros2"] = copy.deepcopy(data_ways["class"])
-    intermediate_data["[8] vis_nozeros2"] = copy.deepcopy(data_ways["vis"])
 
     # ---------------------------------------------------------------------
     logger.info("calculating outer correlations...")
@@ -697,7 +672,6 @@ def start_fract_data_processing(
     return (
         data_ways,
         std_ways,
-        intermediate_data,
         protein_info,
         conditions,
     )
@@ -780,7 +754,6 @@ def FDP_exec(
     identifiers: dict[str, str],
     data_ways: dict[str, dict[str, pd.DataFrame]],
     std_ways: dict[str, dict[str, pd.DataFrame]],
-    intermediate_data: dict[str, dict[str, dict[str, pd.DataFrame]]],
     protein_info: dict[str, pd.DataFrame],
     conditions_trans: list[str],
     fract_indata: dict[str, pd.DataFrame],
@@ -807,7 +780,6 @@ def FDP_exec(
             (
                 data_ways,
                 std_ways,
-                intermediate_data,
                 protein_info,
                 conditions_trans,
             ) = start_fract_data_processing(
@@ -824,7 +796,6 @@ def FDP_exec(
     return (
         data_ways,
         std_ways,
-        intermediate_data,
         protein_info,
         conditions_trans,
     )
