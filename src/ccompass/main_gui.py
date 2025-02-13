@@ -1207,7 +1207,6 @@ class MainController:
 
                     (
                         self.model.tp_data,
-                        self.model.tp_intermediate,
                         self.model.tp_info,
                         self.model.tp_conditions,
                         self.model.tp_icorr,
@@ -1216,7 +1215,6 @@ class MainController:
                         self.model.tp_tables,
                         self.model.tp_preparams,
                         self.model.tp_identifiers,
-                        self.model.tp_intermediate,
                         self.model.tp_info,
                         self.model.tp_icorr,
                         self.model.tp_indata,

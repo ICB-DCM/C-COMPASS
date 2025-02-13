@@ -384,9 +384,6 @@ class SessionModel(BaseModel):
     #  One DataFrame for each condition containing all replicates
     #  (column names are "{condition}_Rep.{replicate}")
     tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: ??
-    #  *something* => "{condition}" => DataFrame
-    tp_intermediate: dict[str, dict[str, pd.DataFrame]] = {}
     #: Identifier column for the total proteome: filepath => column id
     tp_identifiers: dict[Filepath, str] = {}
     #: ??
@@ -494,7 +491,6 @@ class SessionModel(BaseModel):
 
     def reset_tp(self):
         self.tp_data = {}
-        self.tp_intermediate = {}
         self.tp_info = pd.DataFrame()
         self.tp_conditions = []
         self.tp_icorr = {}

@@ -1,6 +1,5 @@
 """Total proteome data processing."""
 
-import copy
 import logging
 import math
 from tkinter import messagebox
@@ -243,7 +242,6 @@ def start_total_proteome_processing(
     tp_tables: dict[str, list[tuple[str, str]]],
     tp_preparams: dict[str, Any],
     tp_identifiers: dict[str, str],
-    tp_intermediate: dict[str, dict[str, pd.DataFrame]],
     tp_info: pd.DataFrame,
     tp_icorr: dict,
     tp_indata: dict[str, pd.DataFrame],
@@ -255,19 +253,17 @@ def start_total_proteome_processing(
         for table in tp_tables.values()
     ):
         messagebox.showerror("Error", "At least one Identifier is missing.")
-        return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
+        return tp_data, tp_info, tp_conditions, tp_icorr
 
     if any(
         sample[1] == "" for table in tp_tables.values() for sample in table
     ):
         messagebox.showerror("Error", "At least one Condition is missing.")
-        return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
+        return tp_data, tp_info, tp_conditions, tp_icorr
 
     # deactivate buttons
     window["--start--"].update(disabled=True)
     window["--cancel--"].update(disabled=True)
-
-    tp_intermediate = {}
 
     # ---------------------------------------------------------------------
     logger.info("creating dataset...")
@@ -284,7 +280,6 @@ def start_total_proteome_processing(
         conditions,
         window,
     )
-    tp_intermediate["[0] abs"] = copy.deepcopy(tp_data)
 
     # ---------------------------------------------------------------------
     logger.info("filtering by missing values...")
@@ -294,7 +289,6 @@ def start_total_proteome_processing(
     window.read(timeout=50)
 
     tp_data = filter_missing(tp_data, tp_preparams["minrep"], window)
-    tp_intermediate["[1] f_missing"] = copy.deepcopy(tp_data)
 
     # ---------------------------------------------------------------------
     logger.info("transforming data...")
@@ -304,7 +298,6 @@ def start_total_proteome_processing(
     window.read(timeout=50)
 
     tp_data = transform_data(tp_data, window)
-    tp_intermediate["[2] transformed"] = copy.deepcopy(tp_data)
 
     # ---------------------------------------------------------------------
     logger.info("imputing MissingValues...")
@@ -314,7 +307,6 @@ def start_total_proteome_processing(
     window.read(timeout=50)
 
     tp_data = impute_data(tp_data, window, tp_preparams["imputation"])
-    tp_intermediate["[3] imputed"] = copy.deepcopy(tp_data)
 
     # ---------------------------------------------------------------------
     logger.info("calculating correlations...")
@@ -333,7 +325,6 @@ def start_total_proteome_processing(
     window.read(timeout=50)
 
     normalize_data(tp_data)
-    tp_intermediate["[4] normalized"] = copy.deepcopy(tp_data)
 
     logger.info("done!")
     progress = 60
@@ -341,7 +332,7 @@ def start_total_proteome_processing(
     window["--progress--"].update(progress)
     window.read(timeout=50)
 
-    return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
+    return tp_data, tp_info, tp_conditions, tp_icorr
 
 
 def total_proteome_processing_dialog(
@@ -349,7 +340,6 @@ def total_proteome_processing_dialog(
     tp_tables: dict[str, list[tuple[str, str]]],
     tp_preparams: dict[str, Any],
     tp_identifiers: dict[str, str],
-    tp_intermediate: dict[str, dict[str, pd.DataFrame]],
     tp_info: pd.DataFrame,
     tp_icorr: dict,
     tp_indata: dict[str, pd.DataFrame],
@@ -365,14 +355,13 @@ def total_proteome_processing_dialog(
             break
 
         if event == "--start--":
-            tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr = (
+            tp_data, tp_info, tp_conditions, tp_icorr = (
                 start_total_proteome_processing(
                     window,
                     tp_data,
                     tp_tables,
                     tp_preparams,
                     tp_identifiers,
-                    tp_intermediate,
                     tp_info,
                     tp_icorr,
                     tp_indata,
@@ -383,4 +372,4 @@ def total_proteome_processing_dialog(
 
     window.close()
 
-    return tp_data, tp_intermediate, tp_info, tp_conditions, tp_icorr
+    return tp_data, tp_info, tp_conditions, tp_icorr
