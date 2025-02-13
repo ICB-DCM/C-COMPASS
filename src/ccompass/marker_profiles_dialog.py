@@ -1,6 +1,7 @@
 """Show markers."""
 
 import os
+from pathlib import Path
 
 import FreeSimpleGUI as sg
 import matplotlib.pyplot as plt
@@ -124,6 +125,7 @@ def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
         elif event == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
+                Path(folder_path).mkdir(parents=True, exist_ok=True)
                 # Save the main Excel file with all conditions and median profiles
                 with pd.ExcelWriter(
                     os.path.join(folder_path, "markerprofiles_combined.xlsx")

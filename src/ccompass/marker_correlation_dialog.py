@@ -1,6 +1,7 @@
 """Test marker"""
 
 import os
+from pathlib import Path
 
 import FreeSimpleGUI as sg
 import matplotlib.pyplot as plt
@@ -185,6 +186,8 @@ def show_marker_correlation_dialog(
         elif event == "-EXPORT-":
             folder_path = sg.popup_get_folder("Select Folder")
             if folder_path:
+                Path(folder_path).mkdir(parents=True, exist_ok=True)
+
                 for cond, df in correlation_matrices.items():
                     # Save the plot
                     fig = create_heatmap(df, title=cond)
