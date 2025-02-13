@@ -3,6 +3,7 @@
 import copy
 import logging
 from datetime import datetime
+from typing import Any
 
 import keras_tuner as kt
 import numpy as np
@@ -275,6 +276,7 @@ def MOP_exec(
 
     for i_round in range(1, NN_params.rounds + 1):
         logger.info(f"Executing round {i_round}...")
+        round_id = f"ROUND_{i_round}"
 
         fract_full_up = {}
         fract_marker_up = {}
@@ -304,22 +306,18 @@ def MOP_exec(
                 i_round,
             )
 
-        svm_metrics = {}
+        # TODO (performance): can we skip SVM if svm_filter==False?
         svm_marker = {}
-        svm_test = {}
         for condition in conditions:
             clf = svm.SVC(kernel="rbf", probability=True)
+            logger.info(f"Performing single prediction for {condition}...")
 
-            svm_metrics, svm_marker, svm_test = single_prediction(
+            _, svm_marker[condition], _ = single_prediction(
                 learning_xyz[condition],
                 clf,
-                svm_metrics,
-                fract_marker,
-                svm_marker,
-                fract_test,
-                svm_test,
-                condition,
-                i_round,
+                fract_marker[condition],
+                fract_test[condition],
+                round_id,
             )
 
         if NN_params.svm_filter:
@@ -379,7 +377,6 @@ def MOP_exec(
                     NN_params.mixed_batch,
                 )
 
-        round_id = f"ROUND_{i_round}"
         for condition, xyz in learning_xyz.items():
             xyz.x_train_mixed_up_df[round_id] = fract_mixed_up[condition].drop(
                 columns=xyz.classes
@@ -452,9 +449,6 @@ def MOP_exec(
         fract_marker_up,
         fract_mixed_up,
         fract_unmixed_up,
-        svm_marker,
-        svm_test,
-        svm_metrics,
     )
 
 
@@ -724,23 +718,16 @@ def mix_profiles(
 def single_prediction(
     learning_xyz: XYZ_Model,
     clf: svm.SVC,
-    svm_metrics,
-    fract_marker,
-    svm_marker,
-    fract_test,
-    svm_test,
-    condition,
-    roundn: int,
-):
+    fract_marker: pd.DataFrame,
+    fract_test: pd.DataFrame,
+    round_id: str,
+) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     """Perform single prediction.
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
-
     :param learning_xyz: The learning data. This will be updated in place.
     """
-    logger.info(f"Performing single prediction for {condition}...")
-    round_id = f"ROUND_{roundn}"
     x_full = learning_xyz.x_full
     x_train = learning_xyz.x_train
     x_train_up = learning_xyz.x_train_up[round_id]
@@ -748,8 +735,10 @@ def single_prediction(
     W_train = learning_xyz.W_train
     W_train_up = learning_xyz.W_train_up[round_id]
 
+    # train classifier on the upsampled data
     clf.fit(x_train_up, W_train_up)
 
+    # predict the classes
     w_full = clf.predict(x_full).tolist()
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
@@ -768,15 +757,15 @@ def single_prediction(
     recall = recall_score(W_train, w_train, average="macro")
     f1 = f1_score(W_train, w_train, average="macro")
 
-    svm_marker[condition] = copy.deepcopy(fract_marker[condition])
-    svm_marker[condition]["svm_prediction"] = w_train
-    svm_marker[condition]["svm_probability"] = w_train_prob
+    svm_marker = copy.deepcopy(fract_marker)
+    svm_marker["svm_prediction"] = w_train
+    svm_marker["svm_probability"] = w_train_prob
 
-    svm_test[condition] = copy.deepcopy(fract_test[condition])
-    svm_test[condition]["svm_prediction"] = w_test
-    svm_test[condition]["svm_probability"] = w_test_prob
+    svm_test = copy.deepcopy(fract_test)
+    svm_test["svm_prediction"] = w_test
+    svm_test["svm_probability"] = w_test_prob
 
-    svm_metrics[condition] = {
+    svm_metrics = {
         "confusion": confusion,
         "accuracy": accuracy,
         "precision": precision,

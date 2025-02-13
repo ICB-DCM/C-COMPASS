@@ -1599,9 +1599,6 @@ class MainController:
                 self.model.fract_marker_up,
                 self.model.fract_mixed_up,
                 self.model.fract_unmixed_up,
-                self.model.svm_marker,
-                self.model.svm_test,
-                self.model.svm_metrics,
             ) = MOP_exec(
                 self.model.fract_full,
                 self.model.fract_marker,

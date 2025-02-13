@@ -410,24 +410,6 @@ class SessionModel(BaseModel):
     #  to be used for matching the markers (`marker_list["name"])
     marker_fractkey: str = "[IDENTIFIER]"
 
-    #: SVM marker prediction
-    # "{condition}_Rep.{replicate}" => DataFrame
-    #  columns are the fractions + ["class", "svm_prediction", "svm_probability"]
-    svm_marker: dict[str, pd.DataFrame] = {}
-    #: SVM test data
-    # "{condition}_Rep.{replicate}" => DataFrame
-    #  columns are the fractions + ["class", "svm_prediction", "svm_probability"]
-    svm_test: dict[str, pd.DataFrame] = {}
-    #: SVM classification metrics for each condition x replicate
-    # "{condition}_Rep.{replicate}" => dict(
-    #   "accuracy" -> float,
-    #   "precision" -> float,
-    #   "recall" -> float,
-    #   "f1" -> float,
-    #   "confusion" -> pd.DataFrame,
-    # )
-    svm_metrics: dict[str, dict[str, Any]] = {}
-
     #: Neural network data
     # "{condition}_Rep.{replicate}" => dict(
     #  {w,W,x,X,y,Y,z,Z}_... => ...
@@ -497,9 +479,6 @@ class SessionModel(BaseModel):
         self.reset_static_statistics()
 
         self.reset_global_changes()
-        self.svm_marker = {}
-        self.svm_test = {}
-        self.svm_metrics = {}
         self.learning_xyz = {}
 
         self.status.training = False
