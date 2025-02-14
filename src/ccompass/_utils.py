@@ -1,5 +1,6 @@
 """Internal utility functions."""
 
+import logging
 import os
 import platform
 from collections.abc import Iterable
@@ -47,3 +48,15 @@ def unique_preserve_order(seq: Iterable) -> list:
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+class PrefixFilter(logging.Filter):
+    """A logging filter that adds a prefix to the log message."""
+
+    def __init__(self, prefix):
+        super().__init__()
+        self.prefix = prefix
+
+    def filter(self, record):
+        record.msg = f"{self.prefix} {record.msg}"
+        return True

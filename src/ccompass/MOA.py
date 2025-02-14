@@ -197,10 +197,11 @@ def stats_proteome(
             xyz.w_full_combined = pd.DataFrame(index=xyz.x_full_df.index)
             xyz.w_full_prob_combined = pd.DataFrame(index=xyz.x_full_df.index)
 
-            for roundn in xyz.w_full_prob_df:
+            for round_id, round_results in xyz.round_results.items():
+                w_full_prob_df = round_results.w_full_prob_df
                 xyz.w_full_combined = pd.merge(
                     xyz.w_full_combined,
-                    xyz.w_full_prob_df[roundn]["SVM_winner"],
+                    w_full_prob_df["SVM_winner"],
                     left_index=True,
                     right_index=True,
                     how="left",
@@ -209,12 +210,12 @@ def stats_proteome(
                     ~xyz.w_full_combined.index.duplicated(keep="first")
                 ]
                 xyz.w_full_combined.rename(
-                    columns={"SVM_winner": roundn + "_SVM_winner"},
+                    columns={"SVM_winner": f"{round_id}_SVM_winner"},
                     inplace=True,
                 )
                 xyz.w_full_prob_combined = pd.merge(
                     xyz.w_full_prob_combined,
-                    xyz.w_full_prob_df[roundn]["SVM_prob"],
+                    w_full_prob_df["SVM_prob"],
                     left_index=True,
                     right_index=True,
                     how="left",
@@ -223,7 +224,7 @@ def stats_proteome(
                     ~xyz.w_full_prob_combined.index.duplicated(keep="first")
                 ]
                 xyz.w_full_prob_combined.rename(
-                    columns={"SVM_prob": roundn + "_SVM_prob"}, inplace=True
+                    columns={"SVM_prob": f"{round_id}_SVM_prob"}, inplace=True
                 )
 
             SVM_equal = xyz.w_full_combined.apply(
@@ -306,7 +307,11 @@ def stats_proteome(
         for subcon in subcons:
             #: TODO(performance): unnecessary conversions
             stacked_arrays = np.stack(
-                list(learning_xyz[subcon].z_full.values())
+                list(
+                    sr.z_full
+                    for rr in learning_xyz[subcon].round_results.values()
+                    for sr in rr.subround_results.values()
+                )
             )
             learning_xyz[subcon].z_full_mean_df = pd.DataFrame(
                 np.mean(stacked_arrays, axis=0),
