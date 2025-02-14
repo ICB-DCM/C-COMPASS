@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,12 +12,17 @@ from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
 from . import config_filepath
 
+logger = logging.getLogger(__name__)
+
 
 class AppSettings(BaseModel):
     """Settings for the C-COMPASS application"""
 
     #: The directory that was last used to load/save a session
     last_session_dir: Path = Path.home()
+
+    #: The maximum number of processes to use for parallel processing
+    max_processes: int = 1
 
     @field_serializer("last_session_dir")
     def serialize_last_session_dir(self, value: Path) -> str:
@@ -32,6 +38,8 @@ class AppSettings(BaseModel):
 
         if not filepath.exists():
             return cls()
+
+        logger.debug(f"Loading settings from {filepath}")
 
         with open(filepath) as f:
             data = yaml.safe_load(f) or {}
