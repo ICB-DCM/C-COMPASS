@@ -141,6 +141,7 @@ def MOP_exec(
     fract_test: dict[str, pd.DataFrame],
     stds: dict[str, pd.DataFrame],
     nn_params: NeuralNetworkParametersModel,
+    max_processes: int = 1,
 ) -> dict[str, XYZ_Model]:
     """Perform multi-organelle prediction.
 
@@ -174,7 +175,7 @@ def MOP_exec(
         for i_round in range(1, nn_params.rounds + 1)
     ]
 
-    with mp.Pool(processes=mp.cpu_count()) as pool:
+    with mp.Pool(processes=max_processes) as pool:
         results_list = pool.map(execute_round_wrapper, args_list)
 
     for condition, round_id, round_data in results_list:
