@@ -23,14 +23,8 @@ def main():
     launch_gui()
 
 
-def launch_gui():
-    """Launch the C-COMPASS GUI."""
-    import FreeSimpleGUI as sg
-
-    from .core import SessionModel
-    from .main_gui import MainController
-
-    # initialize logging
+def init_logging() -> logging.Logger:
+    """Initialize logging."""
     log_format = "%(message)s"
     logging.basicConfig(
         level="WARNING",
@@ -40,6 +34,18 @@ def launch_gui():
     )
     logger = logging.getLogger(__package__)
     logger.setLevel(logging.DEBUG)
+
+    return logger
+
+
+def launch_gui():
+    """Launch the C-COMPASS GUI."""
+    import FreeSimpleGUI as sg
+
+    from .core import SessionModel
+    from .main_gui import MainController
+
+    logger = init_logging()
     logger.info(f"Launching {app_name} GUI")
 
     # GUI theme
