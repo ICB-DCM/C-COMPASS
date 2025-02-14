@@ -16,8 +16,13 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from ._utils import get_ccmps_data_directory
-from .core import NeuralNetworkParametersModel, XYZ_Model
+from ._utils import PrefixFilter, get_ccmps_data_directory
+from .core import (
+    NeuralNetworkParametersModel,
+    TrainingRound_Model,
+    TrainingSubRound_Model,
+    XYZ_Model,
+)
 
 logger = logging.getLogger(__package__)
 
@@ -140,6 +145,7 @@ def MOP_exec(
 
     :param fract_full: dictionary of full profiles
     """
+    # prepare data structures for each round / condition
     conditions = list(fract_full.keys())
     learning_xyz = {condition: XYZ_Model() for condition in conditions}
     for condition in conditions:
@@ -150,202 +156,191 @@ def MOP_exec(
             fract_test[condition],
         )
 
-    # TODO: bring into shape for parallelization across conditions and rounds
-    #  conditions are independent; rounds are independent
-    #    only the rounds dict needs to be shared -> refactor to round_xyz model per condition
-    #  for condition in conditions:
-    for i_round in range(1, nn_params.rounds + 1):
-        logger.info(f"Executing round {i_round}/{nn_params.rounds}...")
-        round_id = f"ROUND_{i_round}"
-
-        fract_full_up = {}
-        fract_marker_up = {}
-
-        if nn_params.upsampling:
-            # upsample fractionation data for each condition x replicate
-            for condition in conditions:
-                logger.info(f"Upsampling condition {condition}")
-                fract_marker_up[condition], fract_full_up[condition] = (
-                    upsample_condition(
-                        stds.get(condition),
-                        fract_full[condition],
-                        fract_marker[condition],
-                        method=nn_params.upsampling_method,
-                        noise_stds=nn_params.upsampling_noise,
-                    )
-                )
-            logger.info("upsampling done!")
-        else:
-            fract_marker_up = copy.deepcopy(fract_marker)
-            fract_full_up = copy.deepcopy(fract_full)
-
-        for condition in conditions:
-            update_learninglist_round(
-                learning_xyz[condition],
-                fract_full_up[condition],
-                fract_marker_up[condition],
-                round_id,
+    for condition in conditions:
+        for i_round in range(1, nn_params.rounds + 1):
+            logger.info(
+                f"Executing round {i_round}/{nn_params.rounds} "
+                f"for condition {condition}..."
             )
+            round_id = f"ROUND_{i_round}"
+            log_prefix = f"[{condition} {round_id}]"
+            sub_logger = logger.getChild(log_prefix)
+            sub_logger.addFilter(PrefixFilter(log_prefix))
 
-        svm_marker = {}
-        for condition in conditions:
-            logger.info(f"Performing single prediction for {condition}...")
-            _, svm_marker[condition], _ = single_prediction(
+            learning_xyz[condition].round_results[round_id] = execute_round(
                 learning_xyz[condition],
+                fract_full[condition],
                 fract_marker[condition],
                 fract_test[condition],
-                round_id,
-            )
-
-        if nn_params.svm_filter:
-            logger.info("Applying SVM filter...")
-            # Remove the markers that are not predicted correctly by the SVM
-            #  and upsample the rest
-            fract_full_up = {}
-            fract_marker_up = {}
-            fract_marker_filtered = {}
-            for condition in conditions:
-                rows_to_keep = (
-                    svm_marker[condition]["class"]
-                    == svm_marker[condition]["svm_prediction"]
-                )
-                fract_marker_filtered[condition] = fract_marker[condition][
-                    rows_to_keep
-                ]
-                logger.info(f"Upsampling condition {condition}")
-                fract_marker_up[condition], fract_full_up[condition] = (
-                    upsample_condition(
-                        stds.get(condition),
-                        fract_full[condition],
-                        fract_marker_filtered[condition],
-                        method=nn_params.upsampling_method,
-                        noise_stds=nn_params.upsampling_noise,
-                    )
-                )
-            logger.info("SVM filtering done.")
-
-        fract_unmixed_up = {}
-        for condition in conditions:
-            # One-hot encode the classes
-            unmixed_dummies = pd.get_dummies(
-                fract_marker_up[condition]["class"]
-            )
-            fract_unmixed_up[condition] = pd.concat(
-                [
-                    fract_marker_up[condition].drop("class", axis=1),
-                    unmixed_dummies,
-                ],
-                axis=1,
-            )
-
-        if nn_params.mixed_part == "none":
-            fract_mixed_up = copy.deepcopy(fract_unmixed_up)
-        else:
-            logger.info("Mixing profiles...")
-            fract_mixed_up = {}
-            mix_steps = [
-                i / nn_params.mixed_part
-                for i in range(1, nn_params.mixed_part)
-            ]
-            for condition in conditions:
-                fract_mixed_up[condition] = mix_profiles(
-                    fract_marker_up[condition],
-                    fract_unmixed_up[condition],
-                    mix_steps,
-                    nn_params.mixed_batch,
-                )
-
-        for condition, xyz in learning_xyz.items():
-            xyz.x_train_mixed_up_df[round_id] = fract_mixed_up[condition].drop(
-                columns=xyz.classes
-            )
-            xyz.x_train_mixed_up[round_id] = xyz.x_train_mixed_up_df[
-                round_id
-            ].to_numpy(dtype=float)
-            xyz.Z_train_mixed_up_df[round_id] = fract_mixed_up[condition][
-                xyz.classes
-            ]
-            xyz.Z_train_mixed_up[round_id] = xyz.Z_train_mixed_up_df[
-                round_id
-            ].to_numpy(dtype=float)
-        logger.info("mixing done!")
-
-        for condition, xyz in learning_xyz.items():
-            xyz.V_full_up[round_id] = xyz.x_full_up[round_id]
-
-            if nn_params.AE == "none":
-                # TODO(performance): Is there anything happening here?
-                #  Just needless copying?
-                y_full = xyz.x_full
-                y_full_up = xyz.x_full_up[round_id]
-                y_train = xyz.x_train
-                y_train_up = xyz.x_train_up[round_id]
-                y_train_mixed_up = xyz.x_train_mixed_up[round_id]
-                y_test = xyz.x_test
-
-                add_Y(
-                    xyz,
-                    y_full,
-                    y_full_up,
-                    y_train,
-                    y_train_up,
-                    y_train_mixed_up,
-                    y_test,
-                    i_round,
-                    0,
-                )
-                for i_subround in range(1, nn_params.subrounds + 1):
-                    add_Y(
-                        xyz,
-                        y_full,
-                        y_full_up,
-                        y_train,
-                        y_train_up,
-                        y_train_mixed_up,
-                        y_test,
-                        i_round,
-                        i_subround,
-                    )
-            else:
-                # TODO ADD AUTOENCODER HERE
-                raise NotImplementedError("Autoencoder not implemented yet.")
-
-        for condition in conditions:
-            multi_predictions(
-                learning_xyz[condition],
+                # FIXME
+                stds.get(condition),
                 nn_params,
-                condition,
-                i_round,
+                logger=sub_logger,
+                round_id=round_id,
+                keras_proj_id=f"Classifier_{condition}_{i_round}",
             )
     return learning_xyz
 
 
+def execute_round(
+    xyz: XYZ_Model,
+    fract_full: pd.DataFrame,
+    fract_marker: pd.DataFrame,
+    fract_test: pd.DataFrame,
+    stds: pd.DataFrame,
+    nn_params: NeuralNetworkParametersModel,
+    logger: logging.Logger,
+    round_id: str,
+    keras_proj_id: str,
+) -> TrainingRound_Model:
+    """Perform a single round of training and prediction."""
+
+    result = TrainingRound_Model()
+
+    # upsample fractionation data
+    if nn_params.upsampling:
+        logger.info("Upsampling")
+        fract_marker_up, fract_full_up = upsample_condition(
+            stds,
+            fract_full,
+            fract_marker,
+            method=nn_params.upsampling_method,
+            noise_stds=nn_params.upsampling_noise,
+        )
+        logger.info("upsampling done!")
+    else:
+        fract_marker_up = copy.deepcopy(fract_marker)
+        fract_full_up = copy.deepcopy(fract_full)
+
+    result.W_train_up_df = fract_marker_up["class"]
+    result.W_train_up = list(result.W_train_up_df)
+    result.x_full_up_df = fract_full_up.drop(columns=["class"])
+    result.x_full_up = result.x_full_up_df.to_numpy(dtype=float)
+    result.x_train_up_df = fract_marker_up.drop(columns=["class"])
+    result.x_train_up = result.x_train_up_df.to_numpy(dtype=float)
+    result.V_full_up = result.x_full_up
+
+    logger.info("Performing single prediction ...")
+    _, svm_marker, _ = single_prediction(
+        xyz,
+        result,
+        fract_marker,
+        fract_test,
+    )
+
+    if nn_params.svm_filter:
+        logger.info("Applying SVM filter...")
+        # Remove the markers that are not predicted correctly by the SVM
+        #  and upsample the rest
+        fract_marker_filtered = fract_marker[
+            svm_marker["class"] == svm_marker["svm_prediction"]
+        ]
+        logger.info("Upsampling after SVM-filtering...")
+        fract_marker_up, fract_full_up = upsample_condition(
+            stds,
+            fract_full,
+            fract_marker_filtered,
+            method=nn_params.upsampling_method,
+            noise_stds=nn_params.upsampling_noise,
+        )
+        logger.info("SVM filtering done.")
+
+    fract_unmixed_up = pd.concat(
+        [
+            fract_marker_up.drop("class", axis=1),
+            # One-hot encode the classes
+            pd.get_dummies(fract_marker_up["class"]),
+        ],
+        axis=1,
+    )
+
+    if nn_params.mixed_part == "none":
+        fract_mixed_up = copy.deepcopy(fract_unmixed_up)
+    else:
+        logger.info("Mixing profiles...")
+        mix_steps = [
+            i / nn_params.mixed_part for i in range(1, nn_params.mixed_part)
+        ]
+        fract_mixed_up = mix_profiles(
+            fract_marker_up,
+            fract_unmixed_up,
+            mix_steps,
+            nn_params.mixed_batch,
+        )
+        logger.info("mixing done!")
+
+    result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
+    result.x_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
+    result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
+    result.Z_train_mixed_up = result.Z_train_mixed_up_df.to_numpy(dtype=float)
+
+    # autoencoder ?!
+    result.V_full_up = result.x_full_up
+
+    if nn_params.AE == "none":
+        # TODO(performance): Is there anything happening here?
+        #  Just needless copying?
+        y_full = xyz.x_full
+        y_full_up = result.x_full_up
+        y_train = xyz.x_train
+        y_train_up = result.x_train_up
+        y_train_mixed_up = result.x_train_mixed_up
+        y_test = xyz.x_test
+
+        for i_subround in range(0, nn_params.subrounds + 1):
+            sr = result.subround_results[f"{round_id}_{i_subround}"] = (
+                TrainingSubRound_Model()
+            )
+            sr.y_full_df = pd.DataFrame(y_full, index=xyz.x_full_df.index)
+            sr.y_full = y_full
+            sr.y_full_up = y_full_up
+            sr.y_train_df = pd.DataFrame(y_train, index=xyz.x_train_df.index)
+            sr.y_train = y_train
+            sr.y_train_up = y_train_up
+            sr.y_train_mixed_up = y_train_mixed_up
+            sr.y_test = y_test
+    else:
+        # TODO ADD AUTOENCODER HERE
+        raise NotImplementedError("Autoencoder not implemented yet.")
+
+    multi_predictions(
+        xyz,
+        result,
+        nn_params,
+        logger,
+        round_id,
+        keras_proj_id=keras_proj_id,
+    )
+
+    return result
+
+
 def multi_predictions(
     learning_xyz: XYZ_Model,
+    round_data: TrainingRound_Model,
     nn_params: NeuralNetworkParametersModel,
-    condition: str,
-    roundn: int,
+    logger: logging.Logger,
+    round_id: str,
+    keras_proj_id: str,
 ):
     """Perform multi organelle predictions."""
-    logger.info(f"Training classifier for condition {condition}...")
+    logger.info("Training classifier...")
 
     import keras_tuner as kt
     import tensorflow as tf
 
     from .classification_model import FNN_Classifier
 
-    subround_id = f"ROUND_{roundn}_0"
-    y_full = learning_xyz.y_full[subround_id]
-    y_train = learning_xyz.y_train[subround_id]
-    y_train_mixed_up = learning_xyz.y_train_mixed_up[subround_id]
+    subround_id = f"{round_id}_0"
+    subround_data = round_data.subround_results[subround_id]
 
-    Z_train_mixed_up = learning_xyz.Z_train_mixed_up[f"ROUND_{roundn}"]
+    y_train_mixed_up = subround_data.y_train_mixed_up
+    Z_train_mixed_up = round_data.Z_train_mixed_up
     set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
 
-    # Tune the hyperparameters
+    # Set up hyperparameter tuning
     classifier_directory = get_ccmps_data_directory()
     classifier_directory.mkdir(exist_ok=True, parents=True)
-
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
     tuner = kt.Hyperband(
@@ -355,14 +350,14 @@ def multi_predictions(
         max_epochs=nn_params.NN_epochs,
         factor=3,
         directory=str(classifier_directory),
-        project_name=f"{time}_Classifier_{condition}_{roundn}",
+        project_name=f"{time}_{keras_proj_id}",
     )
 
+    # Tune the hyperparameters
     # noinspection PyUnresolvedReferences
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=5
     )
-
     tuner.search(
         y_train_mixed_up,
         Z_train_mixed_up,
@@ -371,106 +366,70 @@ def multi_predictions(
         callbacks=[stop_early],
     )
     logger.info("Hyperparameter tuning done!")
+
     best_model = tuner.get_best_models(num_models=1)[0]
     best_hp = tuner.get_best_hyperparameters(num_trials=1)[0].values
-
     stringlist = []
     best_model.summary(print_fn=lambda x: stringlist.append(x))
-    FNN_summary = "\n".join(stringlist)
+    round_data.FNN_summary = "\n".join(stringlist)
 
-    learning_xyz.FNN_summary[f"ROUND_{roundn}"] = FNN_summary
-
-    z_full = best_model.predict(y_full)
-    z_train = best_model.predict(y_train)
+    z_full = best_model.predict(subround_data.y_full)
+    z_train = best_model.predict(subround_data.y_train)
 
     add_Z(
         learning_xyz,
+        subround_data,
         z_full,
         z_train,
-        roundn,
-        0,
     )
 
-    for subround in range(1, nn_params.subrounds + 1):
+    # TODO(performance): parallelize this
+    for i_subround in range(1, nn_params.subrounds + 1):
         logger.info(
-            f"Training classifier for condition {condition} "
-            f"{subround}/{nn_params.subrounds}..."
+            f"Training classifier for {i_subround}/{nn_params.subrounds}..."
         )
-        subround_id = f"ROUND_{roundn}_{subround}"
-        y_full = learning_xyz.y_full[subround_id]
-        y_train = learning_xyz.y_train[subround_id]
-        y_train_mixed_up = learning_xyz.y_train_mixed_up[subround_id]
+        subround_id = f"{round_id}_{i_subround}"
+        subround_data = round_data.subround_results[subround_id]
 
         fixed_model = FNN_Classifier(
             fixed_hp=best_hp, set_shapes=set_shapes, nn_params=nn_params
         ).build(None)
         fixed_model.fit(
-            y_train_mixed_up,
+            subround_data.y_train_mixed_up,
             Z_train_mixed_up,
             epochs=nn_params.NN_epochs,
             validation_split=0.2,
             callbacks=[stop_early],
         )
 
-        z_full = fixed_model.predict(y_full)
-        z_train = fixed_model.predict(y_train)
+        z_full = fixed_model.predict(subround_data.y_full)
+        z_train = fixed_model.predict(subround_data.y_train)
 
         add_Z(
             learning_xyz,
+            subround_data,
             z_full,
             z_train,
-            roundn,
-            subround,
         )
 
 
 def add_Z(
-    learning_xyz: XYZ_Model,
+    xyz: XYZ_Model,
+    subround_data: TrainingSubRound_Model,
     z_full,
     z_train,
-    roundn: int,
-    subroundn: int,
 ):
-    subround_id = f"ROUND_{roundn}_{subroundn}"
-
-    learning_xyz.z_full_df[subround_id] = pd.DataFrame(
+    subround_data.z_full = z_full
+    subround_data.z_full_df = pd.DataFrame(
         z_full,
-        index=learning_xyz.y_full_df[subround_id].index,
-        columns=learning_xyz.classes,
+        index=subround_data.y_full_df.index,
+        columns=xyz.classes,
     )
-    learning_xyz.z_full[subround_id] = z_full
-
-    learning_xyz.z_train_df[subround_id] = pd.DataFrame(
+    subround_data.z_train_df = pd.DataFrame(
         z_train,
-        index=learning_xyz.y_train_df[subround_id].index,
-        columns=learning_xyz.classes,
+        index=subround_data.y_train_df.index,
+        columns=xyz.classes,
     )
-
-
-def add_Y(
-    learning_xyz: XYZ_Model,
-    y_full,
-    y_full_up,
-    y_train,
-    y_train_up,
-    y_train_mixed_up,
-    y_test,
-    roundn: int,
-    subroundn: int,
-):
-    subround_id = f"ROUND_{roundn}_{subroundn}"
-    learning_xyz.y_full_df[subround_id] = pd.DataFrame(
-        y_full, index=learning_xyz.x_full_df.index
-    )
-    learning_xyz.y_full[subround_id] = y_full
-    learning_xyz.y_full_up[subround_id] = y_full_up
-    learning_xyz.y_train_df[subround_id] = pd.DataFrame(
-        y_train, index=learning_xyz.x_train_df.index
-    )
-    learning_xyz.y_train[subround_id] = y_train
-    learning_xyz.y_train_up[subround_id] = y_train_up
-    learning_xyz.y_train_mixed_up[subround_id] = y_train_mixed_up
-    learning_xyz.y_test[subround_id] = y_test
 
 
 def update_learninglist_const(
@@ -496,32 +455,6 @@ def update_learninglist_const(
     learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
         learning_xyz.classes
     ]
-
-
-def update_learninglist_round(
-    learning_xyz: XYZ_Model,
-    fract_full_up: pd.DataFrame,
-    fract_marker_up: pd.DataFrame,
-    round_id: str,
-) -> None:
-    """Populate `learning_xyz` with the learning data that is specific to the
-    given round."""
-    learning_xyz.W_train_up_df[round_id] = fract_marker_up["class"]
-    learning_xyz.W_train_up[round_id] = list(
-        learning_xyz.W_train_up_df[round_id]
-    )
-
-    learning_xyz.x_full_up_df[round_id] = fract_full_up.drop(columns=["class"])
-    learning_xyz.x_full_up[round_id] = learning_xyz.x_full_up_df[
-        round_id
-    ].to_numpy(dtype=float)
-    learning_xyz.x_train_up_df[round_id] = fract_marker_up.drop(
-        columns=["class"]
-    )
-    learning_xyz.x_train_up[round_id] = learning_xyz.x_train_up_df[
-        round_id
-    ].to_numpy(dtype=float)
-    learning_xyz.V_full_up[round_id] = learning_xyz.x_full_up[round_id]
 
 
 def mix_profiles(
@@ -590,22 +523,23 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz: XYZ_Model,
+    round_result: TrainingRound_Model,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
-    round_id: str,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     """Perform single-class (single-compartment) prediction.
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
-    :param learning_xyz: The learning data. This will be updated in place.
+    :param learning_xyz: The learning data.
+    :param round_result: Input and results. This will be updated in place.
     """
     x_full = learning_xyz.x_full
     x_train = learning_xyz.x_train
-    x_train_up = learning_xyz.x_train_up[round_id]
+    x_train_up = round_result.x_train_up
     x_test = learning_xyz.x_test
     W_train = learning_xyz.W_train
-    W_train_up = learning_xyz.W_train_up[round_id]
+    W_train_up = round_result.W_train_up
 
     # train classifier on the upsampled data
     clf = svm.SVC(kernel="rbf", probability=True)
@@ -648,13 +582,11 @@ def single_prediction(
         "f1": f1,
     }
 
-    learning_xyz.w_full[round_id] = w_full
-    learning_xyz.w_full_prob[round_id] = w_full_prob
-    learning_xyz.w_full_prob_df[round_id] = copy.deepcopy(
-        learning_xyz.x_full_df
-    )
-    learning_xyz.w_full_prob_df[round_id]["SVM_winner"] = w_full
-    learning_xyz.w_full_prob_df[round_id]["SVM_prob"] = w_full_prob
-    learning_xyz.w_train[round_id] = w_train
+    round_result.w_full = w_full
+    round_result.w_full_prob = w_full_prob
+    round_result.w_full_prob_df = copy.deepcopy(learning_xyz.x_full_df)
+    round_result.w_full_prob_df["SVM_winner"] = w_full
+    round_result.w_full_prob_df["SVM_prob"] = w_full_prob
+    round_result.w_train = w_train
 
     return svm_metrics, svm_marker, svm_test

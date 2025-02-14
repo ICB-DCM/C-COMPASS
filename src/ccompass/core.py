@@ -98,7 +98,7 @@ class NeuralNetworkParametersModel(BaseModel):
     NN_epochs: int = 20
     #: ...
     rounds: int = 3
-    #: ...
+    #: Repetitions for the neural network training to generate an ensemble
     subrounds: int = 10
     #: Percentile threshold for ... ?
     reliability: int = 95
@@ -165,74 +165,96 @@ class XYZ_Model(BaseModel):
     #: Means of the z_full values across the different rounds
     z_full_mean_df: pd.DataFrame = pd.DataFrame()
 
-    #: features and SVM classification results for the different rounds
-    w_full_prob_df: dict[str, pd.DataFrame] = {}
-    #: Neural network classification results for y_train
-    #  (i.e. probabilities for the different classes for each protein)
-    z_train_df: dict[str, pd.DataFrame] = {}
-    #: Neural network classification results for y_full
-    #  (i.e. probabilities for the different classes for each protein)
-    z_full_df: dict[str, pd.DataFrame] = {}
-    #: z_full_df, but as numpy array
-    z_full: dict[str, np.ndarray] = {}
-    #: Summary of the best neural network model in each round
-    FNN_summary: dict[str, str] = {}
+    #: Results / intermediate data for the different training rounds
+    #  round_id => TrainingRound_Model
+    round_results: dict[str, TrainingRound_Model] = {}
+
+
+class TrainingRound_Model(BaseModel):
+    """Data for a single round of model training.
+
+    A upsamling/mixing/training/prediction round for a single condition."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: features and SVM classification results
+    w_full_prob_df: pd.DataFrame = pd.DataFrame()
+
+    #: Summary of the best neural network mode
+    FNN_summary: str = ""
     #: Class labels for the upsampled training data
-    #  for the different rounds
-    W_train_up_df: dict[str, pd.Series] = {}
+    W_train_up_df: pd.Series = pd.Series()
     #: W_train_up_df as list
-    W_train_up: dict[str, list] = {}
+    W_train_up: list = []
     #: Features for the upsampled full dataset
-    #  for the different rounds
-    x_full_up_df: dict[str, pd.DataFrame] = {}
+    x_full_up_df: pd.DataFrame = pd.DataFrame()
     #: x_full_up_df as numpy array
-    x_full_up: dict[str, np.ndarray] = {}
-    #: Features for the upsampled training data during the different rounds
-    x_train_up_df: dict[str, pd.DataFrame] = {}
+    x_full_up: np.ndarray = np.array([])
+    #: Features of the upsampled training data
+    x_train_up_df: pd.DataFrame = pd.DataFrame()
     #: x_train_up_df as numpy array
-    x_train_up: dict[str, np.ndarray] = {}
+    x_train_up: np.ndarray = np.array([])
     #: same as x_full_up
-    V_full_up: dict[str, np.ndarray] = {}
+    V_full_up: np.ndarray = np.array([])
     #: Features for the training data (marker profiles) after maxing
-    #  for the different rounds
-    x_train_mixed_up_df: dict[str, pd.DataFrame] = {}
+    x_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
     #: x_train_mixed_up_df as numpy
-    x_train_mixed_up: dict[str, np.ndarray] = {}
+    x_train_mixed_up: np.ndarray = np.array([])
     #: Class probabilities for mixed profiles (mixing ratios)
-    Z_train_mixed_up_df: dict[str, pd.DataFrame] = {}
+    Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
     #: Z_train_mixed_up_df as numpy array
-    Z_train_mixed_up: dict[str, np.ndarray] = {}
-    #: Class labels for the mixed profiles
-    y_full_df: dict[str, pd.DataFrame] = {}
-    #: same as x_full
-    y_full: dict[str, np.ndarray] = {}
-    #: same as x_full_up
-    y_full_up: dict[str, np.ndarray] = {}
-    #: same as x_train_df
-    y_train_df: dict[str, pd.DataFrame] = {}
-    #: same as x_train
-    y_train: dict[str, np.ndarray] = {}
-    #: same as x_train_up
-    y_train_up: dict[str, np.ndarray] = {}
-    #: same as x_train_mixed_up
-    y_train_mixed_up: dict[str, np.ndarray] = {}
-    #: same as x_test
-    y_test: dict[str, np.ndarray] = {}
+    Z_train_mixed_up: np.ndarray = np.array([])
 
     #: SVM-predicted class labels for x_full for each round
     # TODO: never read
-    w_full: dict[str, list] = {}
+    w_full: list = []
     #: Probabilities for the SVM-predicted class labels in w_full
     # TODO: never read
-    w_full_prob: dict[str, np.ndarray] = {}
+    w_full_prob: np.ndarray = np.array([])
     #: SVM-predicted class labels for x_train for each round
     # TODO: never read
-    w_train: dict[str, list] = {}
+    w_train: list = []
+
+    #: Data for the different rounds of neural network training after the
+    #  hyperparameter search. Basis for ensemble prediction.
+    subround_results: dict[str, TrainingSubRound_Model] = {}
 
     @field_validator("w_full_prob", mode="before")
     def convert_lists_to_arrays(cls, v):
         # for backward compatibility, convert list to ndarray
         return {k: np.array(vv) for k, vv in v.items()}
+
+
+class TrainingSubRound_Model(BaseModel):
+    """Data for a single round of neural network model training and prediction."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: Class labels for the mixed profiles
+    y_full_df: pd.DataFrame = pd.DataFrame()
+    #: same as x_full
+    y_full: np.ndarray = np.array([])
+    #: same as x_full_up
+    y_full_up: np.ndarray = np.array([])
+    #: same as x_train_df
+    y_train_df: pd.DataFrame = pd.DataFrame()
+    #: same as x_train
+    y_train: np.ndarray = np.array([])
+    #: same as x_train_up
+    y_train_up: np.ndarray = np.array([])
+    #: same as x_train_mixed_up
+    y_train_mixed_up: np.ndarray = np.array([])
+    #: same as x_test
+    y_test: np.ndarray = np.array([])
+
+    #: Neural network classification results for y_train
+    #  (i.e. probabilities for the different classes for each protein)
+    z_train_df: pd.DataFrame = pd.DataFrame()
+    #: Neural network classification results for y_full
+    #  (i.e. probabilities for the different classes for each protein)
+    z_full_df: pd.DataFrame = pd.DataFrame()
+    #: z_full_df, but as numpy array
+    z_full: np.ndarray = np.array([])
 
 
 class ResultsModel(BaseModel):
