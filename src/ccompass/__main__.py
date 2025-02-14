@@ -2,7 +2,9 @@
 
 import argparse
 import logging
+import sys
 
+from rich.console import Console
 from rich.logging import RichHandler
 
 from . import app_name
@@ -25,12 +27,15 @@ def main():
 
 def init_logging() -> logging.Logger:
     """Initialize logging."""
+    # Write to sys.__stdout__ instead of sys.stdout to avoid infinite
+    #  recursion, because we will redirect sys.stdout to the logger later on.
+    console = Console(file=sys.__stdout__)
     log_format = "%(message)s"
     logging.basicConfig(
         level="WARNING",
         format=log_format,
         datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)],
+        handlers=[RichHandler(rich_tracebacks=True, console=console)],
     )
     logger = logging.getLogger(__package__)
     logger.setLevel(logging.DEBUG)
