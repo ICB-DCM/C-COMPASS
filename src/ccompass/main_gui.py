@@ -980,6 +980,7 @@ def create_main_window(model: SessionModel) -> sg.Window:
     menu_def = [
         ["Session", ["Save...", "Open...", "New", "Exit"]],
         ["Help", ["About...", "Open Website", "Manual"]],
+        ["Settings", ["Settings..."]],
     ]
 
     layout = [
@@ -1010,11 +1011,11 @@ class MainController:
 
     def __init__(self, model: SessionModel):
         self.model = model
+        self.app_settings = AppSettings.load()
         self.main_window = create_main_window(model=model)
 
     def run(self):
         """Run the C-COMPASS application."""
-        app_settings = AppSettings.load()
 
         # The event loop
         while True:
@@ -1391,17 +1392,17 @@ class MainController:
                     no_window=True,
                     file_types=(("Numpy", "*.npy"),),
                     save_as=True,
-                    initial_folder=str(app_settings.last_session_dir),
+                    initial_folder=str(self.app_settings.last_session_dir),
                 )
                 if filename:
-                    app_settings.last_session_dir = Path(filename).parent
-                    app_settings.save()
+                    self.app_settings.last_session_dir = Path(filename).parent
+                    self.app_settings.save()
                     self.model.to_numpy(filename)
 
             elif event == "Open...":
                 filename = sg.popup_get_file(
                     "Open Session",
-                    initial_folder=str(app_settings.last_session_dir),
+                    initial_folder=str(self.app_settings.last_session_dir),
                     no_window=True,
                     file_types=(("Numpy", "*.npy"),),
                 )
@@ -1424,8 +1425,8 @@ class MainController:
                         values=["[IDENTIFIER]"] + list(self.model.fract_info),
                         value=self.model.marker_fractkey,
                     )
-                    app_settings.last_session_dir = Path(filename).parent
-                    app_settings.save()
+                    self.app_settings.last_session_dir = Path(filename).parent
+                    self.app_settings.save()
             elif event == "New":
                 sure = sg.popup_yes_no(
                     "Are you sure to close the session and start a new one?"
@@ -1456,6 +1457,10 @@ class MainController:
                 import webbrowser
 
                 webbrowser.open(readthedocs_url)
+            elif event == "Settings...":
+                from .settings_dialog import show_settings_dialog
+
+                show_settings_dialog(self.app_settings)
 
             refresh_window(self.main_window, self.model.status)
 
