@@ -2,6 +2,7 @@
 
 import copy
 import logging
+import multiprocessing as mp
 from datetime import datetime
 from typing import Any, Literal
 
@@ -140,6 +141,7 @@ def MOP_exec(
     fract_test: dict[str, pd.DataFrame],
     stds: dict[str, pd.DataFrame],
     nn_params: NeuralNetworkParametersModel,
+    max_processes: int = 1,
 ) -> dict[str, XYZ_Model]:
     """Perform multi-organelle prediction.
 
@@ -156,30 +158,65 @@ def MOP_exec(
             fract_test[condition],
         )
 
-    for condition in conditions:
-        for i_round in range(1, nn_params.rounds + 1):
-            logger.info(
-                f"Executing round {i_round}/{nn_params.rounds} "
-                f"for condition {condition}..."
-            )
-            round_id = f"ROUND_{i_round}"
-            log_prefix = f"[{condition} {round_id}]"
-            sub_logger = logger.getChild(log_prefix)
-            sub_logger.addFilter(PrefixFilter(log_prefix))
+    # parallel execution
+    args_list = [
+        (
+            condition,
+            i_round,
+            learning_xyz[condition],
+            fract_full[condition],
+            fract_marker[condition],
+            fract_test[condition],
+            stds.get(condition),
+            nn_params,
+            logger,
+        )
+        for condition in conditions
+        for i_round in range(1, nn_params.rounds + 1)
+    ]
 
-            learning_xyz[condition].round_results[round_id] = execute_round(
-                learning_xyz[condition],
-                fract_full[condition],
-                fract_marker[condition],
-                fract_test[condition],
-                # FIXME
-                stds.get(condition),
-                nn_params,
-                logger=sub_logger,
-                round_id=round_id,
-                keras_proj_id=f"Classifier_{condition}_{i_round}",
-            )
+    with mp.Pool(processes=max_processes) as pool:
+        results_list = pool.map(execute_round_wrapper, args_list)
+
+    for condition, round_id, round_data in results_list:
+        learning_xyz[condition].round_results[round_id] = round_data
+
     return learning_xyz
+
+
+def execute_round_wrapper(args):
+    """Parallelization wrapper for `execute_round`."""
+    (
+        condition,
+        i_round,
+        learning_xyz,
+        fract_full,
+        fract_marker,
+        fract_test,
+        stds,
+        nn_params,
+        logger,
+    ) = args
+    logger.info(
+        f"Executing round {i_round}/{nn_params.rounds} "
+        f"for condition {condition}..."
+    )
+    round_id = f"ROUND_{i_round}"
+    log_prefix = f"[{condition} {round_id}]"
+    sub_logger = logger.getChild(log_prefix)
+    sub_logger.addFilter(PrefixFilter(log_prefix))
+    round_data = execute_round(
+        learning_xyz,
+        fract_full,
+        fract_marker,
+        fract_test,
+        stds,
+        nn_params,
+        sub_logger,
+        round_id,
+        keras_proj_id=f"Classifier_{condition}_{i_round}",
+    )
+    return condition, round_id, round_data
 
 
 def execute_round(
