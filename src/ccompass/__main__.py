@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import sys
 
 from rich.console import Console
@@ -27,9 +28,16 @@ def main():
 
 def init_logging() -> logging.Logger:
     """Initialize logging."""
-    # Write to sys.__stdout__ instead of sys.stdout to avoid infinite
-    #  recursion, because we will redirect sys.stdout to the logger later on.
-    console = Console(file=sys.__stdout__)
+    console = Console(
+        # Write to sys.__stdout__ instead of sys.stdout to avoid infinite
+        #  recursion, because we will redirect sys.stdout to the logger later
+        #  on.
+        file=sys.__stdout__,
+        # When running in PyCharm, `rich` can't determine the terminal width
+        #  correctly, so we set it manually, since the default width (80) is
+        #  too narrow.
+        width=160 if os.environ.get("PYCHARM_HOSTED", False) else None,
+    )
     log_format = "%(message)s"
     logging.basicConfig(
         level="WARNING",
