@@ -3,7 +3,9 @@
 import logging
 import os
 import platform
+import sys
 from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -60,3 +62,30 @@ class PrefixFilter(logging.Filter):
     def filter(self, record):
         record.msg = f"{self.prefix} {record.msg}"
         return True
+
+
+class StreamToLogger:
+    """Redirect a stream (e.g., stdout) to a logger."""
+
+    def __init__(self, logger: logging.Logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.linebuf = ""
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.log_level, line.rstrip())
+
+    def flush(self):
+        pass
+
+
+@contextmanager
+def stdout_to_logger(logger: logging.Logger, log_level=logging.INFO):
+    """Context manager to redirect stdout to a logger."""
+    old_stdout = sys.stdout
+    try:
+        sys.stdout = StreamToLogger(logger, log_level)
+        yield
+    finally:
+        sys.stdout = old_stdout

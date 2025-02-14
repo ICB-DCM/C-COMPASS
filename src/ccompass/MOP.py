@@ -16,7 +16,7 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from ._utils import PrefixFilter, get_ccmps_data_directory
+from ._utils import PrefixFilter, get_ccmps_data_directory, stdout_to_logger
 from .core import (
     NeuralNetworkParametersModel,
     TrainingRound_Model,
@@ -303,14 +303,15 @@ def execute_round(
         # TODO ADD AUTOENCODER HERE
         raise NotImplementedError("Autoencoder not implemented yet.")
 
-    multi_predictions(
-        xyz,
-        result,
-        nn_params,
-        logger,
-        round_id,
-        keras_proj_id=keras_proj_id,
-    )
+    with stdout_to_logger(logger, logging.DEBUG):
+        multi_predictions(
+            xyz,
+            result,
+            nn_params,
+            logger,
+            round_id,
+            keras_proj_id=keras_proj_id,
+        )
 
     return result
 
