@@ -261,16 +261,11 @@ def MOP_exec(
     fract_test: dict[str, pd.DataFrame],
     stds: dict[str, pd.DataFrame],
     NN_params: NeuralNetworkParametersModel,
-):
+) -> dict[str, XYZ_Model]:
     """Perform multi-organelle prediction.
 
     :param fract_full: dictionary of full profiles
     """
-    fract_full_up = {}
-    fract_marker_up = {}
-    fract_mixed_up = {}
-    fract_unmixed_up = {}
-
     conditions = list(fract_full.keys())
     learning_xyz = {condition: XYZ_Model() for condition in conditions}
     for condition in conditions:
@@ -281,6 +276,10 @@ def MOP_exec(
             fract_test[condition],
         )
 
+    # TODO: bring into shape for parallelization across conditions and rounds
+    #  conditions are independent; rounds are independent
+    #    only the rounds dict needs to be shared -> refactor to round_xyz model per condition
+    #  for condition in conditions:
     for i_round in range(1, NN_params.rounds + 1):
         logger.info(f"Executing round {i_round}/{NN_params.rounds}...")
         round_id = f"ROUND_{i_round}"
