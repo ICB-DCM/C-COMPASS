@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
 from . import config_filepath
 
@@ -229,6 +229,11 @@ class XYZ_Model(BaseModel):
     # TODO: never read
     w_train: dict[str, list] = {}
 
+    @field_validator("w_full_prob", mode="before")
+    def convert_lists_to_arrays(cls, v):
+        # for backward compatibility, convert list to ndarray
+        return {k: np.array(vv) for k, vv in v.items()}
+
 
 class ResultsModel(BaseModel):
     """Results for a single condition."""
@@ -311,6 +316,8 @@ class SessionModel(BaseModel):
 
     # TODO: consider grouping data by condition
 
+    ## User input fractionation data
+
     #: Filepaths for fractionation data
     fract_paths: list[Filepath] = []
     #: Fractionation column assignments
@@ -320,67 +327,18 @@ class SessionModel(BaseModel):
     fract_pos: dict[Filepath, list[int]] = {}
     #: Fractionation input files: filepath => DataFrame
     fract_indata: dict[Filepath, pd.DataFrame] = {}
-    #: Fractionation data for classification and visualization
-    #  One DataFrame for each condition x replicate
-    #  ("{condition}_Rep.{replicate}")
-    fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]] = {
-        "class": {},
-        "vis": {},
-    }
-    #: ??
-    #  for visualization and classification, each containing one DataFrame
-    #  per condition with columns "{condition}_std_Fr.{fraction}"
-    fract_std: dict[
-        Literal["class", "vis"], dict[ConditionId, pd.DataFrame]
-    ] = {"class": {}, "vis": {}}
     #: Identifier column of each fractionation data table:
     #   filepath => column id
     fract_identifiers: dict[Filepath, str] = {}
-    #: Addition ("keep") columns from the fractionation data
-    #  column ID => DataFrame
-    fract_info: dict[str, pd.DataFrame] = {}
     #: Fractionation preprocessing parameters.
     #  global/classification/visualization
     #  "global"|"class"|"vis" => option => value
     fract_preparams: dict[str, dict[str, Any]] = fract_default()
-    #: Conditions in the fractionation data, including "[KEEP]"
-    fract_conditions: list[str] = []
-    #: Fractionation data for the different conditions x replicates
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Marker abundance in the different fractions
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_marker: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Marker abundance in the different fractions for visualization
-    #  "{condition}_median" => DataFrame
-    fract_marker_vis: dict[str, pd.DataFrame] = {}
-    #: ??
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_test: dict[ConditionReplicate, pd.DataFrame] = {}
+    #: The column ID of the fractionation DataFrame that is
+    #  to be used for matching the markers (`marker_list["name"])
+    marker_fractkey: str = "[IDENTIFIER]"
 
-    #: Filepaths for total proteome data
-    tp_paths: list[Filepath] = []
-    #: Total proteome column assignments
-    #  filepath => [column ID, condition]
-    tp_tables: dict[Filepath, list[list[str]]] = {}
-    #: ??
-    tp_pos: dict[Filepath, list[int]] = {}
-    #: Total proteome input files: filepath => DataFrame
-    tp_indata: dict[Filepath, pd.DataFrame] = {}
-    #: Total proteome data for the different conditions
-    #  One DataFrame for each condition containing all replicates
-    #  (column names are "{condition}_Rep.{replicate}")
-    tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Identifier column for the total proteome: filepath => column id
-    tp_identifiers: dict[Filepath, str] = {}
-    #: ??
-    tp_icorr: dict = {}
-    #: ??
-    tp_conditions: list = []
-    #: ??
-    tp_info: pd.DataFrame = pd.DataFrame()
-    #: Total proteome preprocessing parameters
-    tp_preparams: dict[str, Any] = {"minrep": 2, "imputation": "normal"}
+    ## User input markers
 
     #: The user-provided marker files, classes and annotations
     #  filepath => {'table'->pd.DataFrame,
@@ -394,29 +352,93 @@ class SessionModel(BaseModel):
     #: Mapping of compartment names to class names
     #  nan-values indicate that the compartment is not to be used
     marker_conv: dict[str, str | float] = {}
+
+    ## Processed fractionation data
+
+    #: Fractionation data for classification and visualization
+    #  One DataFrame for each condition x replicate
+    #  ("{condition}_Rep.{replicate}")
+    fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]] = {
+        "class": {},
+        "vis": {},
+    }
+    #: ??
+    #  for visualization and classification, each containing one DataFrame
+    #  per condition with columns "{condition}_std_Fr.{fraction}"
+    fract_std: dict[
+        Literal["class", "vis"], dict[ConditionId, pd.DataFrame]
+    ] = {"class": {}, "vis": {}}
+    #: Addition ("keep") columns from the fractionation data
+    #  column ID => DataFrame
+    fract_info: dict[str, pd.DataFrame] = {}
+    #: Conditions in the fractionation data, including "[KEEP]"
+    fract_conditions: list[str] = []
+
+    #: Fractionation data for the different conditions x replicates
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
+    #: Marker abundance in the different fractions
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_marker: dict[ConditionReplicate, pd.DataFrame] = {}
+    #: Marker abundance in the different fractions for visualization
+    #  "{condition}_median" => DataFrame
+    fract_marker_vis: dict[str, pd.DataFrame] = {}
+
+    #: ??
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_test: dict[ConditionReplicate, pd.DataFrame] = {}
+
     #: The consolidated marker list, after merging `marker_sets`
     #  according to `marker_params`, and accounting for renaming
     #  and filtering through `marker_conv`.
     #  "name" (gene name, index) => "class" (class name)
     marker_list: pd.DataFrame = pd.DataFrame()
 
-    #: The column ID of the fractionation DataFrame that is
-    #  to be used for matching the markers (`marker_list["name"])
-    marker_fractkey: str = "[IDENTIFIER]"
+    ## User input total proteome data
+
+    #: Filepaths for total proteome data
+    tp_paths: list[Filepath] = []
+    #: Total proteome column assignments
+    #  filepath => [column ID, condition]
+    tp_tables: dict[Filepath, list[list[str]]] = {}
+    #: ??
+    tp_pos: dict[Filepath, list[int]] = {}
+    #: Total proteome input files: filepath => DataFrame
+    tp_indata: dict[Filepath, pd.DataFrame] = {}
+    #: Identifier column for the total proteome: filepath => column id
+    tp_identifiers: dict[Filepath, str] = {}
+    #: Total proteome preprocessing parameters
+    tp_preparams: dict[str, Any] = {"minrep": 2, "imputation": "normal"}
+
+    ## Processed total proteome data
+
+    #: Total proteome data for the different conditions
+    #  One DataFrame for each condition containing all replicates
+    #  (column names are "{condition}_Rep.{replicate}")
+    tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
+    #: ??
+    tp_icorr: dict = {}
+    #: ??
+    tp_conditions: list = []
+    #: ??
+    tp_info: pd.DataFrame = pd.DataFrame()
+
+    ## User input classification data
+    #: Neural network hyperparameters
+    NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
     #: Neural network data
     # "{condition}_Rep.{replicate}" => dict(
     #  {w,W,x,X,y,Y,z,Z}_... => ...
     # )
     learning_xyz: dict[ConditionReplicate, XYZ_Model] = {}
-    #: Nerural network hyperparameters
-    NN_params: NeuralNetworkParametersModel = NeuralNetworkParametersModel()
 
     #: `stats_proteome` results for the different conditions
     results: dict[ConditionId, ResultsModel] = {}
     #: Pairwise comparisons of conditions
     # (condition1, condition2) => ComparisonModel
     comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel] = {}
+
     #: Indicates which of the individual analysis steps
     #  have already been performed or not
     status: SessionStatusModel = SessionStatusModel()
