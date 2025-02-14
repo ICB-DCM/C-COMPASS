@@ -3,12 +3,10 @@
 import copy
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-import keras_tuner as kt
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from sklearn import svm
 from sklearn.metrics import (
     accuracy_score,
@@ -17,9 +15,6 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from tensorflow import keras
-from tensorflow.keras import ops
-from tensorflow.keras.backend import epsilon
 
 from ._utils import get_ccmps_data_directory
 from .core import NeuralNetworkParametersModel, XYZ_Model
@@ -27,132 +22,18 @@ from .core import NeuralNetworkParametersModel, XYZ_Model
 logger = logging.getLogger(__package__)
 
 
-#: mapping of optimizer names to optimizer classes
-optimizer_classes = {
-    "adam": tf.keras.optimizers.Adam,
-    "rmsprop": tf.keras.optimizers.RMSprop,
-    "sgd": tf.keras.optimizers.SGD,
-}
-
-
-def _create_classifier_hypermodel(
-    NN_params: NeuralNetworkParametersModel,
-) -> type[kt.HyperModel]:
-    """Create a hypermodel for the classifier."""
-
-    class FNN_classifier(kt.HyperModel):
-        def __init__(self, fixed_hp=None, set_shapes=None):
-            super().__init__()
-            self.fixed_hp = fixed_hp
-            self.set_shapes = set_shapes
-            self.chosen_hp = {}
-
-        def build(self, hp):
-            model = keras.Sequential()
-            # Input layer, size is the number of fractions
-            model.add(
-                tf.keras.Input(
-                    (self.set_shapes[0],),
-                )
-            )
-
-            # fixed or tunable hyperparameters
-            if self.fixed_hp:
-                optimizer_choice = self.fixed_hp["optimizer"]
-                learning_rate = self.fixed_hp["learning_rate"]
-                units = self.fixed_hp["units"]
-            else:
-                optimizer_choice = hp.Choice("optimizer", NN_params.optimizers)
-                learning_rate = hp.Float(
-                    "learning_rate",
-                    min_value=1e-4,
-                    max_value=1e-1,
-                    sampling="log",
-                )
-                if NN_params.NN_optimization == "short":
-                    units = hp.Int(
-                        "units",
-                        min_value=int(
-                            min(self.set_shapes)
-                            + 0.4
-                            * (max(self.set_shapes) - min(self.set_shapes))
-                        ),
-                        max_value=int(
-                            min(self.set_shapes)
-                            + 0.6
-                            * (max(self.set_shapes) - min(self.set_shapes))
-                        ),
-                        step=2,
-                    )
-                elif NN_params.NN_optimization == "long":
-                    units = hp.Int(
-                        "units",
-                        min_value=min(self.set_shapes),
-                        max_value=max(self.set_shapes),
-                        step=2,
-                    )
-                else:
-                    raise ValueError(
-                        f"Unknown optimization: {NN_params.NN_optimization}"
-                    )
-
-            # dense layer 1 with tunable size
-            if NN_params.NN_activation == "relu":
-                model.add(keras.layers.Dense(units, activation="relu"))
-            elif NN_params.NN_activation == "leakyrelu":
-                hp_alpha = hp.Float(
-                    "alpha", min_value=0.05, max_value=0.3, step=0.05
-                )
-                model.add(keras.layers.Dense(units))
-                model.add(keras.layers.LeakyReLU(hp_alpha))
-
-            # dense layer 2 with size according to the number of compartments
-            model.add(
-                keras.layers.Dense(
-                    self.set_shapes[1],
-                    activation=NN_params.class_activation,
-                )
-            )
-            model.add(keras.layers.ReLU())
-
-            # normalization layer
-            model.add(keras.layers.Lambda(sum1_normalization))
-
-            optimizer = optimizer_classes[optimizer_choice](
-                learning_rate=learning_rate
-            )
-            model.compile(
-                loss=NN_params.class_loss,
-                optimizer=optimizer,
-                metrics=[
-                    tf.keras.metrics.MeanSquaredError(),
-                    tf.keras.metrics.MeanAbsoluteError(),
-                ],
-            )
-
-            if not self.fixed_hp:
-                self.chosen_hp = {
-                    "optimizer": optimizer_choice,
-                    "learning_rate": learning_rate,
-                    "units": units,
-                }
-
-            return model
-
-        def get_chosen_hyperparameters(self):
-            return self.chosen_hp
-
-    return FNN_classifier
-
-
 def upsample_condition(
-    NN_params: NeuralNetworkParametersModel,
     stds: pd.DataFrame,
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
+    method: Literal["none", "noised", "average", "noisedaverage"],
+    noise_stds: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Perform upsampling for the given condition.
 
+    :param method: The upsampling method to use.
+    :param noise_stds: The noise level for upsampling in standard deviations.
+        Only used for the "noised" and "noisedaverage" methods.
     :return: The upsampled marker and full profiles
     """
     fract_full_up = fract_full
@@ -172,14 +53,14 @@ def upsample_condition(
         class_std_flat = class_std.values.flatten()
 
         for i in range(class_difference):
-            if NN_params.upsampling_method == "noised":
+            if method == "noised":
                 sample = data_class.sample(n=1)
-                ID_rnd = sample.index[0]
-                name_up = f"up_{k}_{ID_rnd}"
+                id_rnd = sample.index[0]
+                name_up = f"up_{k}_{id_rnd}"
                 k += 1
 
                 profile_rnd_flat = sample.values.flatten()
-                std_rnd = stds.loc[[ID_rnd]]
+                std_rnd = stds.loc[[id_rnd]]
                 std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
                 std_rnd_flat = std_rnd.values.flatten()
                 std_rnd_flat = np.tile(
@@ -189,19 +70,19 @@ def upsample_condition(
 
                 nv = np.random.normal(
                     profile_rnd_flat,
-                    NN_params.upsampling_noise * std_rnd_flat,
+                    noise_stds * std_rnd_flat,
                     size=sample.shape,
                 )
                 nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
                 profile_up = pd.DataFrame(nv, columns=sample.columns)
 
-            elif NN_params.upsampling_method == "average":
+            elif method == "average":
                 sample = data_class.sample(n=3, replace=True)
                 name_up = f"up_{k}_{'_'.join(sample.index)}"
                 k += 1
                 profile_up = sample.median(axis=0).to_frame().transpose()
 
-            elif NN_params.upsampling_method == "noisedaverage":
+            elif method == "noisedaverage":
                 sample = data_class.sample(n=3, replace=True)
                 name_up = f"up_{k}_{'_'.join(sample.index)}"
                 k += 1
@@ -210,15 +91,13 @@ def upsample_condition(
                 profile_av_flat = profile_av.values.flatten()
                 nv = np.random.normal(
                     profile_av_flat,
-                    NN_params.upsampling_noise * class_std_flat,
+                    noise_stds * class_std_flat,
                     size=profile_av.shape,
                 )
                 nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
                 profile_up = pd.DataFrame(nv, columns=profile_av.columns)
             else:
-                raise ValueError(
-                    f"Unknown upsampling method: {NN_params.upsampling_method}"
-                )
+                raise ValueError(f"Unknown upsampling method: {method}")
 
             profile_up.index = [name_up]
             profile_up["class"] = [classname]
@@ -250,17 +129,12 @@ def upsample_condition(
     return fract_marker_up, fract_full_up
 
 
-def sum1_normalization(x):
-    """Normalize the input to sum to 1."""
-    return x / (ops.sum(x, axis=1, keepdims=True) + epsilon())
-
-
 def MOP_exec(
     fract_full: dict[str, pd.DataFrame],
     fract_marker: dict[str, pd.DataFrame],
     fract_test: dict[str, pd.DataFrame],
     stds: dict[str, pd.DataFrame],
-    NN_params: NeuralNetworkParametersModel,
+    nn_params: NeuralNetworkParametersModel,
 ) -> dict[str, XYZ_Model]:
     """Perform multi-organelle prediction.
 
@@ -280,23 +154,24 @@ def MOP_exec(
     #  conditions are independent; rounds are independent
     #    only the rounds dict needs to be shared -> refactor to round_xyz model per condition
     #  for condition in conditions:
-    for i_round in range(1, NN_params.rounds + 1):
-        logger.info(f"Executing round {i_round}/{NN_params.rounds}...")
+    for i_round in range(1, nn_params.rounds + 1):
+        logger.info(f"Executing round {i_round}/{nn_params.rounds}...")
         round_id = f"ROUND_{i_round}"
 
         fract_full_up = {}
         fract_marker_up = {}
 
-        if NN_params.upsampling:
+        if nn_params.upsampling:
             # upsample fractionation data for each condition x replicate
             for condition in conditions:
                 logger.info(f"Upsampling condition {condition}")
                 fract_marker_up[condition], fract_full_up[condition] = (
                     upsample_condition(
-                        NN_params,
                         stds.get(condition),
                         fract_full[condition],
                         fract_marker[condition],
+                        method=nn_params.upsampling_method,
+                        noise_stds=nn_params.upsampling_noise,
                     )
                 )
             logger.info("upsampling done!")
@@ -322,7 +197,7 @@ def MOP_exec(
                 round_id,
             )
 
-        if NN_params.svm_filter:
+        if nn_params.svm_filter:
             logger.info("Applying SVM filter...")
             # Remove the markers that are not predicted correctly by the SVM
             #  and upsample the rest
@@ -340,10 +215,11 @@ def MOP_exec(
                 logger.info(f"Upsampling condition {condition}")
                 fract_marker_up[condition], fract_full_up[condition] = (
                     upsample_condition(
-                        NN_params,
                         stds.get(condition),
                         fract_full[condition],
                         fract_marker_filtered[condition],
+                        method=nn_params.upsampling_method,
+                        noise_stds=nn_params.upsampling_noise,
                     )
                 )
             logger.info("SVM filtering done.")
@@ -362,21 +238,21 @@ def MOP_exec(
                 axis=1,
             )
 
-        if NN_params.mixed_part == "none":
+        if nn_params.mixed_part == "none":
             fract_mixed_up = copy.deepcopy(fract_unmixed_up)
         else:
             logger.info("Mixing profiles...")
             fract_mixed_up = {}
             mix_steps = [
-                i / NN_params.mixed_part
-                for i in range(1, NN_params.mixed_part)
+                i / nn_params.mixed_part
+                for i in range(1, nn_params.mixed_part)
             ]
             for condition in conditions:
                 fract_mixed_up[condition] = mix_profiles(
                     fract_marker_up[condition],
                     fract_unmixed_up[condition],
                     mix_steps,
-                    NN_params.mixed_batch,
+                    nn_params.mixed_batch,
                 )
 
         for condition, xyz in learning_xyz.items():
@@ -397,7 +273,7 @@ def MOP_exec(
         for condition, xyz in learning_xyz.items():
             xyz.V_full_up[round_id] = xyz.x_full_up[round_id]
 
-            if NN_params.AE == "none":
+            if nn_params.AE == "none":
                 # TODO(performance): Is there anything happening here?
                 #  Just needless copying?
                 y_full = xyz.x_full
@@ -418,7 +294,7 @@ def MOP_exec(
                     i_round,
                     0,
                 )
-                for i_subround in range(1, NN_params.subrounds + 1):
+                for i_subround in range(1, nn_params.subrounds + 1):
                     add_Y(
                         xyz,
                         y_full,
@@ -434,12 +310,10 @@ def MOP_exec(
                 # TODO ADD AUTOENCODER HERE
                 raise NotImplementedError("Autoencoder not implemented yet.")
 
-        FNN_classifier = _create_classifier_hypermodel(NN_params)
         for condition in conditions:
             multi_predictions(
-                FNN_classifier,
                 learning_xyz[condition],
-                NN_params,
+                nn_params,
                 condition,
                 i_round,
             )
@@ -447,14 +321,19 @@ def MOP_exec(
 
 
 def multi_predictions(
-    FNN_classifier: type[kt.HyperModel],
     learning_xyz: XYZ_Model,
-    NN_params: NeuralNetworkParametersModel,
+    nn_params: NeuralNetworkParametersModel,
     condition: str,
     roundn: int,
 ):
     """Perform multi organelle predictions."""
     logger.info(f"Training classifier for condition {condition}...")
+
+    import keras_tuner as kt
+    import tensorflow as tf
+
+    from .classification_model import FNN_Classifier
+
     subround_id = f"ROUND_{roundn}_0"
     y_full = learning_xyz.y_full[subround_id]
     y_train = learning_xyz.y_train[subround_id]
@@ -470,15 +349,16 @@ def multi_predictions(
     now = datetime.now()
     time = now.strftime("%Y%m%d%H%M%S")
     tuner = kt.Hyperband(
-        hypermodel=FNN_classifier(set_shapes=set_shapes),
+        hypermodel=FNN_Classifier(set_shapes=set_shapes, nn_params=nn_params),
         hyperparameters=kt.HyperParameters(),
         objective="val_mean_squared_error",
-        max_epochs=NN_params.NN_epochs,
+        max_epochs=nn_params.NN_epochs,
         factor=3,
         directory=str(classifier_directory),
         project_name=f"{time}_Classifier_{condition}_{roundn}",
     )
 
+    # noinspection PyUnresolvedReferences
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=5
     )
@@ -486,7 +366,7 @@ def multi_predictions(
     tuner.search(
         y_train_mixed_up,
         Z_train_mixed_up,
-        epochs=NN_params.NN_epochs,
+        epochs=nn_params.NN_epochs,
         validation_split=0.2,
         callbacks=[stop_early],
     )
@@ -511,23 +391,23 @@ def multi_predictions(
         0,
     )
 
-    for subround in range(1, NN_params.subrounds + 1):
+    for subround in range(1, nn_params.subrounds + 1):
         logger.info(
             f"Training classifier for condition {condition} "
-            f"{subround}/{NN_params.subrounds}..."
+            f"{subround}/{nn_params.subrounds}..."
         )
         subround_id = f"ROUND_{roundn}_{subround}"
         y_full = learning_xyz.y_full[subround_id]
         y_train = learning_xyz.y_train[subround_id]
         y_train_mixed_up = learning_xyz.y_train_mixed_up[subround_id]
 
-        fixed_model = FNN_classifier(
-            fixed_hp=best_hp, set_shapes=set_shapes
+        fixed_model = FNN_Classifier(
+            fixed_hp=best_hp, set_shapes=set_shapes, nn_params=nn_params
         ).build(None)
         fixed_model.fit(
             y_train_mixed_up,
             Z_train_mixed_up,
-            epochs=NN_params.NN_epochs,
+            epochs=nn_params.NN_epochs,
             validation_split=0.2,
             callbacks=[stop_early],
         )

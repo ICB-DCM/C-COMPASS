@@ -344,6 +344,7 @@ def RP_stats_distribution(results: dict[str, ResultsModel]):
 
         # Create a pie chart
         plt.figure(figsize=(6, 6))
+        # noinspection PyUnresolvedReferences
         plt.pie(
             class_counts,
             labels=class_counts.index,
