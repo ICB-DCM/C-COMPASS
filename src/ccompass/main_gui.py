@@ -1397,7 +1397,8 @@ class MainController:
                 if filename:
                     self.app_settings.last_session_dir = Path(filename).parent
                     self.app_settings.save()
-                    self.model.to_numpy(filename)
+                    with wait_cursor(self.main_window):
+                        self.model.to_numpy(filename)
 
             elif event == "Open...":
                 filename = sg.popup_get_file(
@@ -1408,11 +1409,12 @@ class MainController:
                 )
                 if filename:
                     try:
-                        session_open(
-                            self.main_window,
-                            filename,
-                            model=self.model,
-                        )
+                        with wait_cursor(self.main_window):
+                            session_open(
+                                self.main_window,
+                                filename,
+                                model=self.model,
+                            )
                     except Exception as e:
                         logger.exception("Error opening session")
                         messagebox.showerror(
