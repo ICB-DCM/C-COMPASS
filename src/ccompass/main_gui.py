@@ -1604,6 +1604,7 @@ class MainController:
                 self.model.fract_test,
                 stds,
                 self.model.NN_params,
+                max_processes=self.app_settings.max_processes,
             )
             self.model.status.training = True
 
