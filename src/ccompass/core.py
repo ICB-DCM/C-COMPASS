@@ -348,8 +348,6 @@ class SessionModel(BaseModel):
 
     ## User input fractionation data
 
-    #: Filepaths for fractionation data
-    fract_paths: list[Filepath] = []
     #: Fractionation column assignments
     #  filepath => [column ID, condition, replicate, fraction]
     fract_tables: dict[Filepath, list[list[int | str]]] = {}
@@ -491,12 +489,9 @@ class SessionModel(BaseModel):
         self.tp_data = {}
 
     def reset_input_fract(self):
-        self.fract_paths = []
         self.fract_tables = {}
         self.fract_pos = {}
         self.fract_data = {}
-
-    def reset_infract(self):
         self.fract_indata = {}
         self.fract_identifiers = {}
 

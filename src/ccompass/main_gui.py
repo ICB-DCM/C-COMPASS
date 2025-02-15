@@ -3,6 +3,7 @@
 import copy
 import logging
 import pickle
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, simpledialog
@@ -27,7 +28,7 @@ from .core import (
 logger = logging.getLogger(__package__)
 
 
-def create_fractionation_tab(fract_paths) -> sg.Tab:
+def create_fractionation_tab(fract_paths: Sequence[Any]) -> sg.Tab:
     """Create the "Fractionation" tab."""
     layout_fractionation = [
         [
@@ -197,7 +198,7 @@ def create_fractionation_tab(fract_paths) -> sg.Tab:
     )
 
 
-def create_total_proteome_tab(tp_paths) -> sg.Tab:
+def create_total_proteome_tab(tp_paths: Sequence[Any]) -> sg.Tab:
     """Create the "Total Proteome" tab."""
     layout = [
         [
@@ -365,7 +366,9 @@ def create_total_proteome_tab(tp_paths) -> sg.Tab:
     )
 
 
-def create_data_import_frame(fract_paths, tp_paths) -> sg.Frame:
+def create_data_import_frame(
+    fract_paths: Sequence[Any], tp_paths: Sequence[Any]
+) -> sg.Frame:
     """Create the "Data Import" frame."""
     return sg.Frame(
         layout=[
@@ -987,7 +990,7 @@ def create_main_window(model: SessionModel) -> sg.Window:
         [sg.Menu(menu_def, tearoff=False)],
         [
             create_data_import_frame(
-                fract_paths=model.fract_paths, tp_paths=model.tp_paths
+                fract_paths=list(model.fract_indata), tp_paths=model.tp_paths
             ),
             create_spatial_prediction_frame(),
         ],
@@ -1103,7 +1106,7 @@ class MainController:
                         values=["[IDENTIFIER]"], value=""
                     )
             elif event == "-fractionation_start-":
-                if self.model.fract_paths:
+                if self.model.fract_indata:
                     from .FDP import FDP_exec
 
                     (
@@ -1817,9 +1820,8 @@ def fract_add(
     if not filename:
         return
 
-    model.fract_paths.append(filename)
     window["-fractionation_path-"].update(
-        values=model.fract_paths, value=filename
+        values=list(model.fract_indata), value=filename
     )
     data = pd.read_csv(filename, sep="\t", header=0)
     data = data.replace("NaN", np.nan)
@@ -1843,15 +1845,19 @@ def fract_remove_file(values, window, model: SessionModel):
     if sure != "Yes":
         return
 
-    model.fract_paths.remove(values["-fractionation_path-"])
-    del model.fract_tables[values["-fractionation_path-"]]
-    if model.fract_paths:
-        curr = model.fract_paths[0]
-        fract_refreshtable(window, model.fract_tables[curr])
-    else:
-        curr = []
-        fract_refreshtable(window, curr)
-    window["-fractionation_path-"].update(values=model.fract_paths, value=curr)
+    filepath = values["-fractionation_path-"]
+    del model.fract_tables[filepath]
+    del model.fract_indata[filepath]
+    del model.fract_pos[filepath]
+    del model.fract_identifiers[filepath]
+
+    filepath = next(iter(model.fract_indata)) if model.fract_indata else []
+    fract_refreshtable(
+        window, model.fract_indata[filepath] if filepath else []
+    )
+    window["-fractionation_path-"].update(
+        values=list(model.fract_indata), value=filepath
+    )
 
 
 def fract_remove_row(values, window, fract_tables):
@@ -2333,16 +2339,15 @@ def session_open(window: sg.Window, filename: str, model: SessionModel):
     model.reset(tmp_session)
 
     # update GUI
-    if model.fract_paths:
-        fract_refreshtable(window, model.fract_tables[model.fract_paths[0]])
+    if model.fract_indata:
+        fract_filepaths = list(model.fract_indata)
+        fract_refreshtable(window, model.fract_tables[fract_filepaths[0]])
         window["-fractionation_path-"].update(
-            values=model.fract_paths, value=model.fract_paths[0]
+            values=fract_filepaths, value=fract_filepaths[0]
         )
     else:
         fract_refreshtable(window, [])
-        window["-fractionation_path-"].update(
-            values=model.fract_paths, value=""
-        )
+        window["-fractionation_path-"].update(values=[], value="")
 
     fract_buttons(window, bool(model.fract_data["class"]))
 
