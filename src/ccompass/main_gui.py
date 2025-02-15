@@ -47,6 +47,7 @@ def create_fractionation_tab(fract_paths: Sequence[Any]) -> sg.Tab:
                 disabled=False,
                 enable_events=True,
                 readonly=True,
+                expand_x=True,
             ),
             sg.Button(
                 "Remove",
