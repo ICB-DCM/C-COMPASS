@@ -264,6 +264,8 @@ def combine_median_std(
     window: sg.Window,
     progress: float,
 ) -> tuple[dict[str, dict[str, pd.DataFrame]], dict[str, pd.DataFrame], float]:
+    """Compute median and standard deviation for each condition x fraction
+    across the provided replicates."""
     data_median = {}
     data_std = {}
     stepsize = 5.0 / len(data)
@@ -274,51 +276,65 @@ def combine_median_std(
         window["--status2--"].update(condition)
         window.read(timeout=50)
 
-        con_vals = pd.DataFrame()
-        con_std = pd.DataFrame()
-        for fract in fracts_con[condition]:
-            fract_vals = pd.DataFrame()
-            fract_std = pd.DataFrame()
-            prefix = f"Fr.{fract}"
-            for replicate in data[condition]:
-                for sample in data[condition][replicate]:
-                    if sample[: sample.find("_")] == prefix:
-                        fract_vals = pd.merge(
-                            fract_vals,
-                            data[condition][replicate][sample],
-                            left_index=True,
-                            right_index=True,
-                            how="outer",
-                        )
-                        fract_std = pd.merge(
-                            fract_std,
-                            data[condition][replicate][sample],
-                            left_index=True,
-                            right_index=True,
-                            how="outer",
-                        )
-            col_median = f"{condition}_median_{prefix}"
-            col_std = f"{condition}_std_{prefix}"
-            fract_vals[col_median] = fract_vals.median(axis=1)
-            fract_std[col_std] = fract_std.std(axis=1)
-            con_vals = pd.merge(
-                con_vals,
-                fract_vals[col_median],
-                left_index=True,
-                right_index=True,
-                how="outer",
-            ).fillna(0.0)
-            con_std = pd.merge(
-                con_std,
-                fract_std[col_std],
-                left_index=True,
-                right_index=True,
-                how="outer",
-            ).fillna(0.0)
+        con_vals, con_std = combine_median_std_for_condition(
+            data[condition], fracts_con[condition], condition
+        )
         data_std[condition] = con_std
         # data_median[condition+'_median'] = con_vals
         data_median[condition] = {"median": con_vals}
     return data_median, data_std, progress
+
+
+def combine_median_std_for_condition(
+    data: dict[str, pd.DataFrame], fracts_con: list[int], condition: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Compute median and standard deviation for each fraction across the
+    provided replicates.
+
+    :param data: Data for one condition. ReplicateID -> DataFrame.
+    :param fracts_con: List of fraction indices to consider.
+    :param condition: Condition id for constructing column names.
+    :return: A tuple containing the median and standard deviation dataframes.
+    """
+    con_vals = pd.DataFrame()
+    con_std = pd.DataFrame()
+
+    # TODO(performance): some merging can be done more efficiently
+    for fract in fracts_con:
+        fract_df = pd.DataFrame()
+        frac_id = f"Fr.{fract}"
+
+        for replicate_df in data.values():
+            for sample in replicate_df:
+                if sample[: sample.find("_")] == frac_id:
+                    fract_df = pd.merge(
+                        fract_df,
+                        replicate_df[sample],
+                        left_index=True,
+                        right_index=True,
+                        how="outer",
+                    )
+
+        col_median = f"{condition}_median_{frac_id}"
+        col_std = f"{condition}_std_{frac_id}"
+
+        con_vals = pd.merge(
+            con_vals,
+            fract_df.median(axis=1).rename(col_median),
+            left_index=True,
+            right_index=True,
+            how="outer",
+        )
+
+        con_std = pd.merge(
+            con_std,
+            fract_df.std(axis=1).rename(col_std),
+            left_index=True,
+            right_index=True,
+            how="outer",
+        )
+
+    return con_vals.fillna(0.0), con_std.fillna(0.0)
 
 
 def combine_concat(data, window):
