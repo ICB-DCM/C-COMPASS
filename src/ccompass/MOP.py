@@ -3,6 +3,8 @@
 import copy
 import logging
 import multiprocessing as mp
+import queue
+import threading
 from datetime import datetime
 from typing import Any, Literal
 
@@ -143,10 +145,104 @@ def MOP_exec(
     nn_params: NeuralNetworkParametersModel,
     max_processes: int = 1,
 ) -> dict[str, XYZ_Model]:
-    """Perform multi-organelle prediction.
+    """Perform multi-organelle prediction while showing a progress dialog.
 
     :param fract_full: dictionary of full profiles
     """
+    import FreeSimpleGUI as sg
+
+    def update_progress(
+        progress_bars: dict[str, sg.ProgressBar], progress_queue: mp.Queue
+    ):
+        """Update the progress bars based on the progress queue."""
+        while True:
+            try:
+                condition_id, _ = progress_queue.get_nowait()
+                finished[condition_id] += 1
+                progress_bars[condition_id].update_bar(finished[condition_id])
+            except queue.Empty:
+                break
+
+    # condition_id -> progress bar
+    progress_bars = {}
+    # condition_id -> finished rounds
+    finished = {condition_id: 0 for condition_id in fract_full}
+    # maximum length of condition_ids for text box alignment
+    text_maxlen = max(map(len, fract_full))
+    layout = []
+    for condition_id in fract_full:
+        progress_bar = sg.ProgressBar(
+            max_value=nn_params.rounds,
+            orientation="h",
+            size=(20, 10),
+            key=condition_id,
+            expand_x=True,
+            expand_y=True,
+        )
+        layout.append([sg.Text(condition_id, s=text_maxlen), progress_bar])
+        progress_bars[condition_id] = progress_bar
+
+    window = sg.Window(
+        "Progress", layout, finalize=True, resizable=True, modal=True
+    )
+    window.set_cursor("watch")
+
+    # run actual prediction in a separate thread to allow for progress updates
+    progress_queue = mp.Queue()
+    result_queue = mp.Queue()
+    worker_thread = threading.Thread(
+        target=multi_organelle_prediction,
+        args=(
+            fract_full,
+            fract_marker,
+            fract_test,
+            stds,
+            nn_params,
+            max_processes,
+            progress_queue,
+            result_queue,
+        ),
+        daemon=True,
+    )
+    worker_thread.start()
+
+    while True:
+        window.read(timeout=100)
+        update_progress(
+            progress_bars,
+            progress_queue,
+        )
+        try:
+            result = result_queue.get_nowait()
+            break
+        except queue.Empty:
+            pass
+
+    worker_thread.join()
+    window.close()
+
+    return result
+
+
+def multi_organelle_prediction(
+    fract_full: dict[str, pd.DataFrame],
+    fract_marker: dict[str, pd.DataFrame],
+    fract_test: dict[str, pd.DataFrame],
+    stds: dict[str, pd.DataFrame],
+    nn_params: NeuralNetworkParametersModel,
+    max_processes: int = 1,
+    progress_queue: mp.Queue = None,
+    result_queue: mp.Queue = None,
+) -> dict[str, XYZ_Model]:
+    """Perform multi-organelle prediction.
+
+    :param fract_full: dictionary of full profiles
+    :param max_processes: The maximum number of processes to use.
+    :param progress_queue: A queue to report progress
+        `tuple[condition_id: str, round_id: str]`.
+    :param result_queue: A queue to report the result.
+    """
+
     # prepare data structures for each round / condition
     conditions = list(fract_full.keys())
     learning_xyz = {condition: XYZ_Model() for condition in conditions}
@@ -175,11 +271,25 @@ def MOP_exec(
         for i_round in range(1, nn_params.rounds + 1)
     ]
 
-    with mp.Pool(processes=max_processes) as pool:
-        results_list = pool.map(execute_round_wrapper, args_list)
-
-    for condition, round_id, round_data in results_list:
+    def on_task_done(result):
+        condition, round_id, round_data = result
         learning_xyz[condition].round_results[round_id] = round_data
+        if progress_queue:
+            progress_queue.put((condition, round_id))
+
+    with mp.Pool(processes=max_processes) as pool:
+        results = [
+            pool.apply_async(
+                execute_round_wrapper, (args,), callback=on_task_done
+            )
+            for args in args_list
+        ]
+
+        for result in results:
+            result.get()
+
+    if result_queue:
+        result_queue.put(learning_xyz)
 
     return learning_xyz
 
