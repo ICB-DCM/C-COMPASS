@@ -234,9 +234,9 @@ class TrainingRound_Model(BaseModel):
     subround_results: dict[str, TrainingSubRound_Model] = {}
 
     @field_validator("w_full_prob", mode="before")
-    def convert_lists_to_arrays(cls, v):
+    def convert_list_to_array(cls, v):
         # for backward compatibility, convert list to ndarray
-        return {k: np.array(vv) for k, vv in v.items()}
+        return np.asarray(v)
 
 
 class TrainingSubRound_Model(BaseModel):
