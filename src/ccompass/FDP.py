@@ -53,9 +53,10 @@ def create_dataset(
 
     for condition in conditions:
         progress += stepsize
-        window["--status2--"].update(condition)
-        window["--progress--"].update(progress)
-        window.read(timeout=50)
+        if window:
+            window["--status2--"].update(condition)
+            window["--progress--"].update(progress)
+            window.read(timeout=50)
 
         data_new = pd.DataFrame(index=all_identifiers)
         for path in input_tables:
@@ -146,9 +147,10 @@ def pre_post_scaling(
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].update(progress)
-            window["--status2--"].update(" ".join([condition, replicate]))
-            window.read(timeout=50)
+            if window:
+                window["--progress--"].update(progress)
+                window["--status2--"].update(" ".join([condition, replicate]))
+                window.read(timeout=50)
 
             if how == "minmax":
                 scaler = MinMaxScaler()
@@ -174,9 +176,10 @@ def filter_missing(
         stepsize = (5.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].update(progress)
-            window["--status2--"].update(" ".join([condition, replicate]))
-            window.read(timeout=50)
+            if window:
+                window["--progress--"].update(progress)
+                window["--status2--"].update(" ".join([condition, replicate]))
+                window.read(timeout=50)
 
             data[condition][replicate].dropna(thresh=mincount, inplace=True)
             data[condition][replicate].replace(np.nan, 0.0, inplace=True)
@@ -203,9 +206,10 @@ def filter_count(
         peplist = list(set(remove_elements(peplist, mincount)))
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].update(progress)
-            window["--status2--"].update(" ".join([condition, replicate]))
-            window.read(timeout=50)
+            if window:
+                window["--progress--"].update(progress)
+                window["--status2--"].update(" ".join([condition, replicate]))
+                window.read(timeout=50)
 
             # drop rows that are not in peplist
             for index in list(data[condition][replicate].index):
@@ -236,9 +240,10 @@ def list_samples(data, window, progress):
         stepsize = (10.0 / len(data)) / len(data[condition])
         for replicate in data[condition]:
             progress += stepsize
-            window["--progress--"].update(progress)
-            window["--status2--"].update(" ".join([condition, replicate]))
-            window.read(timeout=50)
+            if window:
+                window["--progress--"].update(progress)
+                window["--status2--"].update(" ".join([condition, replicate]))
+                window.read(timeout=50)
 
             for sample in list(data[condition][replicate].columns):
                 prefix = sample[: sample.find("_")]
@@ -272,9 +277,10 @@ def combine_median_std(
 
     for condition in data:
         progress += stepsize
-        window["--progress--"].update(progress)
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--progress--"].update(progress)
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
 
         con_vals, con_std = combine_median_std_for_condition(
             data[condition], fracts_con[condition], condition
@@ -339,8 +345,9 @@ def combine_median_std_for_condition(
 
 def combine_concat(data, window):
     for condition in data:
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
 
         con_vals = pd.DataFrame()
         for replicate in data[condition]:
@@ -384,9 +391,10 @@ def calculate_outcorr(data, protlist_remaining, comb, window, progress):
 
     for condition in data:
         progress += stepsize
-        window["--progress--"].update(progress)
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--progress--"].update(progress)
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
 
         outcorr = pd.DataFrame(index=protlist_remaining[condition])
         for con in data:
@@ -508,11 +516,11 @@ def create_fract_processing_window() -> sg.Window:
 
 
 def start_fract_data_processing(
-    window: sg.Window,
     input_tables: dict[str, list[list[int | str]]],
     preparams: dict[str, dict],
     identifiers: dict[str, str],
     fract_indata: dict[str, pd.DataFrame],
+    window: sg.Window | None = None,
 ):
     """Start fractionation data processing."""
     # collect conditions (including [KEEP])
@@ -526,8 +534,9 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("creating dataset...")
     progress = 0
-    window["--status1--"].update(value="creating dataset...")
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="creating dataset...")
+        window.read(timeout=50)
 
     dataset, protein_info, progress = create_dataset(
         fract_indata,
@@ -545,9 +554,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("converting dataset...")
     progress = 10
-    window["--status1--"].update(value="converting dataset...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="converting dataset...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     for way in data_ways:
         data_ways[way] = remove_zeros(data_ways[way])
@@ -555,9 +565,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("pre-scaling...")
     progress = 20
-    window["--status1--"].update(value="pre-scaling...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="pre-scaling...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     for way in data_ways:
         if preparams[way]["scale1"][0]:
@@ -571,9 +582,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("filtering by missing fractions...")
     progress = 30
-    window["--status1--"].update(value="filtering by missing values...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="filtering by missing values...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     if preparams["global"]["missing"][0]:
         for way in data_ways:
@@ -587,9 +599,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("finding IDs...")
     progress = 40
-    window["--status1--"].update(value="finding IDs...")
-    window["--progress--"].update(40)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="finding IDs...")
+        window["--progress--"].update(40)
+        window.read(timeout=50)
 
     for way in data_ways:
         data_ways[way], proteins_remaining, progress = filter_count(
@@ -602,9 +615,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("detecting samples...")
     progress = 50
-    window["--status1--"].update(value="detecting samples...")
-    window["--progress--"].update(50)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="detecting samples...")
+        window["--progress--"].update(50)
+        window.read(timeout=50)
 
     fracts_con, fracts_count, fracts_corr, progress = list_samples(
         data_ways["class"], window, progress
@@ -613,9 +627,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("combining data...")
     progress = 60
-    window["--status1--"].update(value="combining data...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="combining data...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     std_ways = {"class": [], "vis": []}
 
@@ -633,9 +648,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("post-scaling...")
     progress = 70
-    window["--status1--"].update(value="post-scaling...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="post-scaling...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     for way in data_ways:
         if preparams[way]["scale2"][0]:
@@ -649,9 +665,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("removing zeros...")
     progress = 80
-    window["--status1--"].update(value="removing baseline profiles...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="removing baseline profiles...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     for way in data_ways:
         if preparams[way]["zeros"]:
@@ -660,9 +677,10 @@ def start_fract_data_processing(
     # ---------------------------------------------------------------------
     logger.info("calculating outer correlations...")
     progress = 90
-    window["--status1--"].update(value="calculating outer correlations...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="calculating outer correlations...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     if preparams["global"]["outcorr"]:
         outcorr, progress = calculate_outcorr(
@@ -679,9 +697,10 @@ def start_fract_data_processing(
 
     # ---------------------------------------------------------------------
     progress = 100
-    window["--status1--"].update(value="calculating outer correlations...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="calculating outer correlations...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     logger.info("done!")
 
@@ -799,11 +818,11 @@ def FDP_exec(
                 protein_info,
                 conditions_trans,
             ) = start_fract_data_processing(
-                window,
                 input_tables,
                 preparams,
                 identifiers,
                 fract_indata,
+                window,
             )
             break
 
