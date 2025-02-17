@@ -606,15 +606,19 @@ def update_learninglist_const(
 
 
 def mix_profiles(
-    fract_marker_up,
-    fract_unmixed_up,
+    fract_marker_up: pd.DataFrame,
+    fract_unmixed_up: pd.DataFrame,
     mix_steps: list[float],
     mixed_batch: float,
 ) -> pd.DataFrame:
     """Create mixed profiles.
 
-    Create pairwise combinations of profiles and mix them according to the
-    `mix_steps`. Return a random sample of the mixed profiles.
+    Complement `fract_unmixed_up` with artificially mixed marker profiles.
+
+    For each combination of classes/compartments, create mixed profiles,
+    by pairwise combination of different marker profiles (`fract_marker_up`)
+    according to the given fractions in `mix_steps`. Then subsample the mixed
+    profiles.
     """
     class_list = list(set(list(fract_marker_up["class"])))
     combinations = [
@@ -647,6 +651,7 @@ def mix_profiles(
             new_index_part = [
                 f"{i + cur}_{value}" for i, value in enumerate(new_index)
             ]
+            # Actual mixing
             own_part = profiles_own.multiply(part)
             other_part = profiles_other.multiply(1 - part)
 
@@ -654,6 +659,8 @@ def mix_profiles(
             other_part.index = new_index_part
 
             profiles_mixed = own_part + other_part
+
+            # Add columns of class ratios
             for classname in class_list:
                 if classname == comb[0]:
                     profiles_mixed[classname] = part
@@ -661,7 +668,10 @@ def mix_profiles(
                     profiles_mixed[classname] = 1 - part
                 else:
                     profiles_mixed[classname] = 0.0
+
+            # subsample mixed profiles
             profiles_mixed = profiles_mixed.sample(frac=mixed_batch)
+
             fract_mixed_up = pd.concat(
                 [fract_mixed_up, profiles_mixed]
             ).sample(frac=1)

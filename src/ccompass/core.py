@@ -120,10 +120,11 @@ class NeuralNetworkParametersModel(BaseModel):
     AE_epochs: int = 20
     #: Perform SVM filtering?
     svm_filter: bool = False
-    #: ...
-    # FIXME: can be "none"; == 0?!
+    #: The number of different ratios for pairwise mixing,
+    #  or "none" for no mixing.
+    #  The ratios will be 1/N, 2/N, ..., (N-1)/N.
     mixed_part: int | str = 4
-    #: The fraction of the mixed batch to use (0-1)
+    #: The fraction of the mixed batch to use (∈ [0, 1])
     mixed_batch: float = 0.05
     #: Long or short optimization?
     NN_optimization: Literal["short", "long"] = "long"
@@ -145,11 +146,12 @@ class NeuralNetworkParametersModel(BaseModel):
     ]
     #: Number of epochs for the neural network training
     NN_epochs: int = 20
-    #: ...
+    #: The number of independent rounds for
+    #  upsampling/mixing/training/prediction
     rounds: int = 3
     #: Repetitions for the neural network training to generate an ensemble
     subrounds: int = 10
-    #: Percentile threshold for ... ?
+    #: Percentile threshold for false-positive class probabilities
     reliability: int = 95
 
 
@@ -440,8 +442,10 @@ class SessionModel(BaseModel):
     ## Processed fractionation data
 
     #: Fractionation data for classification and visualization
-    #  One DataFrame for each condition x replicate
+    #  For classification, one DataFrame for each condition x replicate
     #  ("{condition}_Rep.{replicate}")
+    #  For visualization, one DataFrame for each condition
+    #  ("{condition}_median")
     fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]] = {
         "class": {},
         "vis": {},
