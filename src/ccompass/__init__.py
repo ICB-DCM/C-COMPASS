@@ -11,6 +11,7 @@ Acronyms:
 * RLS: relocalization score (sum of RL values across all compartments)
   RLS ∈ [0, 2] (no relocalization .. full relocalization)
 * nCC: normalized class contribution
+* TPA: total protein amount
 """
 
 from pathlib import Path

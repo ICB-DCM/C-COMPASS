@@ -1297,7 +1297,7 @@ class MainController:
 
             elif event == "-class_run-":
                 with wait_cursor(self.main_window):
-                    MOA.class_comparison(
+                    MOA.class_comparisons(
                         self.model.tp_data,
                         self.model.results,
                         self.model.comparison,

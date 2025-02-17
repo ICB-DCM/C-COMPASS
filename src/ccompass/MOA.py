@@ -604,78 +604,17 @@ def global_comparison(
     return comparison
 
 
-def class_comparison(
-    tp_data,
+def class_comparisons(
+    tp_data: dict[str, pd.DataFrame],
     results: dict[str, ResultsModel],
     comparisons: dict[tuple[str, str], ComparisonModel],
 ) -> None:
     logger.info("Calculating class-centric changes...")
 
     for condition, result in results.items():
-        ## add TPA:
-        logger.info("creating total protein amount...")
-        tp_nontrans = tp_data[condition].map(lambda x: 2**x)
-        TPA_list = [tp_nontrans[replicate] for replicate in tp_data[condition]]
-        combined_TPA = pd.concat(TPA_list, axis=1)
-        result.metrics["TPA"] = combined_TPA.mean(axis=1)
-        result.metrics = result.metrics.loc[
-            ~result.metrics.index.duplicated(keep="first")
-        ]
-
-        # add class abundance:
-        logger.info("adding class abundance...")
-        result.metrics["CA_relevant"] = "no"
-        result.class_abundance = {}
-        for classname in result.classnames:
-            results_class = result.metrics[
-                (result.metrics["NN_winner"] == classname)
-                & (~result.metrics["TPA"].isnull())
-            ]
-            result.metrics.loc[results_class.index, "CA_relevant"] = "yes"
-            result.class_abundance[classname] = {
-                "CA": np.median(results_class["TPA"]),
-                "count": len(results_class),
-            }
-
-        ## add nCClist:
-        logger.info("adding nCClist...")
-        for classname in result.classnames:
-            result.metrics["nCClist_" + classname] = result.metrics[
-                "CClist_" + classname
-            ].apply(
-                lambda lst: [
-                    x * result.class_abundance[classname]["CA"]
-                    if not np.isnan(x)
-                    else np.nan
-                    for x in lst
-                ]
-            )
-
-        logger.info("adding normalized class contributions...")
-        ## add normalized class contributions:
-        for classname in result.classnames:
-            result.metrics["nCC_" + classname] = (
-                result.metrics["fCC_" + classname]
-                * result.class_abundance[classname]["CA"]
-            )
-        # normalize:
-        nCC_cols = [col for col in result.metrics if col.startswith("nCC_")]
-        nCC_sums = result.metrics[nCC_cols].sum(axis=1)
-        nCC_sums[nCC_sums == 0] = 1
-        result.metrics[nCC_cols] = result.metrics[nCC_cols].div(
-            nCC_sums, axis=0
+        compute_class_centric_changes(
+            result=result, tp_data=tp_data[condition]
         )
-
-        logger.info("adding CPA...")
-        ## add CPA
-        for classname in result.classnames:
-            result.metrics["CPA_" + classname] = (
-                result.metrics["CC_" + classname] * result.metrics["TPA"]
-            )
-        for classname in result.classnames:
-            result.metrics["nCPA_" + classname] = (
-                result.metrics["nCC_" + classname] * result.metrics["TPA"]
-            )
 
     logger.info("comparing...")
 
@@ -685,139 +624,224 @@ def class_comparison(
 
     ## create nRL and nRLS:
     for comb in combinations:
-        comparison = comparisons[comb]
-        metrics_own = results[comb[0]].metrics
-        metrics_other = results[comb[1]].metrics
-        common_indices = calculate_common_indices(metrics_own, metrics_other)
-        # TODO assert same classnames
-        for classname in result.classnames:
-            comparison.metrics["nRL_" + classname] = (
-                metrics_other["nCC_" + classname]
-                - metrics_own["nCC_" + classname]
-            )
-
-        logger.info("calculating nRL values...")
-        nrl_cols = [
-            col for col in comparison.metrics.columns if col.startswith("nRL_")
-        ]
-        comparison.metrics["nRLS"] = (
-            comparison.metrics[nrl_cols].abs().sum(axis=1)
+        class_centric_comparison(
+            results[comb[0]],
+            results[comb[1]],
+            comparisons[comb],
         )
 
-        nRLS_results = {}
-        nRLS_null = {}
-        for ID in common_indices:
-            ncclists_own = [
-                metrics_own.loc[ID, "nCClist_" + classname]
-                for classname in result.classnames
+    logger.info("Class-centric changes calculated.")
+
+
+def compute_class_centric_changes(
+    result: ResultsModel, tp_data: pd.DataFrame
+) -> None:
+    """Compute class-centric changes."""
+    ## add TPA:
+    logger.info("creating total protein amount...")
+    tp_nontrans = tp_data.map(lambda x: 2**x)
+    TPA_list = [tp_nontrans[replicate] for replicate in tp_data]
+    combined_TPA = pd.concat(TPA_list, axis=1)
+    result.metrics["TPA"] = combined_TPA.mean(axis=1)
+    result.metrics = result.metrics.loc[
+        ~result.metrics.index.duplicated(keep="first")
+    ]
+
+    # add class abundance:
+    logger.info("adding class abundance...")
+    result.metrics["CA_relevant"] = "no"
+    result.class_abundance = {}
+    for classname in result.classnames:
+        results_class = result.metrics[
+            (result.metrics["NN_winner"] == classname)
+            & (~result.metrics["TPA"].isnull())
+        ]
+        result.metrics.loc[results_class.index, "CA_relevant"] = "yes"
+        result.class_abundance[classname] = {
+            "CA": np.median(results_class["TPA"]),
+            "count": len(results_class),
+        }
+
+    ## add nCClist:
+    logger.info("adding nCClist...")
+    for classname in result.classnames:
+        result.metrics["nCClist_" + classname] = result.metrics[
+            "CClist_" + classname
+        ].apply(
+            lambda lst: [
+                x * result.class_abundance[classname]["CA"]
+                if not np.isnan(x)
+                else np.nan
+                for x in lst
             ]
-            ncclists_other = [
-                metrics_other.loc[ID, "nCClist_" + classname]
-                for classname in result.classnames
-            ]
+        )
 
-            ncclists_own_transposed = [
-                list(values) for values in zip(*ncclists_own)
-            ]
-            ncclists_other_transposed = [
-                list(values) for values in zip(*ncclists_other)
-            ]
+    ## add normalized class contributions:
+    logger.info("adding normalized class contributions...")
+    for classname in result.classnames:
+        result.metrics["nCC_" + classname] = (
+            result.metrics["fCC_" + classname]
+            * result.class_abundance[classname]["CA"]
+        )
+    # normalize:
+    nCC_cols = [col for col in result.metrics if col.startswith("nCC_")]
+    nCC_sums = result.metrics[nCC_cols].sum(axis=1)
+    nCC_sums[nCC_sums == 0] = 1
+    result.metrics[nCC_cols] = result.metrics[nCC_cols].div(nCC_sums, axis=0)
 
-            nRLS_results[ID] = []
-            nRLS_null[ID] = []
+    ## add CPA
+    logger.info("adding CPA...")
+    for classname in result.classnames:
+        result.metrics["CPA_" + classname] = (
+            result.metrics["CC_" + classname] * result.metrics["TPA"]
+        )
 
-            for i in range(len(ncclists_own_transposed)):
-                for j in range(i + 1, len(ncclists_own_transposed)):
-                    null_result = compare_lists(
-                        ncclists_own_transposed[i], ncclists_own_transposed[j]
-                    )
-                    nRLS_null[ID].append(null_result)
-            for i in range(len(ncclists_other_transposed)):
-                for j in range(i + 1, len(ncclists_other_transposed)):
-                    null_result = compare_lists(
-                        ncclists_other_transposed[i],
-                        ncclists_other_transposed[j],
-                    )
-                    nRLS_null[ID].append(null_result)
+        result.metrics["nCPA_" + classname] = (
+            result.metrics["nCC_" + classname] * result.metrics["TPA"]
+        )
 
-            for own_list in ncclists_own_transposed:
-                for other_list in ncclists_other_transposed:
-                    comparison_result = compare_lists(own_list, other_list)
-                    nRLS_results[ID].append(comparison_result)
-        comparison.nRLS_results = pd.Series(nRLS_results)
-        comparison.nRLS_null = pd.Series(nRLS_null)
 
-        comparison.metrics["P(t)_nRLS"] = np.nan
-        comparison.metrics["P(u)_nRLS"] = np.nan
-        # TODO(performance): vectorize
-        for index in comparison.metrics.index:
-            if index in common_indices:
-                # Perform the t-test
-                stat, p_value = ttest_ind(
+def class_centric_comparison(
+    result1: ResultsModel, result2: ResultsModel, comparison: ComparisonModel
+) -> None:
+    """Perform class-centric comparison based on the result for the two given
+    conditions."""
+
+    metrics_own = result1.metrics
+    metrics_other = result2.metrics
+    common_indices = calculate_common_indices(metrics_own, metrics_other)
+
+    if set(result1.classnames) != set(result2.classnames):
+        # below, the assumption is that the classnames are the same
+        raise AssertionError("Classes do not match.")
+
+    for classname in result1.classnames:
+        comparison.metrics["nRL_" + classname] = (
+            metrics_other["nCC_" + classname] - metrics_own["nCC_" + classname]
+        )
+
+    logger.info("calculating nRL values...")
+    nrl_cols = [
+        col for col in comparison.metrics.columns if col.startswith("nRL_")
+    ]
+    comparison.metrics["nRLS"] = comparison.metrics[nrl_cols].abs().sum(axis=1)
+
+    nRLS_results = {}
+    nRLS_null = {}
+    for ID in common_indices:
+        ncclists_own = [
+            metrics_own.loc[ID, "nCClist_" + classname]
+            for classname in result1.classnames
+        ]
+        ncclists_other = [
+            metrics_other.loc[ID, "nCClist_" + classname]
+            for classname in result2.classnames
+        ]
+
+        ncclists_own_transposed = [
+            list(values) for values in zip(*ncclists_own)
+        ]
+        ncclists_other_transposed = [
+            list(values) for values in zip(*ncclists_other)
+        ]
+
+        nRLS_results[ID] = []
+        nRLS_null[ID] = []
+
+        for i in range(len(ncclists_own_transposed)):
+            for j in range(i + 1, len(ncclists_own_transposed)):
+                null_result = compare_lists(
+                    ncclists_own_transposed[i], ncclists_own_transposed[j]
+                )
+                nRLS_null[ID].append(null_result)
+        for i in range(len(ncclists_other_transposed)):
+            for j in range(i + 1, len(ncclists_other_transposed)):
+                null_result = compare_lists(
+                    ncclists_other_transposed[i],
+                    ncclists_other_transposed[j],
+                )
+                nRLS_null[ID].append(null_result)
+
+        for own_list in ncclists_own_transposed:
+            for other_list in ncclists_other_transposed:
+                comparison_result = compare_lists(own_list, other_list)
+                nRLS_results[ID].append(comparison_result)
+    comparison.nRLS_results = pd.Series(nRLS_results)
+    comparison.nRLS_null = pd.Series(nRLS_null)
+
+    comparison.metrics["P(t)_nRLS"] = np.nan
+    comparison.metrics["P(u)_nRLS"] = np.nan
+    # TODO(performance): vectorize
+    for index in comparison.metrics.index:
+        if index in common_indices:
+            # Perform the t-test
+            stat, p_value = ttest_ind(
+                comparison.nRLS_results.loc[index],
+                comparison.nRLS_null.loc[index],
+                nan_policy="omit",
+            )
+            comparison.metrics.loc[index, "P(t)_nRLS"] = p_value
+            if (
+                is_all_nan(comparison.nRLS_results.loc[index])
+                or is_all_nan(comparison.nRLS_null.loc[index])
+                or len(set(comparison.nRLS_results.loc[index])) == 1
+                or len(set(comparison.nRLS_null.loc[index])) == 1
+            ):
+                comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
+            else:
+                stat_u, p_value_u = stats.mannwhitneyu(
                     comparison.nRLS_results.loc[index],
                     comparison.nRLS_null.loc[index],
-                    nan_policy="omit",
+                    alternative="two-sided",
                 )
-                comparison.metrics.loc[index, "P(t)_nRLS"] = p_value
-                if (
-                    is_all_nan(comparison.nRLS_results.loc[index])
-                    or is_all_nan(comparison.nRLS_null.loc[index])
-                    or len(set(comparison.nRLS_results.loc[index])) == 1
-                    or len(set(comparison.nRLS_null.loc[index])) == 1
-                ):
-                    comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
-                else:
-                    stat_u, p_value_u = stats.mannwhitneyu(
-                        comparison.nRLS_results.loc[index],
-                        comparison.nRLS_null.loc[index],
-                        alternative="two-sided",
-                    )
-                    comparison.metrics.loc[index, "P(u)_nRLS"] = p_value_u
-            else:
-                comparison.metrics.loc[index, "P(t)_nRLS"] = pd.NA
-                comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
+                comparison.metrics.loc[index, "P(u)_nRLS"] = p_value_u
+        else:
+            comparison.metrics.loc[index, "P(t)_nRLS"] = pd.NA
+            comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
 
-        logger.info("calculating CPA values...")
+    logger.info("calculating CPA values...")
 
-        for classname in result.classnames:
-            metrics_own["CPA_log_" + classname] = np.log2(
-                metrics_own["CPA_" + classname]
-            )
-            metrics_own = impute_data(
-                metrics_own, "CPA_log_" + classname, "CPA_imp_" + classname
-            )
+    # TODO: half of this is result-specific, not comparison-specific.
+    #  This should be moved elsewhere, so results are constant in here,
+    #  to facilitate parallelization.
+    for classname in result1.classnames:
+        metrics_own["CPA_log_" + classname] = np.log2(
+            metrics_own["CPA_" + classname]
+        )
+        metrics_own = impute_data(
+            metrics_own, "CPA_log_" + classname, "CPA_imp_" + classname
+        )
 
-            metrics_other["CPA_log_" + classname] = np.log2(
-                metrics_other["CPA_" + classname]
-            )
-            metrics_other = impute_data(
-                metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
-            )
+        metrics_other["CPA_log_" + classname] = np.log2(
+            metrics_other["CPA_" + classname]
+        )
+        metrics_other = impute_data(
+            metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
+        )
 
-            comparison.metrics["CFC_" + classname] = (
-                metrics_other["CPA_imp_" + classname]
-                - metrics_own["CPA_imp_" + classname]
-            )
+        comparison.metrics["CFC_" + classname] = (
+            metrics_other["CPA_imp_" + classname]
+            - metrics_own["CPA_imp_" + classname]
+        )
 
-            metrics_own["nCPA_log_" + classname] = np.log2(
-                metrics_own["nCPA_" + classname]
-            )
-            metrics_own = impute_data(
-                metrics_own, "nCPA_log_" + classname, "nCPA_imp_" + classname
-            )
+        metrics_own["nCPA_log_" + classname] = np.log2(
+            metrics_own["nCPA_" + classname]
+        )
+        metrics_own = impute_data(
+            metrics_own, "nCPA_log_" + classname, "nCPA_imp_" + classname
+        )
 
-            metrics_other["nCPA_log_" + classname] = np.log2(
-                metrics_other["nCPA_" + classname]
-            )
-            metrics_other = impute_data(
-                metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
-            )
+        metrics_other["nCPA_log_" + classname] = np.log2(
+            metrics_other["nCPA_" + classname]
+        )
+        metrics_other = impute_data(
+            metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
+        )
 
-            comparison.metrics["nCFC_" + classname] = (
-                metrics_other["nCPA_imp_" + classname]
-                - metrics_own["nCPA_imp_" + classname]
-            )
-    logger.info("Class-centric changes calculated.")
+        comparison.metrics["nCFC_" + classname] = (
+            metrics_other["nCPA_imp_" + classname]
+            - metrics_own["nCPA_imp_" + classname]
+        )
 
 
 def class_reset(
