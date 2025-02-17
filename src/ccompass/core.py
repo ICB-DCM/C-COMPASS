@@ -8,7 +8,13 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
 from . import config_filepath
 
@@ -297,6 +303,28 @@ class ComparisonModel(BaseModel):
     nRLS_null: pd.Series = pd.Series()
 
 
+class MarkerSet(BaseModel):
+    """A set of markers with class annotations."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: the user-provided marker file
+    df: pd.DataFrame = Field(
+        default=pd.DataFrame(), serialization_alias="table"
+    )
+    #: column ID in `df` to match the fractionation data identifiers
+    #  ("key column" in GUI)
+    # "-" means unset
+    identifier_col: str = "-"
+    #: column ID in `df` that contains the class names
+    # "-" means unset
+    class_col: str = "-"
+
+    @property
+    def classes(self) -> list[str]:
+        return self.df[self.class_col].unique().tolist()
+
+
 def fract_default():
     """Default settings for fractionation data processing."""
     params_default = {
@@ -368,13 +396,8 @@ class SessionModel(BaseModel):
 
     ## User input markers
 
-    #: The user-provided marker files, classes and annotations
-    #  filepath => {'table'->pd.DataFrame,
-    #  'identifier_col'-> column ID ("key column" in GUI),
-    #  'class_col': column ID with class names in the marker file,
-    #  'classes': list[str] class names
-    #  }
-    marker_sets: dict[Filepath, dict[str, Any]] = {}
+    #: The user-provided marker sets
+    marker_sets: dict[Filepath, MarkerSet] = {}
     #: Options for merging marker sets
     marker_params: dict[str, str] = {"how": "exclude", "what": "unite"}
     #: Mapping of compartment names to class names

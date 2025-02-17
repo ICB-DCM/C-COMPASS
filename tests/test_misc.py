@@ -3,16 +3,16 @@
 import numpy as np
 import pandas as pd
 
+from ccompass.core import MarkerSet
 from ccompass.main_gui import create_markerlist
 
 
 def test_create_markerlist():
     marker_sets = {
-        "somefile": {
-            "class_col": "MarkerCompartment",
-            "classes": ["PROTEIN - COMPLEX", "CYTOPLASM", "LYSOSOME"],
-            "identifier_col": "Genename",
-            "table": pd.DataFrame(
+        "somefile": MarkerSet(
+            class_col="MarkerCompartment",
+            identifier_col="Genename",
+            df=pd.DataFrame(
                 {
                     "Genename": [
                         "AAGAB",
@@ -31,12 +31,11 @@ def test_create_markerlist():
                     "ignored...": [np.nan] * 5,
                 }
             ),
-        },
-        "somefile2": {
-            "class_col": "MarkerCompartment",
-            "classes": ["PROTEIN - COMPLEX", "CYTOPLASM", "LYSOSOME"],
-            "identifier_col": "Genename",
-            "table": pd.DataFrame(
+        ),
+        "somefile2": MarkerSet(
+            class_col="MarkerCompartment",
+            identifier_col="Genename",
+            df=pd.DataFrame(
                 {
                     "Genename": [
                         "AAGAB",
@@ -55,7 +54,7 @@ def test_create_markerlist():
                     "ignored...": [np.nan] * 5,
                 }
             ),
-        },
+        ),
     }
     marker_conv = {
         "PROTEIN - COMPLEX": "PROTEIN_COMPLEX",
@@ -90,7 +89,7 @@ def test_create_markerlist():
 
     # FIXME: what to do in case of a tie and "majority"?
     #  Currently, the first marker set wins.
-    marker_sets["somefile3"] = marker_sets["somefile2"].copy()
+    marker_sets["somefile3"] = marker_sets["somefile2"].model_copy(deep=True)
     markerlist = create_markerlist(
         marker_sets, marker_conv, what="intersect", how="majority"
     )

@@ -17,6 +17,7 @@ from . import MOA, RP, app_name, readthedocs_url, repository_url
 from ._gui_utils import wait_cursor
 from .core import (
     AppSettings,
+    MarkerSet,
     SessionModel,
     SessionStatusModel,
     write_class_changes_reports,
@@ -1421,28 +1422,29 @@ class MainController:
             return
 
         try:
-            self.model.marker_list = create_markerlist(
-                self.model.marker_sets,
-                self.model.marker_conv,
-                **self.model.marker_params,
-            )
-            logger.info("Marker list created")
-            (
-                self.model.fract_marker,
-                self.model.fract_marker_vis,
-                self.model.fract_test,
-            ) = create_marker_profiles(
-                self.model.fract_data,
-                values["-marker_fractkey-"],
-                self.model.fract_info,
-                self.model.marker_list,
-            )
-            logger.info("Marker profiles created")
-            self.model.fract_full = create_fullprofiles(
-                self.model.fract_marker, self.model.fract_test
-            )
-            logger.info("Full profiles created")
-            self.model.status.marker_matched = True
+            with wait_cursor(self.main_window):
+                self.model.marker_list = create_markerlist(
+                    self.model.marker_sets,
+                    self.model.marker_conv,
+                    **self.model.marker_params,
+                )
+                logger.info("Marker list created")
+                (
+                    self.model.fract_marker,
+                    self.model.fract_marker_vis,
+                    self.model.fract_test,
+                ) = create_marker_profiles(
+                    self.model.fract_data,
+                    values["-marker_fractkey-"],
+                    self.model.fract_info,
+                    self.model.marker_list,
+                )
+                logger.info("Marker profiles created")
+                self.model.fract_full = create_fullprofiles(
+                    self.model.fract_marker, self.model.fract_test
+                )
+                logger.info("Full profiles created")
+                self.model.status.marker_matched = True
         except Exception:
             logger.exception("Error matching markers")
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
@@ -2166,7 +2168,7 @@ def tp_export(export_folder: str | Path, experiment: str, tp_data, tp_info):
     )
 
 
-def check_markers(marker_sets: dict[str, dict[str, Any]]) -> bool:
+def check_markers(marker_sets: dict[str, MarkerSet]) -> bool:
     """Check if identifier and class columns are set for all marker sets.
 
     :return: True if all marker sets have identifier and class columns set.
@@ -2174,16 +2176,14 @@ def check_markers(marker_sets: dict[str, dict[str, Any]]) -> bool:
     if not marker_sets:
         return False
 
-    for file in marker_sets:
-        if (
-            marker_sets[file]["identifier_col"] == "-"
-            or marker_sets[file]["class_col"] == "-"
-        ):
+    for marker_set in marker_sets.values():
+        if marker_set.identifier_col == "-" or marker_set.class_col == "-":
             return False
+
     return True
 
 
-def refresh_markertable(window, marker_sets):
+def refresh_markertable(window: sg.Window, marker_sets: dict[str, MarkerSet]):
     """Update the marker table according to the marker sets."""
     file_list = list(marker_sets.keys())
     window["-marker_list-"].update(values=file_list)
@@ -2191,38 +2191,46 @@ def refresh_markertable(window, marker_sets):
     if file_list:
         window["-marker_list-"].update(set_to_index=0)
         cur_marker_set = marker_sets[file_list[0]]
-        column_ids = cur_marker_set["table"].columns.tolist()
+        column_ids = cur_marker_set.df.columns.tolist()
         window["-marker_key-"].update(
             values=column_ids,
-            value=cur_marker_set["identifier_col"],
+            value=cur_marker_set.identifier_col,
+            size=window["-marker_key-"].Size,
         )
         window["-marker_class-"].update(
             values=column_ids,
-            value=cur_marker_set["class_col"],
+            value=cur_marker_set.class_col,
+            size=window["-marker_class-"].Size,
         )
 
 
-def refresh_markercols(window, values, marker_sets):
+def refresh_markercols(window, values, marker_sets: dict[str, MarkerSet]):
     try:
         marker_filename = values["-marker_list-"][0]
         marker_set = marker_sets[marker_filename]
-        marker_set_col_ids = marker_set["table"].columns.tolist()
+        marker_set_col_ids = marker_set.df.columns.tolist()
         window["-marker_key-"].update(
             values=marker_set_col_ids,
-            value=marker_set["identifier_col"],
+            value=marker_set.identifier_col,
+            size=window["-marker_key-"].Size,
         )
         window["-marker_class-"].update(
             values=marker_set_col_ids,
-            value=marker_set["class_col"],
+            value=marker_set.class_col,
+            size=window["-marker_class-"].Size,
         )
     except Exception:
         logger.exception("Error")
 
-        window["-marker_key-"].update(values=[], value="-")
-        window["-marker_class-"].update(values=[], value="-")
+        window["-marker_key-"].update(
+            values=[], value="-", size=window["-marker_key-"].Size
+        )
+        window["-marker_class-"].update(
+            values=[], value="-", size=window["-marker_class-"].Size
+        )
 
 
-def marker_add(window, values, marker_sets):
+def marker_add(window, values, marker_sets: dict[str, MarkerSet]):
     """Show marker list selection dialog
     and add the selected list to the marker sets."""
     filename = sg.popup_get_file(
@@ -2236,14 +2244,11 @@ def marker_add(window, values, marker_sets):
     if not filename:
         return
 
-    marker_sets[filename] = {}
-    # marker_sets[filename]['table'] = pd.read_csv(filename, sep = "\t", header = 0).apply(lambda x: x.astype(str))
-    marker_sets[filename]["table"] = pd.read_csv(
-        filename, sep="\t", header=0
-    ).apply(lambda x: x.astype(str).str.upper())
-    marker_sets[filename]["identifier_col"] = "-"
-    marker_sets[filename]["class_col"] = "-"
-    marker_sets[filename]["classes"] = []
+    df = pd.read_csv(filename, sep="\t", header=0).apply(
+        lambda x: x.astype(str).str.upper()
+    )
+
+    marker_sets[filename] = MarkerSet(df=df)
     refresh_markertable(window, marker_sets)
 
 
@@ -2255,42 +2260,34 @@ def marker_remove(window, values, marker_sets):
         window["-marker_test-"].update(disabled=True)
         window["-marker_profiles-"].update(disabled=True)
         window["-marker_remove-"].update(disabled=True)
-    return marker_sets
 
 
-def marker_setkey(values, marker_sets):
+def marker_setkey(values, marker_sets: dict[str, MarkerSet]):
     """Set the identifier column for the selected marker list."""
     marker_filename = values["-marker_list-"][0]
-    marker_set = marker_sets[marker_filename]
-    marker_set["identifier_col"] = values["-marker_key-"]
+    marker_sets[marker_filename].identifier_col = values["-marker_key-"]
 
 
 def marker_setclass(values, marker_sets):
     """Set the class column for the selected marker list."""
     marker_filename = values["-marker_list-"][0]
-    marker_set = marker_sets[marker_filename]
-
-    marker_set["class_col"] = values["-marker_class-"]
-    marker_set["classes"] = list(
-        set(marker_set["table"][values["-marker_class-"]])
-    )
-    marker_conv = create_identity_conversion(marker_sets)
-    return marker_conv
+    marker_sets[marker_filename].class_col = values["-marker_class-"]
+    return create_identity_conversion(marker_sets)
 
 
 def create_identity_conversion(
-    marker_sets: dict[str, dict[str, Any]],
+    marker_sets: dict[str, MarkerSet],
 ) -> dict[str, str]:
     """Create dummy conversion dictionary for classes."""
-    marker_conv = {}
-    for marker_set in marker_sets.values():
-        for classname in marker_set["classes"]:
-            marker_conv[classname] = classname
-    return marker_conv
+    return {
+        classname: classname
+        for marker_set in marker_sets.values()
+        for classname in marker_set.classes
+    }
 
 
 def create_markerlist(
-    marker_sets: dict[str, dict[str, Any]],
+    marker_sets: dict[str, MarkerSet],
     marker_conv: dict[str, str | float],
     what: Literal["unite", "intersect"],
     how: Literal["majority", "exclude"],
@@ -2312,9 +2309,9 @@ def create_markerlist(
     combined = pd.DataFrame(columns=["name"])
     counter = 1
     for marker_set in marker_sets.values():
-        id_col = marker_set["identifier_col"]
-        class_col = marker_set["class_col"]
-        cur_df = marker_set["table"][[id_col, class_col]].copy()
+        id_col = marker_set.identifier_col
+        class_col = marker_set.class_col
+        cur_df = marker_set.df[[id_col, class_col]].copy()
         cur_df.rename(
             columns={
                 id_col: "name",
