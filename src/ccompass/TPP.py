@@ -31,8 +31,9 @@ def create_dataset(
     for condition in tp_conditions:
         data_new = pd.DataFrame(index=idents)
         for path in tp_tables:
-            window["--status2--"].update(condition)
-            window.read(timeout=50)
+            if window:
+                window["--status2--"].update(condition)
+                window.read(timeout=50)
             replicate = 1
             for sample in tp_tables[path]:
                 data = pd.DataFrame()
@@ -97,8 +98,9 @@ def create_dataset(
 
 def filter_missing(data, mincount, window):
     for condition in data:
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
         data[condition].dropna(thresh=mincount, inplace=True)
     return data
 
@@ -126,8 +128,9 @@ def calculate_correlations(data):
 
 def transform_data(data, window):
     for condition in data:
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
         # data[condition] = pd.to_numeric(data[condition], errors='coerce')
         data[condition] = np.log2(data[condition])
     return data
@@ -137,8 +140,9 @@ def impute_data(data, window, mode):
     s = 1.8
     w = 0.3
     for condition in data:
-        window["--status2--"].update(condition)
-        window.read(timeout=50)
+        if window:
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
         if mode == "normal":
             for sample in data[condition]:
                 mean = np.mean(data[condition][sample])
@@ -237,7 +241,6 @@ def create_window() -> sg.Window:
 
 
 def start_total_proteome_processing(
-    window: sg.Window,
     tp_data: dict[str, pd.DataFrame],
     tp_tables: dict[str, list[tuple[str, str]]],
     tp_preparams: dict[str, Any],
@@ -246,6 +249,7 @@ def start_total_proteome_processing(
     tp_icorr: dict,
     tp_indata: dict[str, pd.DataFrame],
     tp_conditions: list,
+    window: sg.Window | None = None,
 ):
     # validate input
     if not all(
@@ -261,14 +265,16 @@ def start_total_proteome_processing(
         messagebox.showerror("Error", "At least one Condition is missing.")
         return tp_data, tp_info, tp_conditions, tp_icorr
 
-    # deactivate buttons
-    window["--start--"].update(disabled=True)
-    window["--cancel--"].update(disabled=True)
+    if window:
+        # deactivate buttons
+        window["--start--"].update(disabled=True)
+        window["--cancel--"].update(disabled=True)
 
     # ---------------------------------------------------------------------
     logger.info("creating dataset...")
-    window["--status1--"].update(value="creating dataset...")
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="creating dataset...")
+        window.read(timeout=50)
 
     conditions = unique_preserve_order(
         sample[1] for table in tp_tables.values() for sample in table
@@ -284,53 +290,59 @@ def start_total_proteome_processing(
     # ---------------------------------------------------------------------
     logger.info("filtering by missing values...")
     progress = 10
-    window["--status1--"].update(value="filtering by missing values...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="filtering by missing values...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     tp_data = filter_missing(tp_data, tp_preparams["minrep"], window)
 
     # ---------------------------------------------------------------------
     logger.info("transforming data...")
     progress = 20
-    window["--status1--"].update(value="transforming data...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="transforming data...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     tp_data = transform_data(tp_data, window)
 
     # ---------------------------------------------------------------------
     logger.info("imputing MissingValues...")
     progress = 30
-    window["--status1--"].update(value="imputing MissingValues...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="imputing MissingValues...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     tp_data = impute_data(tp_data, window, tp_preparams["imputation"])
 
     # ---------------------------------------------------------------------
     logger.info("calculating correlations...")
     progress = 40
-    window["--status1--"].update(value="calculating correlations...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="calculating correlations...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     tp_icorr = calculate_correlations(tp_data)
 
     # ---------------------------------------------------------------------
     logger.info("normalizing data...")
     progress = 50
-    window["--status1--"].update(value="normalizing data...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="normalizing data...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     normalize_data(tp_data)
 
     logger.info("done!")
     progress = 60
-    window["--status1--"].update(value="normalizing data...")
-    window["--progress--"].update(progress)
-    window.read(timeout=50)
+    if window:
+        window["--status1--"].update(value="normalizing data...")
+        window["--progress--"].update(progress)
+        window.read(timeout=50)
 
     return tp_data, tp_info, tp_conditions, tp_icorr
 
@@ -357,7 +369,6 @@ def total_proteome_processing_dialog(
         if event == "--start--":
             tp_data, tp_info, tp_conditions, tp_icorr = (
                 start_total_proteome_processing(
-                    window,
                     tp_data,
                     tp_tables,
                     tp_preparams,
@@ -366,6 +377,7 @@ def total_proteome_processing_dialog(
                     tp_icorr,
                     tp_indata,
                     tp_conditions,
+                    window,
                 )
             )
             break
