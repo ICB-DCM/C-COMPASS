@@ -1,12 +1,14 @@
 """Multiple organelle analysis."""
 
 import logging
+import multiprocessing as mp
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
+from ._utils import PrefixFilter
 from .core import ComparisonModel, ResultsModel, XYZ_Model
 
 logger = logging.getLogger(__package__)
@@ -420,6 +422,7 @@ def stats_proteome(
 
 def global_comparisons(
     results: dict[str, ResultsModel],
+    max_processes: int = 1,
 ) -> dict[tuple[str, str], ComparisonModel]:
     """Compute global changes."""
     logger.info("Calculating global changes...")
@@ -432,28 +435,34 @@ def global_comparisons(
             ~result.metrics.index.duplicated(keep="first")
         ]
 
-    combinations = [
-        (con_1, con_2)
+    arg_lists = [
+        (con_1, con_2, results[con_1], results[con_2])
         for con_1 in conditions
         for con_2 in conditions
         if con_1 != con_2
     ]
 
-    comparisons = {}
-    for comb in combinations:
-        cond1, cond2 = comb
-        result1, result2 = results[cond1], results[cond2]
-
-        logger.info(f"Processing {comb}...")
-        comparisons[comb] = global_comparison(result1, result2)
+    with mp.Pool(processes=max_processes) as pool:
+        comparisons = dict(pool.map(_global_comparison_entry, arg_lists))
 
     logger.info("Global changes calculated.")
 
     return comparisons
 
 
+def _global_comparison_entry(args):
+    cond1, cond2, result1, result2 = args
+    log_prefix = f"[{cond1} vs. {cond2}]"
+    sub_logger = logger.getChild(log_prefix)
+    sub_logger.addFilter(PrefixFilter(log_prefix))
+    sub_logger.info("Starting global comparison...")
+    return (cond1, cond2), global_comparison(result1, result2, sub_logger)
+
+
 def global_comparison(
-    result1: ResultsModel, result2: ResultsModel
+    result1: ResultsModel,
+    result2: ResultsModel,
+    logger: logging.Logger = logger,
 ) -> ComparisonModel:
     """Perform a single global comparison."""
     classnames = list(set(result1.classnames) & set(result2.classnames))

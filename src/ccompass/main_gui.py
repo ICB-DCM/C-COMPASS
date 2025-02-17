@@ -1288,7 +1288,8 @@ class MainController:
             elif event == "-global_run-":
                 with wait_cursor(self.main_window):
                     self.model.comparison = MOA.global_comparisons(
-                        self.model.results
+                        results=self.model.results,
+                        max_processes=self.app_settings.max_processes,
                     )
                     self.model.status.comparison_global = True
             elif event == "-global_reset-":
