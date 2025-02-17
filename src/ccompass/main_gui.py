@@ -1095,45 +1095,9 @@ class MainController:
                     self.model.fract_preparams
                 )
             elif event == "-fractionation_reset-":
-                sure = sg.popup_yes_no(
-                    "Reset Fractionation Pre-Processing? "
-                    "You have to run it again to use your data."
-                )
-                if sure == "Yes":
-                    self.model.reset_fractionation()
-                    fract_buttons(self.main_window, False)
-
-                    self.main_window["-marker_fractkey-"].update(
-                        values=["[IDENTIFIER]"], value=""
-                    )
+                self._handle_reset_fract_data()
             elif event == "-fractionation_start-":
-                if self.model.fract_indata:
-                    from .FDP import FDP_exec
-
-                    (
-                        self.model.fract_data,
-                        self.model.fract_std,
-                        self.model.fract_info,
-                        self.model.fract_conditions,
-                    ) = FDP_exec(
-                        self.model.fract_tables,
-                        self.model.fract_preparams,
-                        self.model.fract_identifiers,
-                        self.model.fract_data,
-                        self.model.fract_std,
-                        self.model.fract_info,
-                        self.model.fract_conditions,
-                        self.model.fract_indata,
-                    )
-                    self.main_window["-marker_fractkey-"].update(
-                        values=["[IDENTIFIER]"] + list(self.model.fract_info)
-                    )
-                    if self.model.fract_data["class"]:
-                        self.model.status.fractionation_data = True
-                else:
-                    messagebox.showerror(
-                        "No dataset!", "Please import a fractionation dataset."
-                    )
+                self._handle_process_fract_data()
             elif event == "-fractionation_summary-":
                 RP.RP_gradient_heatmap(self.model.fract_data)
 
@@ -1192,47 +1156,9 @@ class MainController:
 
                 self.model.tp_preparams = show_dialog(self.model.tp_preparams)
             elif event == "-tp_reset-":
-                sure = sg.popup_yes_no(
-                    "Reset TotalProteome Pre-Processing? "
-                    "You have to run it again to use your data."
-                )
-                if sure == "Yes":
-                    self.model.reset_tp()
-
-                    self.model.status.tp_data = False
-                    if self.model.status.comparison_class:
-                        MOA.class_reset(
-                            self.model.results, self.model.comparison
-                        )
-
-                        self.model.status.comparison_class = False
+                self._handle_reset_total_proteome()
             elif event == "-tp_start-":
-                if self.model.tp_paths:
-                    from .TPP import total_proteome_processing_dialog
-
-                    (
-                        self.model.tp_data,
-                        self.model.tp_info,
-                        self.model.tp_conditions,
-                        self.model.tp_icorr,
-                    ) = total_proteome_processing_dialog(
-                        self.model.tp_data,
-                        self.model.tp_tables,
-                        self.model.tp_preparams,
-                        self.model.tp_identifiers,
-                        self.model.tp_info,
-                        self.model.tp_icorr,
-                        self.model.tp_indata,
-                        self.model.tp_conditions,
-                    )
-
-                    if self.model.tp_data:
-                        self.model.status.tp_data = True
-                        # tp_buttons(window, True)
-                else:
-                    messagebox.showerror(
-                        "No dataset!", "Please import a TP dataset."
-                    )
+                self._handle_process_total_proteome()
             elif event == "-tp_export-":
                 export_folder = sg.popup_get_folder("Export Folder")
                 if export_folder:
@@ -1294,13 +1220,8 @@ class MainController:
                 self._open_marker_profiles(values["-marker_fractkey-"])
             elif event == "-marker_accept-":
                 self._handle_match_markers(values)
-
             elif event == "-marker_reset-":
                 self.model.reset_marker()
-                # enable_markersettings(window, True)
-                # window['-classification_MOP-'].update(disabled = True)
-                # window['-classification_SVM-'].update(disabled = True)
-
             elif event == "-classification_parameters-":
                 from .training_parameters_dialog import show_dialog
 
@@ -1391,66 +1312,11 @@ class MainController:
                 self._handle_export_comparison()
 
             elif event == "Save...":
-                filename = sg.popup_get_file(
-                    "Save Session",
-                    no_window=True,
-                    file_types=(("Numpy", "*.npy"),),
-                    save_as=True,
-                    initial_folder=str(self.app_settings.last_session_dir),
-                )
-                if filename:
-                    self.app_settings.last_session_dir = Path(filename).parent
-                    self.app_settings.save()
-                    with wait_cursor(self.main_window):
-                        self.model.to_numpy(filename)
-
+                self._handle_session_save()
             elif event == "Open...":
-                filename = sg.popup_get_file(
-                    "Open Session",
-                    initial_folder=str(self.app_settings.last_session_dir),
-                    no_window=True,
-                    file_types=(("Numpy", "*.npy"),),
-                )
-                if filename:
-                    try:
-                        with wait_cursor(self.main_window):
-                            session_open(
-                                self.main_window,
-                                filename,
-                                model=self.model,
-                            )
-                    except Exception as e:
-                        logger.exception("Error opening session")
-                        messagebox.showerror(
-                            "Error",
-                            "An error occurred while opening the session:\n\n"
-                            + str(e),
-                        )
-
-                    self.main_window["-marker_fractkey-"].update(
-                        values=["[IDENTIFIER]"] + list(self.model.fract_info),
-                        value=self.model.marker_fractkey,
-                    )
-                    self.app_settings.last_session_dir = Path(filename).parent
-                    self.app_settings.save()
+                self._handle_session_open()
             elif event == "New":
-                sure = sg.popup_yes_no(
-                    "Are you sure to close the session and start a new one?"
-                )
-                if sure == "Yes":
-                    self.model.reset()
-                    fract_clearinput(self.main_window)
-                    tp_clearinput(self.main_window)
-                    self.main_window["-marker_list-"].update(values=[])
-                    self.main_window["-marker_key-"].update(
-                        values=[], size=self.main_window["-marker_key-"].Size
-                    )
-                    self.main_window["-marker_class-"].update(
-                        values=[], size=self.main_window["-marker_class-"].Size
-                    )
-                    self.main_window["-marker_fractkey-"].update(
-                        values=["[IDENTIFIER]"] + list(self.model.fract_info)
-                    )
+                self._handle_session_new()
             elif event == "About...":
                 from .about_dialog import show_about_dialog
 
@@ -1694,6 +1560,171 @@ class MainController:
             return
 
         write_comparison_reports(self.model, export_folder)
+
+    def _handle_session_new(self):
+        sure = sg.popup_yes_no(
+            "Are you sure to close the session and start a new one?"
+        )
+        if sure != "Yes":
+            return
+
+        self.model.reset()
+
+        fract_clearinput(self.main_window)
+        tp_clearinput(self.main_window)
+
+        self.main_window["-marker_list-"].update(values=[])
+        self.main_window["-marker_key-"].update(
+            values=[], size=self.main_window["-marker_key-"].Size
+        )
+        self.main_window["-marker_class-"].update(
+            values=[], size=self.main_window["-marker_class-"].Size
+        )
+        self.main_window["-marker_fractkey-"].update(
+            values=["[IDENTIFIER]"] + list(self.model.fract_info)
+        )
+
+    def _handle_session_open(self):
+        """'Open session' was clicked."""
+        filename = sg.popup_get_file(
+            "Open Session",
+            initial_folder=str(self.app_settings.last_session_dir),
+            no_window=True,
+            file_types=(("Numpy", "*.npy"),),
+        )
+        if not filename:
+            return
+
+        try:
+            with wait_cursor(self.main_window):
+                session_open(
+                    self.main_window,
+                    filename,
+                    model=self.model,
+                )
+        except Exception as e:
+            logger.exception("Error opening session")
+            messagebox.showerror(
+                "Error",
+                "An error occurred while opening the session:\n\n" + str(e),
+            )
+
+        self.main_window["-marker_fractkey-"].update(
+            values=["[IDENTIFIER]"] + list(self.model.fract_info),
+            value=self.model.marker_fractkey,
+        )
+        self.app_settings.last_session_dir = Path(filename).parent
+        self.app_settings.save()
+
+    def _handle_session_save(self):
+        """'Save session' was clicked."""
+        filename = sg.popup_get_file(
+            "Save Session",
+            no_window=True,
+            file_types=(("Numpy", "*.npy"),),
+            save_as=True,
+            initial_folder=str(self.app_settings.last_session_dir),
+        )
+        if not filename:
+            return
+
+        self.app_settings.last_session_dir = Path(filename).parent
+        self.app_settings.save()
+
+        with wait_cursor(self.main_window):
+            self.model.to_numpy(filename)
+
+    def _handle_process_total_proteome(self):
+        """Button-click "process total proteome data"."""
+        if not self.model.tp_paths:
+            messagebox.showerror("No dataset!", "Please import a TP dataset.")
+            return
+
+        from .TPP import total_proteome_processing_dialog
+
+        (
+            self.model.tp_data,
+            self.model.tp_info,
+            self.model.tp_conditions,
+            self.model.tp_icorr,
+        ) = total_proteome_processing_dialog(
+            self.model.tp_data,
+            self.model.tp_tables,
+            self.model.tp_preparams,
+            self.model.tp_identifiers,
+            self.model.tp_info,
+            self.model.tp_icorr,
+            self.model.tp_indata,
+            self.model.tp_conditions,
+        )
+
+        if self.model.tp_data:
+            self.model.status.tp_data = True
+
+    def _handle_process_fract_data(self):
+        """Button-click "process fractionation data"."""
+        if not self.model.fract_indata:
+            messagebox.showerror(
+                "No dataset!", "Please import a fractionation dataset."
+            )
+            return
+
+        from .FDP import FDP_exec
+
+        (
+            self.model.fract_data,
+            self.model.fract_std,
+            self.model.fract_info,
+            self.model.fract_conditions,
+        ) = FDP_exec(
+            self.model.fract_tables,
+            self.model.fract_preparams,
+            self.model.fract_identifiers,
+            self.model.fract_data,
+            self.model.fract_std,
+            self.model.fract_info,
+            self.model.fract_conditions,
+            self.model.fract_indata,
+        )
+
+        self.main_window["-marker_fractkey-"].update(
+            values=["[IDENTIFIER]"] + list(self.model.fract_info)
+        )
+
+        if self.model.fract_data["class"]:
+            self.model.status.fractionation_data = True
+
+    def _handle_reset_fract_data(self):
+        """Button-click "reset fractionation data"."""
+        sure = sg.popup_yes_no(
+            "Reset Fractionation Pre-Processing? "
+            "You have to run it again to use your data."
+        )
+        if sure != "Yes":
+            return
+
+        self.model.reset_fractionation()
+        fract_buttons(self.main_window, False)
+
+        self.main_window["-marker_fractkey-"].update(
+            values=["[IDENTIFIER]"], value=""
+        )
+
+    def _handle_reset_total_proteome(self):
+        """Button-click "reset total proteome data"."""
+        sure = sg.popup_yes_no(
+            "Reset TotalProteome Pre-Processing? "
+            "You have to run it again to use your data."
+        )
+        if sure != "Yes":
+            return
+
+        self.model.reset_tp()
+        self.model.status.tp_data = False
+
+        if self.model.status.comparison_class:
+            MOA.class_reset(self.model.results, self.model.comparison)
+            self.model.status.comparison_class = False
 
 
 def fract_refreshtable(window: sg.Window, table: list):
