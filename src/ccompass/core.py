@@ -277,7 +277,7 @@ class ResultsModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metrics: pd.DataFrame = pd.DataFrame()
-    class_abundance: dict[str, dict[str, float | dict[str, Any]]] = {}
+    class_abundance: dict[str, dict[str, float | int]] = {}
     classnames: list[str] = []
     #: SVM results
     # * winner_combined: DataFrame
