@@ -1287,7 +1287,7 @@ class MainController:
 
             elif event == "-global_run-":
                 with wait_cursor(self.main_window):
-                    self.model.comparison = MOA.global_comparison(
+                    self.model.comparison = MOA.global_comparisons(
                         self.model.results
                     )
                     self.model.status.comparison_global = True

@@ -418,7 +418,7 @@ def stats_proteome(
     return results
 
 
-def global_comparison(
+def global_comparisons(
     results: dict[str, ResultsModel],
 ) -> dict[tuple[str, str], ComparisonModel]:
     """Compute global changes."""
@@ -445,155 +445,154 @@ def global_comparison(
         result1, result2 = results[cond1], results[cond2]
 
         logger.info(f"Processing {comb}...")
-        classnames = list(set(result1.classnames) & set(result2.classnames))
-        comparison = comparisons[comb] = ComparisonModel()
-
-        metrics_own = result1.metrics
-        metrics_other = result2.metrics
-
-        ## prepare data:
-        comparison.intersection_data = pd.merge(
-            metrics_own,
-            metrics_other,
-            left_index=True,
-            right_index=True,
-            how="inner",
-        )
-        comparison.metrics = pd.DataFrame(
-            index=comparison.intersection_data.index
-        )
-
-        logger.info("performing t-tests...")
-
-        for classname in classnames:
-            comparison.metrics["RL_" + classname] = (
-                metrics_other["CC_" + classname]
-                - metrics_own["CC_" + classname]
-            )
-
-        rl_cols = [
-            col for col in comparison.metrics.columns if col.startswith("RL_")
-        ]
-        comparison.metrics["RLS"] = (
-            comparison.metrics[rl_cols].abs().sum(axis=1)
-        )
-
-        for classname in classnames:
-            comparison.metrics["fRL_" + classname] = (
-                metrics_other["fCC_" + classname]
-                - metrics_own["fCC_" + classname]
-            )
-        frl_cols = [
-            col for col in comparison.metrics.columns if col.startswith("fRL_")
-        ]
-        comparison.metrics["fRLS"] = (
-            comparison.metrics[frl_cols].abs().sum(axis=1)
-        )
-
-        test_df = perform_mann_whitney_t_tests_per_cell(
-            metrics_own, metrics_other, "CClist_"
-        )
-        common_indices = test_df.index
-        for classname in classnames:
-            test_df.rename(
-                columns={
-                    "CClist_" + classname + "_U": "U_" + classname,
-                    "CClist_" + classname + "_T": "T_" + classname,
-                    "CClist_" + classname + "_D": "D_" + classname,
-                    "CClist_" + classname + "_P(U)": "P(U)_" + classname,
-                    "CClist_" + classname + "_P(T)": "P(T)_" + classname,
-                },
-                inplace=True,
-            )
-        # calculate DS:
-        d_columns = [col for col in test_df.columns if col.startswith("D_")]
-        test_df["DS"] = test_df[d_columns].abs().sum(axis=1)
-
-        # add statistics to metrics:
-        comparison.metrics = pd.merge(
-            comparison.metrics,
-            test_df,
-            left_index=True,
-            right_index=True,
-            how="left",
-        )
-
-        logger.info("calculate RLS lists...")
-        RLS_results = {}
-        RLS_null = {}
-        for ID in common_indices:
-            cclists_own = [
-                metrics_own.loc[ID, "CClist_" + classname]
-                for classname in classnames
-            ]
-            cclists_other = [
-                metrics_other.loc[ID, "CClist_" + classname]
-                for classname in classnames
-            ]
-
-            cclists_own_transposed = [
-                list(values) for values in zip(*cclists_own)
-            ]
-            cclists_other_transposed = [
-                list(values) for values in zip(*cclists_other)
-            ]
-
-            RLS_results[ID] = []
-            RLS_null[ID] = []
-
-            for i in range(len(cclists_own_transposed)):
-                for j in range(i + 1, len(cclists_own_transposed)):
-                    null_result = compare_lists(
-                        cclists_own_transposed[i], cclists_own_transposed[j]
-                    )
-                    RLS_null[ID].append(null_result)
-            for i in range(len(cclists_other_transposed)):
-                for j in range(i + 1, len(cclists_other_transposed)):
-                    null_result = compare_lists(
-                        cclists_other_transposed[i],
-                        cclists_other_transposed[j],
-                    )
-                    RLS_null[ID].append(null_result)
-
-            for own_list in cclists_own_transposed:
-                for other_list in cclists_other_transposed:
-                    comparison_result = compare_lists(own_list, other_list)
-                    RLS_results[ID].append(comparison_result)
-        comparison.RLS_results = pd.Series(RLS_results)
-        comparison.RLS_null = pd.Series(RLS_null)
-
-        comparison.metrics["P(t)_RLS"] = np.nan
-        comparison.metrics["P(u)_RLS"] = np.nan
-        for index in comparison.metrics.index:
-            if index in common_indices:
-                # Perform the t-test
-                stat, p_value = ttest_ind(
-                    comparison.RLS_results.loc[index],
-                    comparison.RLS_null.loc[index],
-                    nan_policy="omit",
-                )
-                comparison.metrics.loc[index, "P(t)_RLS"] = p_value
-                if (
-                    is_all_nan(comparison.RLS_results.loc[index])
-                    or is_all_nan(comparison.RLS_null.loc[index])
-                    or len(set(comparison.RLS_results.loc[index])) == 1
-                    or len(set(comparison.RLS_null.loc[index])) == 1
-                ):
-                    comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
-                else:
-                    stat_u, p_value_u = stats.mannwhitneyu(
-                        comparison.RLS_results.loc[index],
-                        comparison.RLS_null.loc[index],
-                        alternative="two-sided",
-                    )
-                    comparison.metrics.loc[index, "P(u)_RLS"] = p_value_u
-            else:
-                comparison.metrics.loc[index, "P(t)_RLS"] = pd.NA
-                comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
+        comparisons[comb] = global_comparison(result1, result2)
 
     logger.info("Global changes calculated.")
 
     return comparisons
+
+
+def global_comparison(
+    result1: ResultsModel, result2: ResultsModel
+) -> ComparisonModel:
+    """Perform a single global comparison."""
+    classnames = list(set(result1.classnames) & set(result2.classnames))
+    comparison = ComparisonModel()
+
+    metrics_own = result1.metrics
+    metrics_other = result2.metrics
+
+    ## prepare data:
+    comparison.intersection_data = pd.merge(
+        metrics_own,
+        metrics_other,
+        left_index=True,
+        right_index=True,
+        how="inner",
+    )
+    comparison.metrics = pd.DataFrame(index=comparison.intersection_data.index)
+
+    logger.info("performing t-tests...")
+
+    for classname in classnames:
+        comparison.metrics["RL_" + classname] = (
+            metrics_other["CC_" + classname] - metrics_own["CC_" + classname]
+        )
+
+    rl_cols = [
+        col for col in comparison.metrics.columns if col.startswith("RL_")
+    ]
+    comparison.metrics["RLS"] = comparison.metrics[rl_cols].abs().sum(axis=1)
+
+    for classname in classnames:
+        comparison.metrics["fRL_" + classname] = (
+            metrics_other["fCC_" + classname] - metrics_own["fCC_" + classname]
+        )
+    frl_cols = [
+        col for col in comparison.metrics.columns if col.startswith("fRL_")
+    ]
+    comparison.metrics["fRLS"] = comparison.metrics[frl_cols].abs().sum(axis=1)
+
+    test_df = perform_mann_whitney_t_tests_per_cell(
+        metrics_own, metrics_other, "CClist_"
+    )
+    common_indices = test_df.index
+    for classname in classnames:
+        test_df.rename(
+            columns={
+                "CClist_" + classname + "_U": "U_" + classname,
+                "CClist_" + classname + "_T": "T_" + classname,
+                "CClist_" + classname + "_D": "D_" + classname,
+                "CClist_" + classname + "_P(U)": "P(U)_" + classname,
+                "CClist_" + classname + "_P(T)": "P(T)_" + classname,
+            },
+            inplace=True,
+        )
+    # calculate DS:
+    d_columns = [col for col in test_df.columns if col.startswith("D_")]
+    test_df["DS"] = test_df[d_columns].abs().sum(axis=1)
+
+    # add statistics to metrics:
+    comparison.metrics = pd.merge(
+        comparison.metrics,
+        test_df,
+        left_index=True,
+        right_index=True,
+        how="left",
+    )
+
+    logger.info("calculate RLS lists...")
+    RLS_results = {}
+    RLS_null = {}
+    for ID in common_indices:
+        cclists_own = [
+            metrics_own.loc[ID, "CClist_" + classname]
+            for classname in classnames
+        ]
+        cclists_other = [
+            metrics_other.loc[ID, "CClist_" + classname]
+            for classname in classnames
+        ]
+
+        cclists_own_transposed = [list(values) for values in zip(*cclists_own)]
+        cclists_other_transposed = [
+            list(values) for values in zip(*cclists_other)
+        ]
+
+        RLS_results[ID] = []
+        RLS_null[ID] = []
+
+        for i in range(len(cclists_own_transposed)):
+            for j in range(i + 1, len(cclists_own_transposed)):
+                null_result = compare_lists(
+                    cclists_own_transposed[i], cclists_own_transposed[j]
+                )
+                RLS_null[ID].append(null_result)
+        for i in range(len(cclists_other_transposed)):
+            for j in range(i + 1, len(cclists_other_transposed)):
+                null_result = compare_lists(
+                    cclists_other_transposed[i],
+                    cclists_other_transposed[j],
+                )
+                RLS_null[ID].append(null_result)
+
+        for own_list in cclists_own_transposed:
+            for other_list in cclists_other_transposed:
+                comparison_result = compare_lists(own_list, other_list)
+                RLS_results[ID].append(comparison_result)
+    comparison.RLS_results = pd.Series(RLS_results)
+    comparison.RLS_null = pd.Series(RLS_null)
+
+    comparison.metrics["P(t)_RLS"] = np.nan
+    comparison.metrics["P(u)_RLS"] = np.nan
+    for index in comparison.metrics.index:
+        if index in common_indices:
+            # Perform the t-test
+            stat, p_value = ttest_ind(
+                comparison.RLS_results.loc[index],
+                comparison.RLS_null.loc[index],
+                nan_policy="omit",
+            )
+            comparison.metrics.loc[index, "P(t)_RLS"] = p_value
+            if (
+                is_all_nan(comparison.RLS_results.loc[index])
+                or is_all_nan(comparison.RLS_null.loc[index])
+                or len(set(comparison.RLS_results.loc[index])) == 1
+                or len(set(comparison.RLS_null.loc[index])) == 1
+            ):
+                comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
+            else:
+                stat_u, p_value_u = stats.mannwhitneyu(
+                    comparison.RLS_results.loc[index],
+                    comparison.RLS_null.loc[index],
+                    alternative="two-sided",
+                )
+                comparison.metrics.loc[index, "P(u)_RLS"] = p_value_u
+        else:
+            comparison.metrics.loc[index, "P(t)_RLS"] = pd.NA
+            comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
+
+    return comparison
 
 
 def class_comparison(
