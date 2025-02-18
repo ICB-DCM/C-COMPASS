@@ -12,28 +12,7 @@ from .marker_correlation_dialog import (
     update_class_info,
     update_figure,
 )
-
-
-def create_line_plot(data: pd.DataFrame, title=None) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(8, 6))  # Adjust the figure size as needed
-    for column in data.columns:
-        ax.plot(data.index, data[column], label=column)
-    ax.legend(
-        loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3
-    )  # Place the legend below the plot
-    ax.set_xlabel("fractions")
-    ax.set_ylabel("normalized intensity")
-    ax.set_xticks([])  # Remove x-tick labels
-    ax.set_yticks([0, 1])
-    ax.set_yticklabels(["0", "1"])
-    ax.set_xlim(0, len(data.index) - 1)  # Set x-axis limits
-    if title:
-        plt.title(title)
-    plt.ylim(0, 1)
-    fig.tight_layout(
-        rect=(0, 0, 1, 0.95)
-    )  # Adjust layout to make room for the legend
-    return fig
+from .visualize import plot_marker_profiles
 
 
 def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
@@ -106,7 +85,7 @@ def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
     )
 
     # Initial drawing
-    fig = create_line_plot(profiles_dict[condition], title=condition)
+    fig = plot_marker_profiles(profiles_dict[condition], title=condition)
     figure_agg = draw_figure(window["-CANVAS-"].TKCanvas, fig)
 
     while True:
@@ -117,7 +96,9 @@ def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
 
         if event == "-condition-":
             condition = values["-condition-"]
-            fig = create_line_plot(profiles_dict[condition], title=condition)
+            fig = plot_marker_profiles(
+                profiles_dict[condition], title=condition
+            )
             figure_agg = update_figure(
                 window["-CANVAS-"].TKCanvas, figure_agg, fig
             )
@@ -145,7 +126,7 @@ def show_marker_profiles_dialog(fract_data, fract_info, marker_list, key):
 
                 # Save the plot
                 for cond, df in profiles_dict.items():
-                    fig = create_line_plot(df, title=cond)
+                    fig = plot_marker_profiles(df, title=cond)
                     fig.savefig(
                         os.path.join(
                             folder_path, f"markerprofiles_{cond}.pdf"

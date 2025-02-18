@@ -2,7 +2,6 @@
 
 import logging
 import os
-from io import BytesIO
 from pathlib import Path
 
 import FreeSimpleGUI as sg
@@ -11,17 +10,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from PIL import Image, ImageFile
 from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
 
 from ccompass.core import ResultsModel
+from ccompass.visualize import fig_to_bytes, fract_heatmap
 
 logger = logging.getLogger(__package__)
 
 
 def RP_gradient_heatmap(fract_data):
-    """Create a GUI to display a heatmap with hierarchical clustering for each condition."""
+    """Create a GUI to display a heatmap with hierarchical clustering for each
+    condition."""
 
     conditions = list(fract_data["vis"])
 
@@ -55,51 +55,13 @@ def RP_gradient_heatmap(fract_data):
         condition_name: str,
         save_as_pdf=False,
         folder_path=None,
-    ) -> ImageFile:
-        # Perform hierarchical clustering on the rows
-        linkage_matrix = linkage(dataframe, method="ward")
-        clustered_rows = leaves_list(
-            linkage_matrix
-        )  # Order of rows after clustering
-
-        # Reorder the DataFrame rows based on hierarchical clustering
-        df_clustered = dataframe.iloc[clustered_rows, :]
-
-        # Custom colormap: from #f2f2f2 (for value 0) to #6d6e71 (for value 1)
-        cmap = mcolors.LinearSegmentedColormap.from_list(
-            "custom_gray", ["#f2f2f2", "#6d6e71"], N=256
-        )
-
-        # Plot the heatmap using seaborn with the custom color gradient
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(
-            df_clustered,
-            cmap=cmap,
-            cbar=True,
-            xticklabels=False,
-            yticklabels=False,
-            vmin=0,
-            vmax=1,
-        )
-
-        # Add the condition name as the title of the plot
-        plt.title(f"Condition: {condition_name}", fontsize=16)
-
-        plt.tight_layout()
+    ):
+        fract_heatmap(dataframe, title=f"Condition: {condition_name}")
 
         # If we need to save the plot as a PDF file
         if save_as_pdf and folder_path:
-            pdf_filename = os.path.join(
-                folder_path, f"{condition_name}_heatmap.pdf"
-            )
+            pdf_filename = Path(folder_path, f"{condition_name}_heatmap.pdf")
             plt.savefig(pdf_filename, format="pdf")
-
-        # Save the plot to a bytes buffer
-        bio = BytesIO()
-        plt.savefig(bio, format="PNG")
-        plt.close()
-        bio.seek(0)
-        return Image.open(bio)
 
     def export_results(fract_data, folder_path):
         """Export dataframes to Excel and heatmaps to PDFs."""
@@ -137,12 +99,8 @@ def RP_gradient_heatmap(fract_data):
             df = fract_data["vis"][selected_condition]
 
             # Generate the heatmap with hierarchical clustering and condition name as the title
-            heatmap_image = plot_heatmap(df, selected_condition)
-
-            # Convert the heatmap image to PNG and update the window
-            bio = BytesIO()
-            heatmap_image.save(bio, format="PNG")
-            window["-HEATMAP-"].update(data=bio.getvalue())
+            plot_heatmap(df, selected_condition)
+            window["-HEATMAP-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         elif event == "Export":
@@ -241,13 +199,6 @@ def RP_stats_heatmap(results: dict[str, ResultsModel]):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-        # Save the plot to a bytes buffer
-        bio = BytesIO()
-        plt.savefig(bio, format="PNG")
-        plt.close()
-        bio.seek(0)
-        return Image.open(bio)
-
     def export_results(results: dict[str, ResultsModel], folder_path):
         """Export dataframes to Excel and heatmaps to PDFs"""
         Path(folder_path).mkdir(parents=True, exist_ok=True)
@@ -285,12 +236,8 @@ def RP_stats_heatmap(results: dict[str, ResultsModel]):
             df = results[selected_condition].metrics
 
             # Generate the heatmap with hierarchical clustering and condition name as the title
-            heatmap_image = plot_heatmap(df, selected_condition)
-
-            # Convert the heatmap image to PNG and update the window
-            bio = BytesIO()
-            heatmap_image.save(bio, format="PNG")
-            window["-HEATMAP-"].update(data=bio.getvalue())
+            plot_heatmap(df, selected_condition)
+            window["-HEATMAP-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         elif event == "Export":
@@ -363,13 +310,6 @@ def RP_stats_distribution(results: dict[str, ResultsModel]):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-        # Save the plot to a bytes buffer for display in the GUI
-        bio = BytesIO()
-        plt.savefig(bio, format="PNG")
-        plt.close()
-        bio.seek(0)
-        return Image.open(bio)
-
     # Function to export pie charts and summary to Excel and PDFs
     def export_pie_charts(results: dict[str, ResultsModel], folder_path):
         Path(folder_path).mkdir(parents=True, exist_ok=True)
@@ -418,12 +358,8 @@ def RP_stats_distribution(results: dict[str, ResultsModel]):
                 df = results[selected_condition].metrics
 
                 # Generate the pie chart for the class distribution
-                pie_chart_image = plot_pie_chart(df, selected_condition)
-
-                # Convert the pie chart image to PNG and update the window
-                bio = BytesIO()
-                pie_chart_image.save(bio, format="PNG")
-                window["-PIECHART-"].update(data=bio.getvalue())
+                plot_pie_chart(df, selected_condition)
+                window["-PIECHART-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         if event == "Export":
@@ -532,13 +468,6 @@ def RP_global_heatmap(comparison):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-        # Save the plot to a bytes buffer
-        bio = BytesIO()
-        plt.savefig(bio, format="PNG")
-        plt.close()
-        bio.seek(0)
-        return Image.open(bio)
-
     # Function to export filtered and renamed dataframes to Excel and heatmaps to PDFs
     def export_heatmaps(comparison, folder_path):
         Path(folder_path).mkdir(parents=True, exist_ok=True)
@@ -587,14 +516,8 @@ def RP_global_heatmap(comparison):
                 df_filtered_for_plot = filter_and_prepare_data(df)
 
                 # Generate the heatmap with hierarchical clustering and comparison name as the title
-                heatmap_image = plot_heatmap(
-                    df_filtered_for_plot, selected_comparison
-                )
-
-                # Convert the heatmap image to PNG and update the window
-                bio = BytesIO()
-                heatmap_image.save(bio, format="PNG")
-                window["-HEATMAP-"].update(data=bio.getvalue())
+                plot_heatmap(df_filtered_for_plot, selected_comparison)
+                window["-HEATMAP-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         if event == "Export":
@@ -689,13 +612,6 @@ def RP_global_distance(comparison):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-        # Save the plot to a bytes buffer for display in the GUI
-        bio = BytesIO()
-        plt.savefig(bio, format="PNG")
-        plt.close()
-        bio.seek(0)
-        return Image.open(bio)
-
     # Function to export scatter plot data and save to Excel and PDFs
     def export_scatter_data(comparison, folder_path):
         Path(folder_path).mkdir(parents=True, exist_ok=True)
@@ -743,12 +659,8 @@ def RP_global_distance(comparison):
                 df = comparison[selected_comparison].metrics
 
                 # Generate the scatter plot with the selected comparison name
-                scatter_image = plot_scatter(df, selected_comparison)
-
-                # Convert the scatter plot image to PNG and update the window
-                bio = BytesIO()
-                scatter_image.save(bio, format="PNG")
-                window["-SCATTERPLOT-"].update(data=bio.getvalue())
+                plot_scatter(df, selected_comparison)
+                window["-SCATTERPLOT-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         if event == "Export":
@@ -854,13 +766,6 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
                 )
                 plt.savefig(pdf_filename, format="pdf")
 
-            # Save the plot to a bytes buffer
-            bio = BytesIO()
-            plt.savefig(bio, format="PNG")
-            plt.close()
-            bio.seek(0)
-            return Image.open(bio)
-
         except ValueError:
             logger.exception("Error during clustering")
             return None
@@ -940,15 +845,9 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
                 df_zscore = compute_rowwise_zscore(df_filtered)
 
                 # Generate the heatmap for the selected classname, using condition names as column labels
-                heatmap_image = plot_heatmap(
-                    df_zscore, selected_classname, conditions
-                )
+                plot_heatmap(df_zscore, selected_classname, conditions)
 
-                # Convert the heatmap image to PNG and update the window
-                if heatmap_image:
-                    bio = BytesIO()
-                    heatmap_image.save(bio, format="PNG")
-                    window["-HEATMAP-"].update(data=bio.getvalue())
+                window["-HEATMAP-"].update(data=fig_to_bytes())
 
         # If the Export button is clicked
         if event == "Export":
