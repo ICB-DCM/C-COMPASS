@@ -203,6 +203,16 @@ def test_full():
         sess.results,
         sess.comparison,
     )
+
+    sess.status.fractionation_data = True
+    sess.status.tp_data = True
+    sess.status.marker_file = True
+    sess.status.marker_matched = True
+    sess.status.training = True
+    sess.status.proteome_prediction = True
+    sess.status.comparison_global = True
+    sess.status.comparison_class = True
+
     # TODO test all generating all reports
     # TODO add some checks
     # check that we have results for all conditions
