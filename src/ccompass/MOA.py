@@ -609,6 +609,12 @@ def class_comparisons(
     results: dict[str, ResultsModel],
     comparisons: dict[tuple[str, str], ComparisonModel],
 ) -> None:
+    """Compute class-centric changes.
+
+    :param tp_data: Total proteome data.
+    :param results: Results from the multi-organelle analysis. Will be updated.
+    :param comparisons: Global comparisons. Will be updated.
+    """
     logger.info("Calculating class-centric changes...")
 
     for condition, result in results.items():
@@ -842,43 +848,3 @@ def class_centric_comparison(
             metrics_other["nCPA_imp_" + classname]
             - metrics_own["nCPA_imp_" + classname]
         )
-
-
-def class_reset(
-    results: dict[str, ResultsModel],
-    comparisons: dict[tuple[str, str], ComparisonModel],
-) -> None:
-    """Reset class-centric analysis results."""
-    for condition, result in results.items():
-        result.class_abundance = {}
-        result.metrics.drop(["TPA", "CA_relevant"], axis=1, inplace=True)
-
-        for classname in result.classnames:
-            result.metrics.drop(
-                [
-                    "nCClist_" + classname,
-                    "nCC_" + classname,
-                    "CPA_" + classname,
-                    "CPA_log_" + classname,
-                    "CPA_imp_" + classname,
-                    "nCPA_" + classname,
-                    "nCPA_log_" + classname,
-                    "nCPA_imp_" + classname,
-                ],
-                axis=1,
-                inplace=True,
-            )
-
-    for comb, comparison in comparisons.items():
-        comparison.metrics.drop(
-            ["nRLS", "P(t)_nRLS", "P(u)_nRLS"], axis=1, inplace=True
-        )
-        comparison.nRLS_null = pd.Series()
-        comparison.nRLS_results = pd.Series()
-
-        for classname in results[comb[0]].classnames:
-            comparison.metrics.drop(
-                ["nRL_" + classname, "CFC_" + classname, "nCFC_" + classname],
-                axis=1,
-                inplace=True,
-            )

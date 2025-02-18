@@ -519,20 +519,74 @@ class SessionModel(BaseModel):
     # (condition1, condition2) => ComparisonModel
     comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel] = {}
 
-    #: Indicates which of the individual analysis steps
-    #  have already been performed or not
-    status: SessionStatusModel = SessionStatusModel()
+    @property
+    def status(self) -> SessionStatusModel:
+        """Return a status object that keeps track of the analysis steps."""
+        return SessionStatusModel(
+            fractionation_data=bool(self.fract_data["class"]),
+            tp_data=bool(self.tp_data),
+            lipidome_data=False,
+            lipidome_total=False,
+            marker_file=bool(self.marker_sets),
+            marker_matched=bool(self.fract_full),
+            training=bool(self.learning_xyz),
+            proteome_prediction=bool(self.results),
+            lipidome_prediction=False,
+            comparison_global=bool(self.comparison),
+            comparison_class=bool(
+                all("TPA" in r.metrics for r in self.results.values())
+            ),
+        )
+
+    def reset_class_centric_changes(self):
+        """Reset class-centric analysis results."""
+        results = self.results
+        comparisons = self.comparison
+
+        for condition, result in results.items():
+            result.class_abundance = {}
+            result.metrics.drop(["TPA", "CA_relevant"], axis=1, inplace=True)
+
+            for classname in result.classnames:
+                result.metrics.drop(
+                    [
+                        "nCClist_" + classname,
+                        "nCC_" + classname,
+                        "CPA_" + classname,
+                        "CPA_log_" + classname,
+                        "CPA_imp_" + classname,
+                        "nCPA_" + classname,
+                        "nCPA_log_" + classname,
+                        "nCPA_imp_" + classname,
+                    ],
+                    axis=1,
+                    inplace=True,
+                )
+
+        for comb, comparison in comparisons.items():
+            comparison.metrics.drop(
+                ["nRLS", "P(t)_nRLS", "P(u)_nRLS"], axis=1, inplace=True
+            )
+            comparison.nRLS_null = pd.Series()
+            comparison.nRLS_results = pd.Series()
+
+            for classname in results[comb[0]].classnames:
+                comparison.metrics.drop(
+                    [
+                        "nRL_" + classname,
+                        "CFC_" + classname,
+                        "nCFC_" + classname,
+                    ],
+                    axis=1,
+                    inplace=True,
+                )
 
     def reset_global_changes(self):
         self.comparison = {}
-        self.status.comparison_global = False
-        self.status.comparison_class = False
 
     def reset_static_statistics(self):
         self.reset_global_changes()
         self.results = {}
-        self.status.proteome_prediction = False
-        self.status.lipidome_prediction = False
 
     def reset_input_tp(self):
         self.tp_tables = {}
@@ -563,15 +617,11 @@ class SessionModel(BaseModel):
     def reset_fractionation(self):
         self.reset_fract()
         self.reset_marker()
-        self.status.fractionation_data = False
 
     def reset_classification(self):
         self.reset_static_statistics()
-
         self.reset_global_changes()
         self.learning_xyz = {}
-
-        self.status.training = False
 
     def reset_marker(self):
         self.marker_list = pd.DataFrame()
@@ -580,7 +630,6 @@ class SessionModel(BaseModel):
         self.fract_test = {}
         self.fract_full = {}
         self.reset_classification()
-        self.status.marker_matched = False
 
     def reset(self, other: SessionModel = None):
         """Reset to default values or copy from another session."""

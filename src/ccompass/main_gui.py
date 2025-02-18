@@ -1191,15 +1191,8 @@ class MainController:
 
             elif event == "-marker_add-":
                 marker_add(self.main_window, values, self.model.marker_sets)
-                self.model.status.marker_file = bool(self.model.marker_sets)
             elif event == "-marker_remove-":
-                try:
-                    marker_remove(
-                        self.main_window, values, self.model.marker_sets
-                    )
-                except Exception:
-                    logger.exception("Error")
-                self.model.status.marker_file = bool(self.model.marker_sets)
+                marker_remove(self.main_window, values, self.model.marker_sets)
             elif event == "-marker_list-":
                 refresh_markercols(
                     self.main_window, values, self.model.marker_sets
@@ -1256,7 +1249,6 @@ class MainController:
                         self.model.fract_conditions,
                         self.model.NN_params.reliability,
                     )
-                self.model.status.proteome_prediction = True
 
             elif event == "-statistic_export-":
                 filename = sg.popup_get_file(
@@ -1306,7 +1298,6 @@ class MainController:
                         results=self.model.results,
                         max_processes=self.app_settings.max_processes,
                     )
-                    self.model.status.comparison_global = True
             elif event == "-global_reset-":
                 self.model.reset_global_changes()
 
@@ -1317,17 +1308,12 @@ class MainController:
                         self.model.results,
                         self.model.comparison,
                     )
-                self.model.status.comparison_class = True
-
             elif event == "-class_reset-":
-                MOA.class_reset(self.model.results, self.model.comparison)
-                self.model.status.comparison_class = False
-
+                self.model.reset_class_centric_changes()
             elif event == "-export_statistics-":
                 self._handle_export_statistics()
             elif event == "-export_comparison-":
                 self._handle_export_comparison()
-
             elif event == "Save...":
                 self._handle_session_save()
             elif event == "Open...":
@@ -1464,10 +1450,10 @@ class MainController:
                     self.model.fract_marker, self.model.fract_test
                 )
                 logger.info("Full profiles created")
-                self.model.status.marker_matched = True
         except Exception:
             logger.exception("Error matching markers")
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
+            self.model.reset_marker()
 
     def _handle_training(self, key: str):
         """Handle click on "Train C-COMPASS!" button."""
@@ -1500,7 +1486,6 @@ class MainController:
                 self.model.NN_params,
                 max_processes=self.app_settings.max_processes,
             )
-            self.model.status.training = True
 
     def _handle_import_prediction(self):
         filename = sg.popup_get_file(
@@ -1525,9 +1510,6 @@ class MainController:
                     self.model.results[condition] = copy.deepcopy(
                         results_new[condition]
                     )
-            self.model.status.proteome_prediction = (
-                self.model.status.training
-            ) = True
         except Exception:
             logger.exception("Error importing prediction")
             messagebox.showerror("Error", "Incompatible file type!")
@@ -1708,9 +1690,6 @@ class MainController:
             self.model.tp_conditions,
         )
 
-        if self.model.tp_data:
-            self.model.status.tp_data = True
-
     def _handle_process_fract_data(self):
         """Button-click "process fractionation data"."""
         if not self.model.fract_indata:
@@ -1741,9 +1720,6 @@ class MainController:
             values=[IDENTIFIER] + list(self.model.fract_info)
         )
 
-        if self.model.fract_data["class"]:
-            self.model.status.fractionation_data = True
-
     def _handle_reset_fract_data(self):
         """Button-click "reset fractionation data"."""
         sure = sg.popup_yes_no(
@@ -1770,11 +1746,8 @@ class MainController:
             return
 
         self.model.reset_tp()
-        self.model.status.tp_data = False
-
         if self.model.status.comparison_class:
-            MOA.class_reset(self.model.results, self.model.comparison)
-            self.model.status.comparison_class = False
+            self.model.reset_class_centric_changes()
 
 
 def fract_refreshtable(window: sg.Window, table: list):
