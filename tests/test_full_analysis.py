@@ -77,6 +77,7 @@ def test_full():
         proteins=list(fractionation_df0[protein_id_col])
     )
     fractionation_df = fractionation_df0.drop(columns=[class_id_col])
+    # uppercase is expected elsewhere
     marker_df = marker_df.apply(lambda x: x.astype(str).str.upper())
 
     # simulate user input
@@ -140,8 +141,6 @@ def test_full():
     logger.info("Full profiles created")
 
     # process total proteome data
-    # TODO: we can get rid of tp_paths
-    sess.tp_paths = [total_prot_filepath]
     sess.tp_tables = {
         total_prot_filepath: [
             tp_col_id_to_row(col_id)

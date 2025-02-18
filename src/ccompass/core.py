@@ -457,13 +457,9 @@ class SessionModel(BaseModel):
 
     ## User input total proteome data
 
-    #: Filepaths for total proteome data
-    tp_paths: list[Filepath] = []
     #: Total proteome column assignments
     #  filepath => [column ID, condition]
     tp_tables: dict[Filepath, list[list[str]]] = {}
-    #: ??
-    tp_pos: dict[Filepath, list[int]] = {}
     #: Total proteome input files: filepath => DataFrame
     tp_indata: dict[Filepath, pd.DataFrame] = {}
     #: Identifier column for the total proteome: filepath => column id
@@ -516,9 +512,7 @@ class SessionModel(BaseModel):
         self.status.lipidome_prediction = False
 
     def reset_input_tp(self):
-        self.tp_paths = []
         self.tp_tables = {}
-        self.tp_pos = {}
         self.tp_data = {}
 
     def reset_input_fract(self):

@@ -995,7 +995,8 @@ def create_main_window(model: SessionModel) -> sg.Window:
         [sg.Menu(menu_def, tearoff=False)],
         [
             create_data_import_frame(
-                fract_paths=list(model.fract_indata), tp_paths=model.tp_paths
+                fract_paths=list(model.fract_indata),
+                tp_paths=list(model.tp_indata),
             ),
             create_spatial_prediction_frame(),
         ],
@@ -1104,20 +1105,18 @@ class MainController:
             elif event == "-tp_add-":
                 tp_add_dataset(
                     self.main_window,
-                    self.model.tp_paths,
                     self.model.tp_tables,
                     self.model.tp_indata,
-                    self.model.tp_pos,
                     self.model.tp_identifiers,
                 )
             elif event == "-tp_remove-":
-                if values["-tp_path-"]:
-                    tp_remove_dataset(
-                        values,
-                        self.main_window,
-                        self.model.tp_paths,
-                        self.model.tp_tables,
-                    )
+                tp_remove_dataset(
+                    values,
+                    self.main_window,
+                    self.model.tp_tables,
+                    self.model.tp_indata,
+                    self.model.tp_identifiers,
+                )
             elif event == "-tp_path-":
                 tp_refreshtable(
                     self.main_window,
@@ -1143,14 +1142,12 @@ class MainController:
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-tp_edit_identifier-":
-                if values["-tp_table-"]:
-                    self.model.tp_identifiers = tp_set_identifier(
-                        values,
-                        self.main_window,
-                        self.model.tp_tables,
-                        self.model.tp_pos,
-                        self.model.tp_identifiers,
-                    )
+                tp_set_identifier(
+                    values,
+                    self.main_window,
+                    self.model.tp_tables,
+                    self.model.tp_identifiers,
+                )
             elif event == "-tp_parameters-":
                 from .total_proteome_parameters_dialog import show_dialog
 
@@ -1638,7 +1635,7 @@ class MainController:
 
     def _handle_process_total_proteome(self):
         """Button-click "process total proteome data"."""
-        if not self.model.tp_paths:
+        if not self.model.tp_indata:
             messagebox.showerror("No dataset!", "Please import a TP dataset.")
             return
 
@@ -2011,7 +2008,10 @@ def convert_to_float(x):
 
 
 def tp_add_dataset(
-    window, tp_paths, tp_tables, tp_indata, tp_pos, tp_identifiers
+    window: sg.Window,
+    tp_tables: dict[str, list],
+    tp_indata: dict[str, pd.DataFrame],
+    tp_identifiers: dict[str, str],
 ):
     """Add a total proteome dataset."""
     filename = sg.popup_get_file(
@@ -2025,44 +2025,50 @@ def tp_add_dataset(
     if not filename:
         return
 
-    tp_paths.append(filename)
-    window["-tp_path-"].update(values=tp_paths, value=filename)
-    data = pd.read_csv(filename, sep="\t", header=0)
-    data = data.replace("NaN", np.nan)
-    data = data.replace("Filtered", np.nan)
-    data = data.map(convert_to_float)
+    # read file
+    df = pd.read_csv(filename, sep="\t", header=0)
+    df = df.replace("NaN", np.nan)
+    df = df.replace("Filtered", np.nan)
+    df = df.map(convert_to_float)
+    rows_with_float = df.map(is_float).any(axis=1)
+    df = df[rows_with_float]
 
-    rows_with_float = data.map(is_float).any(axis=1)
-    data = data[rows_with_float]
-
-    colnames = data.columns.values.tolist()
-    table = []
-    for name in colnames:
-        namelist = [name, ""]
-        table.append(namelist)
+    table = [[name, ""] for name in df.columns]
     tp_tables[filename] = table
-    tp_indata[filename] = data
-    tp_pos[filename] = []
-    tp_identifiers[filename] = []
+    tp_indata[filename] = df
+    tp_identifiers[filename] = ""
+
     tp_refreshtable(window, table)
+    window["-tp_path-"].update(values=list(tp_indata), value=filename)
 
 
-def tp_remove_dataset(values, window, tp_paths, tp_tables):
+def tp_remove_dataset(
+    values,
+    window: sg.Window,
+    tp_tables: dict[str, list],
+    tp_indata: dict[str, pd.DataFrame],
+    tp_identifiers: dict[str, str],
+):
     """Remove a total proteome dataset."""
+    if not (selected_file := values["-tp_path-"]):
+        return
+
     sure = sg.popup_yes_no("Remove data from list?")
     if sure != "Yes":
         return
 
-    tp_paths.remove(values["-tp_path-"])
-    del tp_tables[values["-tp_path-"]]
-    # del tp_data[values['-tp_path-']]
-    if tp_paths:
-        curr = tp_paths[0]
-        tp_refreshtable(window, tp_tables[curr])
-    else:
-        curr = []
-        tp_refreshtable(window, curr)
-    window["-tp_path-"].update(values=tp_paths, value=curr)
+    del tp_tables[selected_file]
+    del tp_indata[selected_file]
+    del tp_identifiers[selected_file]
+
+    files = list(tp_tables)
+    selected_file_new = files[0] if files else []
+    window["-tp_path-"].update(
+        values=files, value=selected_file_new, size=window["-tp_path-"].Size
+    )
+
+    cur_table = tp_tables[selected_file_new] if selected_file_new else []
+    tp_refreshtable(window, cur_table)
 
 
 def tp_remove_row(values, window, tp_tables):
@@ -2072,8 +2078,7 @@ def tp_remove_row(values, window, tp_tables):
     table = tp_tables[path]
     for index in sorted(selected, reverse=True):
         del table[index]
-    tp_tables[path] = table
-    window["-tp_table-"].update(values=tp_tables[path])
+    window["-tp_table-"].update(values=table)
 
 
 def tp_set_keep(values, window, tp_tables):
@@ -2082,8 +2087,7 @@ def tp_set_keep(values, window, tp_tables):
     table = tp_tables[path]
     for pos in values["-tp_table-"]:
         table[pos][1] = KEEP
-    tp_tables[path] = table
-    window["-tp_table-"].update(values=tp_tables[path])
+    window["-tp_table-"].update(values=table)
 
 
 def tp_set_condition(values, window, tp_tables):
@@ -2098,28 +2102,40 @@ def tp_set_condition(values, window, tp_tables):
             tp_tables[path] = table
     else:
         messagebox.showerror("Error", "Select (a) sample(s).")
+
     window["-tp_table-"].update(values=tp_tables[values["-tp_path-"]])
 
 
-def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
+def tp_set_identifier(
+    values,
+    window: sg.Window,
+    tp_tables: dict[str, list],
+    tp_identifiers: dict[str, str],
+) -> None:
     """Set the identifier of the selected total proteome row."""
-    pos = values["-tp_table-"]
-    if pos:
-        if len(pos) > 1:
-            messagebox.showerror("Error", "Please set only one Identifier!")
-        elif len(pos) == 1:
-            path = values["-tp_path-"]
-            table = tp_tables[path]
-            if tp_pos[path]:
-                table[tp_pos[path][0]][1] = ""
-            tp_identifiers[path] = table[pos[0]][0]
-            tp_pos[path] = pos
-            table[pos[0]][1] = IDENTIFIER
-            tp_tables[path] = table
-            window["-tp_table-"].update(values=tp_tables[values["-tp_path-"]])
-        else:
-            messagebox.showerror("Error", "No sample selected.")
-    return tp_identifiers
+    if not (pos := values["-tp_table-"]):
+        messagebox.showerror("Error", "No sample selected.")
+        return
+
+    if len(pos) > 1:
+        messagebox.showerror("Error", "Please set only one Identifier!")
+        return
+
+    path = values["-tp_path-"]
+    table = tp_tables[path]
+
+    # unset condition for previous identifier row
+    prev_id_row = [i for i, row in enumerate(table) if row[1] == IDENTIFIER]
+    if prev_id_row:
+        assert len(prev_id_row) == 1
+        prev_id_row = prev_id_row[0]
+        table[prev_id_row][1] = ""
+
+    new_row_idx = pos[0]
+    tp_identifiers[path] = table[new_row_idx][0]
+    table[new_row_idx][1] = IDENTIFIER
+
+    window["-tp_table-"].update(values=table)
 
 
 def tp_export(export_folder: str | Path, experiment: str, tp_data, tp_info):
@@ -2381,14 +2397,13 @@ def session_open(window: sg.Window, filename: str, model: SessionModel):
 
     fract_buttons(window, bool(model.fract_data["class"]))
 
-    if model.tp_paths:
-        tp_refreshtable(window, model.tp_tables[model.tp_paths[0]])
-        window["-tp_path-"].update(
-            values=model.tp_paths, value=model.tp_paths[0]
-        )
+    if model.tp_indata:
+        tp_filepaths = list(model.tp_indata)
+        tp_refreshtable(window, model.tp_tables[tp_filepaths[0]])
+        window["-tp_path-"].update(values=tp_filepaths, value=tp_filepaths[0])
     else:
         tp_refreshtable(window, [])
-        window["-tp_path-"].update(values=model.tp_paths, value="")
+        window["-tp_path-"].update(values=[], value="")
 
     tp_buttons(window, bool(model.tp_data))
 
