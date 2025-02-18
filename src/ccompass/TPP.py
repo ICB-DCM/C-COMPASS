@@ -3,7 +3,7 @@
 import logging
 import math
 from tkinter import messagebox
-from typing import Any
+from typing import Any, Literal
 
 import FreeSimpleGUI as sg
 import numpy as np
@@ -11,6 +11,7 @@ import pandas as pd
 from scipy.stats import pearsonr
 
 from ._utils import unique_preserve_order
+from .core import IDENTIFIER, KEEP
 
 logger = logging.getLogger(__package__)
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__package__)
 def create_dataset(
     tp_indata, tp_tables, tp_identifiers, tp_conditions, window
 ):
-    tp_conditions.remove("[IDENTIFIER]")
+    tp_conditions.remove(IDENTIFIER)
 
     idents = []
     for path in tp_tables:
@@ -50,7 +51,7 @@ def create_dataset(
                         left_index=True,
                         how="outer",
                     )
-                    if condition == "[KEEP]":
+                    if condition == KEEP:
                         if samplename + "_x" in data_new.columns:
                             for element in list(data_new.index):
                                 if pd.isnull(
@@ -87,9 +88,9 @@ def create_dataset(
 
         dataset[condition] = data_new
 
-    if "[KEEP]" in dataset:
-        data_keep = dataset["[KEEP]"]
-        del dataset["[KEEP]"]
+    if KEEP in dataset:
+        data_keep = dataset[KEEP]
+        del dataset[KEEP]
     else:
         data_keep = pd.DataFrame()
 
@@ -136,7 +137,9 @@ def transform_data(data, window):
     return data
 
 
-def impute_data(data, window, mode):
+def impute_data(
+    data, window: sg.Window | None, mode: Literal["normal", "constant"]
+):
     s = 1.8
     w = 0.3
     for condition in data:
@@ -253,7 +256,7 @@ def start_total_proteome_processing(
 ):
     # validate input
     if not all(
-        any("[IDENTIFIER]" == sample[1] for sample in table)
+        any(IDENTIFIER == sample[1] for sample in table)
         for table in tp_tables.values()
     ):
         messagebox.showerror("Error", "At least one Identifier is missing.")

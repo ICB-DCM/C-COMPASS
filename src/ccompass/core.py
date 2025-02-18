@@ -21,6 +21,18 @@ from . import config_filepath
 logger = logging.getLogger(__name__)
 
 
+#: The value used in the sample tables as condition IDs to indicate the column
+#  that contains the protein IDs.
+IDENTIFIER = "[IDENTIFIER]"
+#: The value used in the sample tables as condition IDs to indicate the columns
+#  with values that should be carried forward to the final results.
+#  (And potentially be used for matching markers.)
+KEEP = "[KEEP]"
+#: The value used in the sample table for not applicable values.
+#  I.e. for "Replicate" and "Fraction" columns for KEEP and IDENTIFIER rows.
+NA = "-"
+
+
 class AppSettings(BaseModel):
     """Settings for the C-COMPASS application"""
 
@@ -315,10 +327,10 @@ class MarkerSet(BaseModel):
     #: column ID in `df` to match the fractionation data identifiers
     #  ("key column" in GUI)
     # "-" means unset
-    identifier_col: str = "-"
+    identifier_col: str = NA
     #: column ID in `df` that contains the class names
     # "-" means unset
-    class_col: str = "-"
+    class_col: str = NA
 
     @property
     def classes(self) -> list[str]:
@@ -392,7 +404,7 @@ class SessionModel(BaseModel):
     fract_preparams: dict[str, dict[str, Any]] = fract_default()
     #: The column ID of the fractionation DataFrame that is
     #  to be used for matching the markers (`marker_list["name"])
-    marker_fractkey: str = "[IDENTIFIER]"
+    marker_fractkey: str = IDENTIFIER
 
     ## User input markers
 

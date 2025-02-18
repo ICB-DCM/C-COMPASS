@@ -10,7 +10,14 @@ from create_synthetic_data import (
     total_proteome,
 )
 
-from ccompass.core import MarkerSet, NeuralNetworkParametersModel, SessionModel
+from ccompass.core import (
+    IDENTIFIER,
+    KEEP,
+    NA,
+    MarkerSet,
+    NeuralNetworkParametersModel,
+    SessionModel,
+)
 from ccompass.FDP import start_fract_data_processing
 from ccompass.main_gui import (
     create_fullprofiles,
@@ -31,9 +38,9 @@ tp_id_rx = re.compile(r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)")
 def fract_col_id_to_row(col_id: str) -> list:
     """Convert fractionation data column id to fractionation table rows."""
     if col_id == protein_id_col:
-        return [col_id, "[IDENTIFIER]", "-", "-"]
+        return [col_id, IDENTIFIER, NA, NA]
     if col_id == gene_id_col:
-        return [col_id, "[KEEP]", "-", "-"]
+        return [col_id, KEEP, NA, NA]
 
     if not (match := fract_id_rx.match(col_id)):
         raise ValueError(f"Invalid fractionation ID: {col_id}")
@@ -47,7 +54,7 @@ def fract_col_id_to_row(col_id: str) -> list:
 def tp_col_id_to_row(col_id: str) -> list:
     """Convert total proteome data column id to total proteome table rows."""
     if col_id == protein_id_col:
-        return [col_id, "[IDENTIFIER]"]
+        return [col_id, IDENTIFIER]
 
     if not (match := tp_id_rx.match(col_id)):
         raise ValueError(f"Invalid total proteome ID: {col_id}")
@@ -196,6 +203,15 @@ def test_full():
         sess.results,
         sess.comparison,
     )
+    # TODO test all generating all reports
     # TODO add some checks
+    # check that we have results for all conditions
+    conditions = {
+        row[1]
+        for row in next(iter(sess.fract_tables.values()))
+        if row[1] not in (IDENTIFIER, KEEP)
+    }
+    assert set(sess.results.keys()) == conditions
+
     ...
     sess.to_numpy(Path(__file__).parent / "session_test_full.npy")

@@ -9,7 +9,7 @@ from scipy import stats
 from scipy.stats import ttest_ind
 
 from ._utils import PrefixFilter
-from .core import ComparisonModel, ResultsModel, XYZ_Model
+from .core import KEEP, ComparisonModel, ResultsModel, XYZ_Model
 
 logger = logging.getLogger(__package__)
 
@@ -163,7 +163,7 @@ def stats_proteome(
 ):
     """Proteome prediction / statistics."""
     logger.info("Performing proteome prediction...")
-    conditions = [x for x in fract_conditions if x != "[KEEP]"]
+    conditions = [x for x in fract_conditions if x != KEEP]
     results = {}
 
     for condition in conditions:

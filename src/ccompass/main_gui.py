@@ -16,6 +16,9 @@ import pandas as pd
 from . import MOA, RP, app_name, readthedocs_url, repository_url
 from ._gui_utils import wait_cursor
 from .core import (
+    IDENTIFIER,
+    KEEP,
+    NA,
     AppSettings,
     MarkerSet,
     SessionModel,
@@ -683,8 +686,8 @@ def create_spatial_prediction_frame() -> sg.Frame:
 def create_marker_selection_frame() -> sg.Frame:
     """Create the "Marker Selection" frame."""
     tt_fract_key = (
-        "The column in the fractionation data (marked [IDENTIFIER] or [KEEP]) "
-        "to match the key column of the marker table."
+        f"The column in the fractionation data (marked {IDENTIFIER} or {KEEP})"
+        " to match the key column of the marker table."
     )
     tt_marker_key = (
         "The column in the marker table to match the key column "
@@ -788,7 +791,7 @@ def create_marker_selection_frame() -> sg.Frame:
                             sg.Text("Fract. Key:", tooltip=tt_fract_key),
                             sg.Push(),
                             sg.Combo(
-                                ["[IDENTIFIER]"],
+                                [IDENTIFIER],
                                 key="-marker_fractkey-",
                                 size=(18, 1),
                                 readonly=True,
@@ -1436,7 +1439,7 @@ class MainController:
                     self.model.fract_test,
                 ) = create_marker_profiles(
                     self.model.fract_data,
-                    values["-marker_fractkey-"],
+                    self.model.marker_fractkey,
                     self.model.fract_info,
                     self.model.marker_list,
                 )
@@ -1453,12 +1456,12 @@ class MainController:
     def _handle_training(self, key: str):
         """Handle click on "Train C-COMPASS!" button."""
         # FIXME: `stds` is not in the format expected for upsampling
-        if key == "[IDENTIFIER]":
+        if key == IDENTIFIER:
             stds = self.model.fract_std
         else:
             # Add the required column and set as index
             conditions_std = [
-                x for x in self.model.fract_conditions if x != "[KEEP]"
+                x for x in self.model.fract_conditions if x != KEEP
             ]
             stds = {}
             for condition in conditions_std:
@@ -1584,7 +1587,7 @@ class MainController:
             values=[], size=self.main_window["-marker_class-"].Size
         )
         self.main_window["-marker_fractkey-"].update(
-            values=["[IDENTIFIER]"] + list(self.model.fract_info)
+            values=[IDENTIFIER] + list(self.model.fract_info)
         )
 
     def _handle_session_open(self):
@@ -1613,7 +1616,7 @@ class MainController:
             )
 
         self.main_window["-marker_fractkey-"].update(
-            values=["[IDENTIFIER]"] + list(self.model.fract_info),
+            values=[IDENTIFIER] + list(self.model.fract_info),
             value=self.model.marker_fractkey,
         )
         self.app_settings.last_session_dir = Path(filename).parent
@@ -1691,7 +1694,7 @@ class MainController:
         )
 
         self.main_window["-marker_fractkey-"].update(
-            values=["[IDENTIFIER]"] + list(self.model.fract_info)
+            values=[IDENTIFIER] + list(self.model.fract_info)
         )
 
         if self.model.fract_data["class"]:
@@ -1710,7 +1713,7 @@ class MainController:
         fract_buttons(self.main_window, False)
 
         self.main_window["-marker_fractkey-"].update(
-            values=["[IDENTIFIER]"], value=""
+            values=[IDENTIFIER], value=""
         )
 
     def _handle_reset_total_proteome(self):
@@ -1911,9 +1914,9 @@ def fract_set_keep(values, window, fract_tables):
     path = values["-fractionation_path-"]
     table = fract_tables[path]
     for pos in values["-fractionation_table-"]:
-        table[pos][1] = "[KEEP]"
-        table[pos][2] = "-"
-        table[pos][3] = "-"
+        table[pos][1] = KEEP
+        table[pos][2] = NA
+        table[pos][3] = NA
     fract_tables[path] = table
     window["-fractionation_table-"].update(values=fract_tables[path])
 
@@ -1983,9 +1986,9 @@ def fract_handle_set_identifier(
                 table[ident_pos[path][0]][3] = ""
             identifiers[path] = table[pos[0]][0]
             ident_pos[path] = pos
-            table[pos[0]][1] = "[IDENTIFIER]"
-            table[pos[0]][2] = "-"
-            table[pos[0]][3] = "-"
+            table[pos[0]][1] = IDENTIFIER
+            table[pos[0]][2] = NA
+            table[pos[0]][3] = NA
             input_tables[path] = table
             window["-fractionation_table-"].update(
                 values=input_tables[values["-fractionation_path-"]]
@@ -2081,7 +2084,7 @@ def tp_set_keep(values, window, tp_tables):
     path = values["-tp_path-"]
     table = tp_tables[path]
     for pos in values["-tp_table-"]:
-        table[pos][1] = "[KEEP]"
+        table[pos][1] = KEEP
     tp_tables[path] = table
     window["-tp_table-"].update(values=tp_tables[path])
 
@@ -2114,7 +2117,7 @@ def tp_set_identifier(values, window, tp_tables, tp_pos, tp_identifiers):
                 table[tp_pos[path][0]][1] = ""
             tp_identifiers[path] = table[pos[0]][0]
             tp_pos[path] = pos
-            table[pos[0]][1] = "[IDENTIFIER]"
+            table[pos[0]][1] = IDENTIFIER
             tp_tables[path] = table
             window["-tp_table-"].update(values=tp_tables[values["-tp_path-"]])
         else:
@@ -2178,7 +2181,7 @@ def check_markers(marker_sets: dict[str, MarkerSet]) -> bool:
         return False
 
     for marker_set in marker_sets.values():
-        if marker_set.identifier_col == "-" or marker_set.class_col == "-":
+        if marker_set.identifier_col == NA or marker_set.class_col == NA:
             return False
 
     return True
@@ -2224,10 +2227,10 @@ def refresh_markercols(window, values, marker_sets: dict[str, MarkerSet]):
         logger.exception("Error")
 
         window["-marker_key-"].update(
-            values=[], value="-", size=window["-marker_key-"].Size
+            values=[], value=NA, size=window["-marker_key-"].Size
         )
         window["-marker_class-"].update(
-            values=[], value="-", size=window["-marker_class-"].Size
+            values=[], value=NA, size=window["-marker_class-"].Size
         )
 
 
@@ -2412,7 +2415,7 @@ def create_marker_profiles(fract_data, key: str, fract_info, marker_list):
     fract_test = {}
 
     for condition in profiles:
-        if key == "[IDENTIFIER]":
+        if key == IDENTIFIER:
             profile_full = pd.merge(
                 profiles[condition],
                 marker_list,
@@ -2445,7 +2448,7 @@ def create_marker_profiles(fract_data, key: str, fract_info, marker_list):
 
     fract_marker_vis = {}
     for condition in profiles_vis:
-        if key == "[IDENTIFIER]":
+        if key == IDENTIFIER:
             fract_marker_vis[condition] = pd.merge(
                 profiles_vis[condition],
                 marker_list,

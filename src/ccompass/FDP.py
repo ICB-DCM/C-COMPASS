@@ -14,6 +14,7 @@ from scipy.stats import pearsonr
 from sklearn.preprocessing import MinMaxScaler
 
 from ._utils import unique_preserve_order
+from .core import IDENTIFIER, KEEP
 
 logger = logging.getLogger(__package__)
 
@@ -33,7 +34,7 @@ def create_dataset(
     - condition_id -> replicate_id -> DataFrame
     - all datasets have the same index (protein identifiers)
     """
-    conditions = [x for x in conditions if x not in ["", "[IDENTIFIER]"]]
+    conditions = [x for x in conditions if x not in ["", IDENTIFIER]]
 
     # collect all identifiers
     all_identifiers = list(
@@ -82,7 +83,7 @@ def create_dataset(
                     how="outer",
                 )
 
-                if condition == "[KEEP]":
+                if condition == KEEP:
                     if samplename + "_x" in data_new.columns:
                         # handle merge conflicts
                         for element in list(data_new.index):
@@ -129,9 +130,9 @@ def create_dataset(
         dataset[condition] = repdata
 
     data_keep = {}
-    if "[KEEP]" in dataset:
-        data_keep = dataset["[KEEP]"]
-        del dataset["[KEEP]"]
+    if KEEP in dataset:
+        data_keep = dataset[KEEP]
+        del dataset[KEEP]
 
     return dataset, data_keep, progress
 
@@ -528,7 +529,7 @@ def start_fract_data_processing(
         sample[1]
         for input_table in input_tables.values()
         for sample in input_table
-        if sample[1] != "[IDENTIFIER]"
+        if sample[1] != IDENTIFIER
     )
 
     # ---------------------------------------------------------------------
@@ -723,7 +724,7 @@ def sample_tables_are_valid(
 
     # validate samples table
     if not all(
-        any(sample[1] == "[IDENTIFIER]" for sample in input_table)
+        any(sample[1] == IDENTIFIER for sample in input_table)
         for input_table in input_tables.values()
     ):
         messagebox.showerror(
