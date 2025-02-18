@@ -42,9 +42,27 @@ class AppSettings(BaseModel):
     #: The maximum number of processes to use for parallel processing
     max_processes: int = 1
 
+    #: Recently used files (sessions)
+    recent_files: list[Path] = []
+
+    #: Number of recent files to keep
+    max_recent_files: int = 10
+
+    def add_recent_file(self, filepath: Path | str):
+        """Add a file to the list of recent files."""
+        filepath = Path(filepath)
+        if filepath in self.recent_files:
+            self.recent_files.remove(filepath)
+        self.recent_files.insert(0, filepath)
+        self.recent_files = self.recent_files[: self.max_recent_files]
+
     @field_serializer("last_session_dir")
     def serialize_last_session_dir(self, value: Path) -> str:
         return str(value)
+
+    @field_serializer("recent_files")
+    def serialize_recent_files(self, value: list[Path]) -> list[str]:
+        return list(map(str, value))
 
     @classmethod
     def load(cls, filepath: Path = None):
@@ -71,6 +89,11 @@ class AppSettings(BaseModel):
             filepath = config_filepath
 
         filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        # create a backup of the old settings
+        if filepath.exists():
+            backup_path = filepath.with_suffix(".bak")
+            backup_path.write_text(filepath.read_text())
 
         with open(filepath, "w") as f:
             yaml.safe_dump(self.model_dump(), f)

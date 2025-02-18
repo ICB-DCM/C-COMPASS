@@ -981,18 +981,35 @@ def create_conditional_comparison_frame() -> sg.Frame:
     )
 
 
-def create_main_window(model: SessionModel) -> sg.Window:
+def create_main_window(
+    model: SessionModel, app_settings: AppSettings
+) -> sg.Window:
     """Create the C-COMPASS main window."""
 
     # The main menu
+    recent_files = [
+        f"&{i}: {f}::recent_file_{i}"
+        for i, f in enumerate(app_settings.recent_files)
+    ]
     menu_def = [
-        ["Session", ["Save...", "Open...", "New", "Exit"]],
-        ["Help", ["About...", "Open Website", "Manual"]],
-        ["Settings", ["Settings..."]],
+        [
+            "&File",
+            [
+                "&New",
+                "&Open...",
+                "&Save As...",
+                "&Recent Files",
+                recent_files,
+                "---",
+                "E&xit",
+            ],
+        ],
+        ["&Help", ["&About...", "Open &Website", "&Manual"]],
+        ["&Settings", ["&Settings..."]],
     ]
 
     layout = [
-        [sg.Menu(menu_def, tearoff=False)],
+        [sg.Menu(menu_def, key="-menu-", tearoff=False)],
         [
             create_data_import_frame(
                 fract_paths=list(model.fract_indata),
@@ -1021,7 +1038,9 @@ class MainController:
     def __init__(self, model: SessionModel):
         self.model = model
         self.app_settings = AppSettings.load()
-        self.main_window = create_main_window(model=model)
+        self.main_window = create_main_window(
+            model=model, app_settings=self.app_settings
+        )
 
     def run(self):
         """Run the C-COMPASS application."""
@@ -1315,6 +1334,8 @@ class MainController:
                 self._handle_session_open()
             elif event == "New":
                 self._handle_session_new()
+            elif "::recent_file_" in event:
+                self._handle_session_open_recent(event)
             elif event == "About...":
                 from .about_dialog import show_about_dialog
 
@@ -1331,6 +1352,8 @@ class MainController:
                 from .settings_dialog import show_settings_dialog
 
                 show_settings_dialog(self.app_settings)
+            else:
+                logger.debug(f"Unhandled event: {event}")
 
             refresh_window(self.main_window, self.model.status)
 
@@ -1594,6 +1617,7 @@ class MainController:
         if not filename:
             return
 
+    def open_session(self, filename: str):
         try:
             with wait_cursor(self.main_window):
                 session_open(
@@ -1612,8 +1636,12 @@ class MainController:
             values=[IDENTIFIER] + list(self.model.fract_info),
             value=self.model.marker_fractkey,
         )
+
+        self.app_settings.add_recent_file(filename)
         self.app_settings.last_session_dir = Path(filename).parent
         self.app_settings.save()
+
+        self._update_recent_files()
 
     def _handle_session_save(self):
         """'Save session' was clicked."""
@@ -1627,11 +1655,34 @@ class MainController:
         if not filename:
             return
 
+        self.app_settings.add_recent_file(filename)
         self.app_settings.last_session_dir = Path(filename).parent
         self.app_settings.save()
 
         with wait_cursor(self.main_window):
             self.model.to_numpy(filename)
+
+        self._update_recent_files()
+
+    def _handle_session_open_recent(self, event: str):
+        """Open a session from the recent files list."""
+        file_idx = int(event.split("::")[-1].removeprefix("recent_file_"))
+        filename = self.app_settings.recent_files[file_idx]
+        self.open_session(filename)
+
+    def _update_recent_files(self):
+        """Update the recent files menu."""
+        menu = self.main_window["-menu-"]
+        menu_def = menu.MenuDefinition
+        recent_files = [
+            f"&{i}: {f}::recent_file_{i}"
+            for i, f in enumerate(self.app_settings.recent_files)
+        ]
+
+        # find "Recent Files" entry
+        assert menu_def[0][1][3] == "Recent Files"
+        menu_def[0][1][4] = recent_files
+        menu.update(menu_definition=menu_def)
 
     def _handle_process_total_proteome(self):
         """Button-click "process total proteome data"."""
