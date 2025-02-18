@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+from .visualize import marker_correlation_heatmap
+
 
 def draw_figure(canvas: sg.Canvas, figure: plt.Figure) -> FigureCanvasTkAgg:
     """Draw a figure on a canvas."""
@@ -25,25 +27,6 @@ def update_figure(
     figure_agg.get_tk_widget().forget()
     plt.close("all")
     return draw_figure(canvas, figure)
-
-
-def create_heatmap(dataframe: pd.DataFrame, title: str = None) -> plt.Figure:
-    """Create correlation heatmap."""
-    fig, ax = plt.subplots(figsize=(8, 8))  # Adjust the figure size as needed
-    cax = ax.matshow(dataframe, cmap="coolwarm", vmin=-1, vmax=1)
-    fig.colorbar(cax)
-    ax.set_xticks(range(len(dataframe.columns)))
-    ax.set_xticklabels(
-        dataframe.columns, rotation=90, fontsize=8
-    )  # Rotate x-axis labels 90 degrees
-    ax.set_yticks(range(len(dataframe.index)))
-    ax.set_yticklabels(dataframe.index, fontsize=8)
-    plt.subplots_adjust(
-        top=0.8, bottom=0.1, left=0.2
-    )  # Adjust the top and bottom margins
-    if title:
-        plt.title(title)
-    return fig
 
 
 def update_class_info(
@@ -165,7 +148,9 @@ def show_marker_correlation_dialog(
     window = _create_window(condition, correlation_matrices, class_info_dict)
 
     # Initial drawing
-    fig = create_heatmap(correlation_matrices[condition], title=condition)
+    fig = marker_correlation_heatmap(
+        correlation_matrices[condition], title=condition
+    )
     figure_agg = draw_figure(window["-CANVAS-"].TKCanvas, fig)
 
     while True:
@@ -176,7 +161,7 @@ def show_marker_correlation_dialog(
 
         if event == "-condition-":
             condition = values["-condition-"]
-            fig = create_heatmap(
+            fig = marker_correlation_heatmap(
                 correlation_matrices[condition], title=condition
             )
             figure_agg = update_figure(
@@ -190,7 +175,7 @@ def show_marker_correlation_dialog(
 
                 for cond, df in correlation_matrices.items():
                     # Save the plot
-                    fig = create_heatmap(df, title=cond)
+                    fig = marker_correlation_heatmap(df, title=cond)
                     fig.savefig(
                         os.path.join(folder_path, f"{cond}.pdf"), format="pdf"
                     )
