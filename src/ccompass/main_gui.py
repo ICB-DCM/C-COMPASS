@@ -1082,16 +1082,12 @@ class MainController:
                 else:
                     messagebox.showerror("Error", "Select (a) row(s).")
             elif event == "-fractionation_edit_identifier-":
-                if values["-fractionation_table-"]:
-                    self.model.fract_identifiers = fract_handle_set_identifier(
-                        values,
-                        self.main_window,
-                        self.model.fract_tables,
-                        self.model.fract_pos,
-                        self.model.fract_identifiers,
-                    )
-                else:
-                    messagebox.showerror("Error", "Select (a) row(s).")
+                fract_handle_set_identifier(
+                    values,
+                    self.main_window,
+                    self.model.fract_tables,
+                    self.model.fract_identifiers,
+                )
             elif event == "-fractionation_parameters-":
                 from .fractionation_parameters_dialog import show_dialog
 
@@ -1871,7 +1867,6 @@ def fract_add(
         table.append(namelist)
     model.fract_tables[filename] = table
     model.fract_indata[filename] = data
-    model.fract_pos[filename] = []
     model.fract_identifiers[filename] = []
 
     fract_refreshtable(window, table)
@@ -1886,7 +1881,6 @@ def fract_remove_file(values, window, model: SessionModel):
     filepath = values["-fractionation_path-"]
     del model.fract_tables[filepath]
     del model.fract_indata[filepath]
-    del model.fract_pos[filepath]
     del model.fract_identifiers[filepath]
 
     filepath = next(iter(model.fract_indata)) if model.fract_indata else []
@@ -1970,32 +1964,35 @@ def fract_handle_set_fraction(values, window, fract_tables):
 
 
 def fract_handle_set_identifier(
-    values, window, input_tables, ident_pos, identifiers
-):
+    values,
+    window: sg.Window,
+    input_tables: dict[str, list],
+    identifiers: dict[str, str],
+) -> None:
     """Set the identifier for the selected rows."""
-    pos = values["-fractionation_table-"]
-    if pos:
-        if len(pos) > 1:
-            messagebox.showerror("Error", "Please set only one Identifier!")
-        elif len(pos) == 1:
-            path = values["-fractionation_path-"]
-            table = input_tables[path]
-            if ident_pos[path]:
-                table[ident_pos[path][0]][1] = ""
-                table[ident_pos[path][0]][2] = ""
-                table[ident_pos[path][0]][3] = ""
-            identifiers[path] = table[pos[0]][0]
-            ident_pos[path] = pos
-            table[pos[0]][1] = IDENTIFIER
-            table[pos[0]][2] = NA
-            table[pos[0]][3] = NA
-            input_tables[path] = table
-            window["-fractionation_table-"].update(
-                values=input_tables[values["-fractionation_path-"]]
-            )
-        else:
-            messagebox.showerror("Error", "No sample selected.")
-    return identifiers
+    if not (pos := values["-fractionation_table-"]):
+        messagebox.showerror("Error", "No sample selected.")
+        return
+
+    if len(pos) > 1:
+        messagebox.showerror("Error", "Please set only one Identifier!")
+        return
+
+    path = values["-fractionation_path-"]
+    table = input_tables[path]
+
+    # unset condition, fraction and replicate for previous identifier row
+    prev_id_row = [i for i, row in enumerate(table) if row[1] == IDENTIFIER]
+    if prev_id_row:
+        assert len(prev_id_row) == 1
+        prev_id_row = prev_id_row[0]
+        table[prev_id_row][1:4] = ["", "", ""]
+
+    new_id_row_idx = pos[0]
+    identifiers[path] = table[new_id_row_idx][0]
+    table[new_id_row_idx][1:4] = [IDENTIFIER, NA, NA]
+
+    window["-fractionation_table-"].update(values=table)
 
 
 def is_float(element):

@@ -265,7 +265,9 @@ def start_total_proteome_processing(
     if any(
         sample[1] == "" for table in tp_tables.values() for sample in table
     ):
-        messagebox.showerror("Error", "At least one Condition is missing.")
+        messagebox.showerror(
+            "Error", "At least one row does not have a condition assigned."
+        )
         return tp_data, tp_info, tp_conditions, tp_icorr
 
     if window:

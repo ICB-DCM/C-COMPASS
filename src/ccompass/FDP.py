@@ -741,8 +741,8 @@ def sample_tables_are_valid(
     ):
         messagebox.showerror(
             "Error",
-            "At least one Condition is missing.\n"
-            "Please check for multiple import files.",
+            "At least one row does not have a condition assigned.\n"
+            "Please check for multiple imported files.",
         )
         return False
 
@@ -754,7 +754,7 @@ def sample_tables_are_valid(
         messagebox.showerror(
             "Error",
             "At least one Replicate is missing.\n"
-            "Please check for multiple import files.",
+            "Please check for multiple imported files.",
         )
         return False
 
@@ -766,7 +766,7 @@ def sample_tables_are_valid(
         messagebox.showerror(
             "Error",
             "At least one Fraction is missing.\n"
-            "Please check for multiple import files.",
+            "Please check for multiple imported files.",
         )
         return False
 

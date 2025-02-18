@@ -391,8 +391,6 @@ class SessionModel(BaseModel):
     #: Fractionation column assignments
     #  filepath => [column ID, condition, replicate, fraction]
     fract_tables: dict[Filepath, list[list[int | str]]] = {}
-    #: ??
-    fract_pos: dict[Filepath, list[int]] = {}
     #: Fractionation input files: filepath => DataFrame
     fract_indata: dict[Filepath, pd.DataFrame] = {}
     #: Identifier column of each fractionation data table:
@@ -525,7 +523,6 @@ class SessionModel(BaseModel):
 
     def reset_input_fract(self):
         self.fract_tables = {}
-        self.fract_pos = {}
         self.fract_data = {}
         self.fract_indata = {}
         self.fract_identifiers = {}

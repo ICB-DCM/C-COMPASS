@@ -29,6 +29,7 @@ from ccompass.main_gui import (
 from ccompass.MOA import class_comparisons, global_comparisons, stats_proteome
 from ccompass.TPP import start_total_proteome_processing
 
+# regexes to parse column IDs
 fract_id_rx = re.compile(
     r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)_Fr(?P<fraction>\d+)"
 )
@@ -77,6 +78,7 @@ def test_full():
     )
     fractionation_df = fractionation_df0.drop(columns=[class_id_col])
     marker_df = marker_df.apply(lambda x: x.astype(str).str.upper())
+
     # simulate user input
     sess = SessionModel()
     fract_filepath = "bla/fract.csv"
@@ -89,7 +91,6 @@ def test_full():
             if not col_id.startswith("Amount_")
         ]
     }
-    # TODO fract_pos??
     sess.fract_indata = {fract_filepath: fractionation_df}
     sess.fract_identifiers = {fract_filepath: protein_id_col}
 
