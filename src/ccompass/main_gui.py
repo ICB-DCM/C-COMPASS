@@ -586,21 +586,23 @@ def create_spatial_prediction_frame() -> sg.Frame:
                 ),
             ],  # or: 'ready'
             [
-                sg.Text("Lipidome Fractionation:"),
+                sg.Text("Lipidome Fractionation:", visible=False),
                 sg.Push(),
                 sg.Text(
                     "none",
                     key="-status_fract_lipid-",
                     text_color="black",
+                    visible=False,
                 ),
             ],
             [
-                sg.Text("Total Lipidome:"),
+                sg.Text("Total Lipidome:", visible=False),
                 sg.Push(),
                 sg.Text(
                     "none",
                     key="-status_total_lipid-",
                     text_color="black",
+                    visible=False,
                 ),
             ],
         ],
