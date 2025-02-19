@@ -341,7 +341,9 @@ class ComparisonModel(BaseModel):
 
 
 class MarkerSet(BaseModel):
-    """A set of markers with class annotations."""
+    """A single marker table with some ID and class annotations as provided by
+    the user.
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -360,6 +362,99 @@ class MarkerSet(BaseModel):
     @property
     def classes(self) -> list[str]:
         return self.df[self.class_col].unique().tolist()
+
+
+class FractDataset(BaseModel):
+    """A fractionation data table possibly containing multiple
+    conditions, fractions and replicates.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # TODO: consider moving GUI-specific data out of here
+    #: List of rows for the fractionation table in the GUI, referring to the
+    #  columns in `df`.
+    #  [column ID (str), condition (str), replicate (int), fraction (int)]
+    table: list[list[int | str]] = []
+    #: The actual fractionation data table
+    #  Rows are proteins, columns are samples.
+    #  Additional columns may be present.
+    df: pd.DataFrame = pd.DataFrame()
+
+    @property
+    def id_col(self) -> str:
+        """The column ID that contains the protein identifiers."""
+        for row in self.table:
+            if row[1] == IDENTIFIER:
+                return row[0]
+
+    @id_col.setter
+    def id_col(self, value: int | str):
+        """Set the column ID that contains the protein identifiers."""
+        # unset condition, fraction and replicate for previous identifier row
+        prev_id_row = [
+            i for i, row in enumerate(self.table) if row[1] == IDENTIFIER
+        ]
+        if prev_id_row:
+            assert len(prev_id_row) == 1
+            prev_id_row = prev_id_row[0]
+            self.table[prev_id_row][1:4] = ["", "", ""]
+
+        if isinstance(value, int):
+            # set by index
+            self.table[value][1:4] = [IDENTIFIER, NA, NA]
+        else:
+            # set by column ID
+            for row in self.table:
+                if row[0] == value:
+                    row[1:4] = [IDENTIFIER, NA, NA]
+                    break
+
+
+class TotalProtDataset(BaseModel):
+    """A total proteome data table possibly containing multiple conditions
+    and replicates.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # TODO: consider moving GUI-specific data out of here
+    #: List of rows for the total proteome table in the GUI, referring to the
+    #  columns in `df`.
+    table: list[list[str]] = []
+    #: The actual total proteome data table.
+    #  Rows are proteins, columns are samples.
+    #  Additional columns may be present.
+    df: pd.DataFrame = pd.DataFrame()
+
+    @property
+    def id_col(self) -> str:
+        """The column ID that contains the protein identifiers."""
+        for row in self.table:
+            if row[1] == IDENTIFIER:
+                return row[0]
+
+    @id_col.setter
+    def id_col(self, value: int | str):
+        """Set the column ID that contains the protein identifiers."""
+        # unset condition for previous identifier row
+        prev_id_row = [
+            i for i, row in enumerate(self.table) if row[1] == IDENTIFIER
+        ]
+        if prev_id_row:
+            assert len(prev_id_row) == 1
+            prev_id_row = prev_id_row[0]
+            self.table[prev_id_row][1] = ""
+
+        if isinstance(value, int):
+            # set by index
+            self.table[value][1] = IDENTIFIER
+        else:
+            # set by column ID
+            for row in self.table:
+                if row[0] == value:
+                    row[1] = IDENTIFIER
+                    break
 
 
 def fract_default():
@@ -413,14 +508,9 @@ class SessionModel(BaseModel):
 
     ## User input fractionation data
 
-    #: Fractionation column assignments
-    #  filepath => [column ID, condition, replicate, fraction]
-    fract_tables: dict[Filepath, list[list[int | str]]] = {}
-    #: Fractionation input files: filepath => DataFrame
-    fract_indata: dict[Filepath, pd.DataFrame] = {}
-    #: Identifier column of each fractionation data table:
-    #   filepath => column id
-    fract_identifiers: dict[Filepath, str] = {}
+    #: User-provided fractionation data tables
+    fract_input: dict[Filepath, FractDataset] = {}
+
     #: Fractionation preprocessing parameters.
     #  global/classification/visualization
     #  "global"|"class"|"vis" => option => value
@@ -484,13 +574,9 @@ class SessionModel(BaseModel):
 
     ## User input total proteome data
 
-    #: Total proteome column assignments
-    #  filepath => [column ID, condition]
-    tp_tables: dict[Filepath, list[list[str]]] = {}
-    #: Total proteome input files: filepath => DataFrame
-    tp_indata: dict[Filepath, pd.DataFrame] = {}
-    #: Identifier column for the total proteome: filepath => column id
-    tp_identifiers: dict[Filepath, str] = {}
+    #: User-provided total proteome tables
+    tp_input: dict[Filepath, TotalProtDataset] = {}
+
     #: Total proteome preprocessing parameters
     tp_preparams: dict[str, Any] = {"minrep": 2, "imputation": "normal"}
 
@@ -502,8 +588,6 @@ class SessionModel(BaseModel):
     tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     tp_icorr: dict = {}
-    #: ??
-    tp_conditions: list = []
     #: ??
     tp_info: pd.DataFrame = pd.DataFrame()
 
@@ -541,6 +625,16 @@ class SessionModel(BaseModel):
                 all("TPA" in r.metrics for r in self.results.values())
             ),
         )
+
+    @property
+    def fract_paths(self) -> list[str]:
+        """Return the paths of the fractionation data files."""
+        return list(self.fract_input.keys())
+
+    @property
+    def tp_paths(self) -> list[str]:
+        """Return the paths of the total proteome data files."""
+        return list(self.tp_input.keys())
 
     def reset_class_centric_changes(self):
         """Reset class-centric analysis results."""
@@ -593,18 +687,12 @@ class SessionModel(BaseModel):
         self.results = {}
 
     def reset_input_tp(self):
-        self.tp_tables = {}
+        self.tp_input = {}
         self.tp_data = {}
 
     def reset_input_fract(self):
-        self.fract_tables = {}
+        self.fract_input = {}
         self.fract_data = {}
-        self.fract_indata = {}
-        self.fract_identifiers = {}
-
-    def reset_intp(self):
-        self.tp_indata = {}
-        self.tp_identifiers = {}
 
     def reset_fract(self):
         self.fract_data = {"class": {}, "vis": {}}
@@ -615,7 +703,6 @@ class SessionModel(BaseModel):
     def reset_tp(self):
         self.tp_data = {}
         self.tp_info = pd.DataFrame()
-        self.tp_conditions = []
         self.tp_icorr = {}
 
     def reset_fractionation(self):

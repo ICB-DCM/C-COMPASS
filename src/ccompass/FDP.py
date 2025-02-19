@@ -14,15 +14,13 @@ from scipy.stats import pearsonr
 from sklearn.preprocessing import MinMaxScaler
 
 from ._utils import unique_preserve_order
-from .core import IDENTIFIER, KEEP
+from .core import IDENTIFIER, KEEP, FractDataset
 
 logger = logging.getLogger(__package__)
 
 
 def create_dataset(
-    input_data: dict[str, pd.DataFrame],
-    input_tables: dict[str, list[list[int | str]]],
-    identifier_columns: dict[str, str],
+    fract_input: dict[str, FractDataset],
     conditions: list[str],
     window: sg.Window,
     progress: float,
@@ -40,8 +38,7 @@ def create_dataset(
     all_identifiers = list(
         set(
             chain.from_iterable(
-                input_data[path][identifier_columns[path]]
-                for path in input_tables
+                dset.df[dset.id_col] for dset in fract_input.values()
             )
         )
     )
@@ -50,7 +47,7 @@ def create_dataset(
     stepsize = 10.0 / len(conditions)
     # dataset to be created
     #  condition_id -> replicate_id -> DataFrame
-    dataset: dict[str, dict[str, pd.DataFrame]] = {}
+    combined: dict[str, dict[str, pd.DataFrame]] = {}
 
     for condition in conditions:
         progress += stepsize
@@ -60,21 +57,19 @@ def create_dataset(
             window.read(timeout=50)
 
         data_new = pd.DataFrame(index=all_identifiers)
-        for path in input_tables:
+        for dset in fract_input.values():
             for (
                 samplename,
                 sample_condition,
                 sample_replicate,
                 sample_fraction,
-            ) in input_tables[path]:
+            ) in dset.table:
                 if sample_condition != condition:
                     continue
 
                 data = pd.DataFrame()
-                data[samplename] = input_data[path][samplename]
-                data.set_index(
-                    input_data[path][identifier_columns[path]], inplace=True
-                )
+                data[samplename] = dset.df[samplename]
+                data.set_index(dset.df[dset.id_col], inplace=True)
                 data_new = pd.merge(
                     data_new,
                     data,
@@ -127,18 +122,21 @@ def create_dataset(
                         right_index=True,
                     )
             repdata[rep] = data
-        dataset[condition] = repdata
+        combined[condition] = repdata
 
     data_keep = {}
-    if KEEP in dataset:
-        data_keep = dataset[KEEP]
-        del dataset[KEEP]
+    if KEEP in combined:
+        data_keep = combined[KEEP]
+        del combined[KEEP]
 
-    return dataset, data_keep, progress
+    return combined, data_keep, progress
 
 
 def pre_post_scaling(
-    data, how: Literal["minmax", "area"], window: sg.Window, progress: int
+    data: dict[str, dict[str, pd.DataFrame]],
+    how: Literal["minmax", "area"],
+    window: sg.Window,
+    progress: int,
 ):
     """Scale data using MinMaxScaler or area normalization.
 
@@ -517,19 +515,17 @@ def create_fract_processing_window() -> sg.Window:
 
 
 def start_fract_data_processing(
-    input_tables: dict[str, list[list[int | str]]],
+    fract_input: dict[str, FractDataset],
     preparams: dict[str, dict],
-    identifiers: dict[str, str],
-    fract_indata: dict[str, pd.DataFrame],
     window: sg.Window | None = None,
 ):
     """Start fractionation data processing."""
     # collect conditions (including [KEEP])
     conditions = unique_preserve_order(
-        sample[1]
-        for input_table in input_tables.values()
-        for sample in input_table
-        if sample[1] != IDENTIFIER
+        row[1]
+        for dataset in fract_input.values()
+        for row in dataset.table
+        if row[1] != IDENTIFIER
     )
 
     # ---------------------------------------------------------------------
@@ -540,9 +536,7 @@ def start_fract_data_processing(
         window.read(timeout=50)
 
     dataset, protein_info, progress = create_dataset(
-        fract_indata,
-        input_tables,
-        identifiers,
+        fract_input,
         conditions,
         window,
         progress,
@@ -785,14 +779,12 @@ def sample_tables_are_valid(
 
 
 def FDP_exec(
-    input_tables: dict[str, list[list[int | str]]],
+    fract_input: dict[str, FractDataset],
     preparams: dict[str, dict],
-    identifiers: dict[str, str],
     data_ways: dict[str, dict[str, pd.DataFrame]],
     std_ways: dict[str, dict[str, pd.DataFrame]],
     protein_info: dict[str, pd.DataFrame],
     conditions_trans: list[str],
-    fract_indata: dict[str, pd.DataFrame],
 ):
     """Execute the Fractionation Data Processing."""
     window = create_fract_processing_window()
@@ -808,7 +800,7 @@ def FDP_exec(
             window["--cancel--"].update(disabled=True)
 
             if not sample_tables_are_valid(
-                input_tables,
+                {k: dset.table for k, dset in fract_input.items()},
                 min_replicates=int(preparams["global"]["minrep"][0]),
             ):
                 break
@@ -819,10 +811,8 @@ def FDP_exec(
                 protein_info,
                 conditions_trans,
             ) = start_fract_data_processing(
-                input_tables,
+                fract_input,
                 preparams,
-                identifiers,
-                fract_indata,
                 window,
             )
             break

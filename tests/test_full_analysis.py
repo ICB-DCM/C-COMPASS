@@ -14,9 +14,11 @@ from ccompass.core import (
     IDENTIFIER,
     KEEP,
     NA,
+    FractDataset,
     MarkerSet,
     NeuralNetworkParametersModel,
     SessionModel,
+    TotalProtDataset,
 )
 from ccompass.FDP import start_fract_data_processing
 from ccompass.main_gui import (
@@ -81,19 +83,28 @@ def test_full():
     marker_df = marker_df.apply(lambda x: x.astype(str).str.upper())
 
     # simulate user input
-    sess = SessionModel()
     fract_filepath = "bla/fract.csv"
     marker_filepath = "bla/marker.csv"
     total_prot_filepath = "bla/total_prot.csv"
-    sess.fract_tables = {
-        fract_filepath: [
+    fract_dset = FractDataset(
+        df=fractionation_df,
+        table=[
             fract_col_id_to_row(col_id)
             for col_id in fractionation_df
             if not col_id.startswith("Amount_")
-        ]
-    }
-    sess.fract_indata = {fract_filepath: fractionation_df}
-    sess.fract_identifiers = {fract_filepath: protein_id_col}
+        ],
+    )
+    tp_dset = TotalProtDataset(
+        df=total_prot_df,
+        table=[
+            tp_col_id_to_row(col_id)
+            for col_id in total_prot_df
+            if not col_id.startswith("RelativeRegulation")
+        ],
+    )
+    sess = SessionModel(
+        fract_input={fract_filepath: fract_dset},
+    )
 
     # process fractionation data
     (
@@ -102,10 +113,8 @@ def test_full():
         sess.fract_info,
         sess.fract_conditions,
     ) = start_fract_data_processing(
-        sess.fract_tables,
+        sess.fract_input,
         sess.fract_preparams,
-        sess.fract_identifiers,
-        sess.fract_indata,
     )
 
     # process marker data
@@ -141,26 +150,15 @@ def test_full():
     logger.info("Full profiles created")
 
     # process total proteome data
-    sess.tp_tables = {
-        total_prot_filepath: [
-            tp_col_id_to_row(col_id)
-            for col_id in total_prot_df
-            if not col_id.startswith("RelativeRegulation")
-        ]
-    }
-    sess.tp_indata = {total_prot_filepath: total_prot_df}
-    sess.tp_identifiers = {total_prot_filepath: protein_id_col}
+    sess.tp_input = {total_prot_filepath: tp_dset}
 
-    sess.tp_data, sess.tp_info, sess.tp_conditions, sess.tp_icorr = (
+    sess.tp_data, sess.tp_info, sess.tp_icorr = (
         start_total_proteome_processing(
-            sess.tp_data,
-            sess.tp_tables,
+            sess.tp_input,
             sess.tp_preparams,
-            sess.tp_identifiers,
+            sess.tp_data,
             sess.tp_info,
             sess.tp_icorr,
-            sess.tp_indata,
-            sess.tp_conditions,
         )
     )
 
@@ -209,7 +207,7 @@ def test_full():
     # check that we have results for all conditions
     conditions = {
         row[1]
-        for row in next(iter(sess.fract_tables.values()))
+        for row in next(iter(sess.fract_input.values())).table
         if row[1] not in (IDENTIFIER, KEEP)
     }
     assert set(sess.results.keys()) == conditions
