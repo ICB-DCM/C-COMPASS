@@ -130,28 +130,20 @@ def calculate_common_indices(df1, df2):
     return df1.index.intersection(df2.index)
 
 
-def impute_data(df: pd.DataFrame, colname: str, newcol: str):
-    """Impute missing values in a DataFrame column using a normal distribution."""
-    s = 1.8
-    w = 0.3
+def impute_data(x: pd.Series, s: float = 1.8, w: float = 0.3) -> pd.Series:
+    """Impute missing values in a Series column using a normal distribution."""
 
-    mean = np.mean(
-        df[colname].replace(-np.inf, np.nan)
-    )  # Exclude 0s from mean calculation
-    std = np.std(
-        df[colname].replace(-np.inf, np.nan)
-    )  # Exclude 0s from std calculation
-    mean_imp = mean - s * std  # Use your specified 's' value
-    sigma = std * w  # Use your specified 'w' value
+    # Exclude 0s, compute mean and stddev
+    x = x.replace(-np.inf, np.nan)
+    mean = np.nanmean(x)
+    std = np.nanstd(x)
 
-    # Apply the imputation for 0 values
-    df[newcol] = df[colname].apply(
-        lambda x: np.random.normal(mean_imp, sigma, 1)[0]
-        if x == -np.inf
-        else x
-    )
+    mean_imp = mean - s * std
+    sigma = std * w
 
-    return df
+    nan_mask = x.isna()
+    x.loc[nan_mask] = np.random.normal(mean_imp, sigma, nan_mask.sum())
+    return x
 
 
 def stats_proteome(
@@ -695,16 +687,23 @@ def compute_class_centric_changes(
     nCC_sums[nCC_sums == 0] = 1
     result.metrics[nCC_cols] = result.metrics[nCC_cols].div(nCC_sums, axis=0)
 
-    ## add CPA
+    ## add CPA, nCPA, ...
     logger.info("adding CPA...")
     for classname in result.classnames:
-        result.metrics["CPA_" + classname] = (
+        cpa = result.metrics["CPA_" + classname] = (
             result.metrics["CC_" + classname] * result.metrics["TPA"]
         )
 
-        result.metrics["nCPA_" + classname] = (
+        ncpa = result.metrics["nCPA_" + classname] = (
             result.metrics["nCC_" + classname] * result.metrics["TPA"]
         )
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_cpa = result.metrics["CPA_log_" + classname] = np.log2(cpa)
+            log_ncpa = result.metrics["nCPA_log_" + classname] = np.log2(ncpa)
+
+        result.metrics[f"CPA_imp_{classname}"] = impute_data(log_cpa)
+        result.metrics[f"nCPA_imp_{classname}"] = impute_data(log_ncpa)
 
 
 def class_centric_comparison(
@@ -807,41 +806,10 @@ def class_centric_comparison(
 
     logger.info("calculating CPA values...")
 
-    # TODO: half of this is result-specific, not comparison-specific.
-    #  This should be moved elsewhere, so results are constant in here,
-    #  to facilitate parallelization.
     for classname in result1.classnames:
-        with np.errstate(divide="ignore", invalid="ignore"):
-            metrics_own["CPA_log_" + classname] = np.log2(
-                metrics_own["CPA_" + classname]
-            )
-            metrics_other["CPA_log_" + classname] = np.log2(
-                metrics_other["CPA_" + classname]
-            )
-            metrics_own["nCPA_log_" + classname] = np.log2(
-                metrics_own["nCPA_" + classname]
-            )
-            metrics_other["nCPA_log_" + classname] = np.log2(
-                metrics_other["nCPA_" + classname]
-            )
-
-        metrics_own = impute_data(
-            metrics_own, "CPA_log_" + classname, "CPA_imp_" + classname
-        )
-        metrics_other = impute_data(
-            metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
-        )
-
         comparison.metrics["CFC_" + classname] = (
             metrics_other["CPA_imp_" + classname]
             - metrics_own["CPA_imp_" + classname]
-        )
-
-        metrics_own = impute_data(
-            metrics_own, "nCPA_log_" + classname, "nCPA_imp_" + classname
-        )
-        metrics_other = impute_data(
-            metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
         )
 
         comparison.metrics["nCFC_" + classname] = (
