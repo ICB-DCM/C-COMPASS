@@ -19,13 +19,13 @@ from ccompass.core import (
     NeuralNetworkParametersModel,
     SessionModel,
     TotalProtDataset,
-)
-from ccompass.FDP import start_fract_data_processing
-from ccompass.main_gui import (
     create_fullprofiles,
     create_identity_conversion,
     create_marker_profiles,
     create_markerlist,
+)
+from ccompass.FDP import start_fract_data_processing
+from ccompass.main_gui import (
     logger,
 )
 from ccompass.MOA import class_comparisons, global_comparisons, stats_proteome
@@ -126,7 +126,7 @@ def test_full():
         )
     }
     sess.marker_fractkey = gene_id_col
-    sess.marker_conv = create_identity_conversion(sess.marker_sets)
+    sess.marker_conv = create_identity_conversion(sess.marker_sets.values())
 
     sess.marker_list = create_markerlist(
         sess.marker_sets,

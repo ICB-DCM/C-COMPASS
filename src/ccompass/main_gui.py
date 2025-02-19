@@ -25,6 +25,10 @@ from .core import (
     SessionModel,
     SessionStatusModel,
     TotalProtDataset,
+    create_fullprofiles,
+    create_identity_conversion,
+    create_marker_profiles,
+    create_markerlist,
     write_class_changes_reports,
     write_comparison_reports,
     write_global_changes_reports,
@@ -2271,93 +2275,7 @@ def marker_setclass(values, marker_sets):
     """Set the class column for the selected marker list."""
     marker_filename = values["-marker_list-"][0]
     marker_sets[marker_filename].class_col = values["-marker_class-"]
-    return create_identity_conversion(marker_sets)
-
-
-def create_identity_conversion(
-    marker_sets: dict[str, MarkerSet],
-) -> dict[str, str]:
-    """Create dummy conversion dictionary for classes."""
-    return {
-        classname: classname
-        for marker_set in marker_sets.values()
-        for classname in marker_set.classes
-    }
-
-
-def create_markerlist(
-    marker_sets: dict[str, MarkerSet],
-    marker_conv: dict[str, str | float],
-    what: Literal["unite", "intersect"],
-    how: Literal["majority", "exclude"],
-) -> pd.DataFrame:
-    """Create a uniform marker list from multiple marker sets.
-
-    Create a uniform marker list from multiple marker sets, accounting for
-    any filtering or renaming.
-
-    :return: A DataFrame with the unified marker list with marker names as
-        index ('name') and a 'class' column.
-    """
-    if what not in ["unite", "intersect"]:
-        raise ValueError(f"Invalid 'what' parameter: {what}")
-    if how not in ["majority", "exclude"]:
-        raise ValueError(f"Invalid 'how' parameter: {how}")
-
-    # handle ID conversion, normalize column names
-    combined = pd.DataFrame(columns=["name"])
-    counter = 1
-    for marker_set in marker_sets.values():
-        id_col = marker_set.identifier_col
-        class_col = marker_set.class_col
-        cur_df = marker_set.df[[id_col, class_col]].copy()
-        cur_df.rename(
-            columns={
-                id_col: "name",
-                class_col: f"class{counter}",
-            },
-            inplace=True,
-        )
-        class_col = f"class{counter}"
-        cur_df.replace(
-            {class_col: marker_conv},
-            inplace=True,
-        )
-        cur_df.replace(
-            {class_col: {r"^\s*$": np.nan}},
-            regex=True,
-            inplace=True,
-        )
-        cur_df = cur_df[cur_df[class_col].notna()]
-
-        combined = pd.merge(combined, cur_df, on="name", how="outer")
-        counter += 1
-
-    combined.set_index("name", inplace=True)
-
-    # union or intersection of markers?
-    if what == "unite":
-        pass
-    elif what == "intersect":
-        combined.dropna(inplace=True)
-
-    # resolve conflicting class assignments
-    # majority: assign the most frequent class
-    # exclude: exclude the marker from the list
-    if how == "majority":
-        combined = pd.DataFrame(combined.mode(axis=1, dropna=True)[0]).rename(
-            columns={0: "class"}
-        )
-    elif how == "exclude":
-        combined = combined.mode(axis=1, dropna=True).fillna(np.nan)
-        if 1 in combined.columns:
-            combined = pd.DataFrame(combined[combined[1].isnull()][0]).rename(
-                columns={0: "class"}
-            )
-        else:
-            combined.rename(columns={0: "class"}, inplace=True)
-
-    return combined
+    return create_identity_conversion(marker_sets.values())
 
 
 def session_open(window: sg.Window, filename: str, model: SessionModel):
@@ -2392,91 +2310,6 @@ def session_open(window: sg.Window, filename: str, model: SessionModel):
 
         event, values = window.read(timeout=50)
         refresh_markercols(window, values, model.marker_sets)
-
-
-def create_marker_profiles(fract_data, key: str, fract_info, marker_list):
-    """Create marker profiles for classification and visualization."""
-    # create marker profiles for classification
-    profiles = {}
-    for condition in fract_data["class"]:
-        profiles[condition] = copy.deepcopy(fract_data["class"][condition])
-
-    # profiles with known class
-    fract_marker = {}
-    # profiles with unknown class
-    fract_test = {}
-
-    for condition in profiles:
-        if key == IDENTIFIER:
-            profile_full = pd.merge(
-                profiles[condition],
-                marker_list,
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-        else:
-            # add identifier column
-            profiles[condition] = pd.merge(
-                profiles[condition],
-                fract_info[key].astype(str).map(str.upper),
-                left_index=True,
-                right_index=True,
-            )
-            profile_full = pd.merge(
-                profiles[condition],
-                marker_list,
-                left_on=key,
-                right_index=True,
-                how="left",
-            ).drop(key, axis=1)
-        fract_marker[condition] = profile_full.dropna(subset=["class"])
-        fract_test[condition] = profile_full[profile_full["class"].isna()]
-
-    # create marker profiles for visualization
-    profiles_vis = {}
-    for condition in fract_data["vis"]:
-        profiles_vis[condition] = copy.deepcopy(fract_data["vis"][condition])
-
-    fract_marker_vis = {}
-    for condition in profiles_vis:
-        if key == IDENTIFIER:
-            fract_marker_vis[condition] = pd.merge(
-                profiles_vis[condition],
-                marker_list,
-                left_index=True,
-                right_index=True,
-            )
-        else:
-            profiles_vis[condition] = pd.merge(
-                profiles_vis[condition],
-                fract_info[key],
-                left_index=True,
-                right_index=True,
-            )
-            fract_marker_vis[condition] = (
-                pd.merge(
-                    profiles_vis[condition],
-                    marker_list,
-                    left_on=key,
-                    right_index=True,
-                    how="left",
-                )
-                .drop(key, axis=1)
-                .dropna(subset=["class"])
-            )
-    return fract_marker, fract_marker_vis, fract_test
-
-
-def create_fullprofiles(
-    fract_marker: dict[str, pd.DataFrame], fract_test: dict[str, pd.DataFrame]
-) -> dict[str, pd.DataFrame]:
-    fract_full = {}
-    for condition in fract_test:
-        fract_full[condition] = pd.concat(
-            [fract_test[condition], fract_marker[condition]]
-        )
-    return fract_full
 
 
 def enable_markersettings(window: sg.Window, status: SessionStatusModel):

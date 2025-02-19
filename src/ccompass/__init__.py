@@ -1,8 +1,10 @@
 """C-COMPASS
 
 
-Acronyms:
+Acronyms / terms:
 
+* profile: here, a set of protein amounts across different fractions or
+  compartments.
 * CA: class abundance (median of protein amounts of a given class)
 * CC: class contribution (contribution of a compartment to a profile,
   CC ∈ [0, 1])
