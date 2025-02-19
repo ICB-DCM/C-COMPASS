@@ -2,6 +2,7 @@
 
 import logging
 import math
+from itertools import chain
 from tkinter import messagebox
 from typing import Any, Literal
 
@@ -11,39 +12,43 @@ import pandas as pd
 from scipy.stats import pearsonr
 
 from ._utils import unique_preserve_order
-from .core import IDENTIFIER, KEEP
+from .core import IDENTIFIER, KEEP, TotalProtDataset
 
 logger = logging.getLogger(__package__)
 
 
 def create_dataset(
-    tp_indata, tp_tables, tp_identifiers, tp_conditions, window
+    tp_input: dict[str, TotalProtDataset], window: sg.Window | None
 ):
-    tp_conditions.remove(IDENTIFIER)
+    tp_conditions = unique_preserve_order(
+        sample[1]
+        for dset in tp_input.values()
+        for sample in dset.table
+        if sample[1] != IDENTIFIER
+    )
 
-    idents = []
-    for path in tp_tables:
-        idents = list(
-            set(idents + list(tp_indata[path][tp_identifiers[path]]))
+    identifiers = list(
+        set(
+            chain.from_iterable(
+                dset.df[dset.id_col] for dset in tp_input.values()
+            )
         )
-
-    dataset = {}
+    )
+    combined = {}
 
     for condition in tp_conditions:
-        data_new = pd.DataFrame(index=idents)
-        for path in tp_tables:
+        data_new = pd.DataFrame(index=identifiers)
+        for dset in tp_input.values():
             if window:
                 window["--status2--"].update(condition)
                 window.read(timeout=50)
             replicate = 1
-            for sample in tp_tables[path]:
+            for sample in dset.table:
                 data = pd.DataFrame()
                 if sample[1] == condition:
                     samplename = sample[0]
-                    data[samplename] = tp_indata[path][sample[0]]
-                    data.set_index(
-                        tp_indata[path][tp_identifiers[path]], inplace=True
-                    )
+                    data[samplename] = dset.df[samplename]
+                    data.set_index(dset.df[dset.id_col], inplace=True)
                     data_new = pd.merge(
                         data_new,
                         data,
@@ -86,24 +91,15 @@ def create_dataset(
             )
             data_new = data_new.apply(pd.to_numeric, errors="coerce")
 
-        dataset[condition] = data_new
+        combined[condition] = data_new
 
-    if KEEP in dataset:
-        data_keep = dataset[KEEP]
-        del dataset[KEEP]
+    if KEEP in combined:
+        data_keep = combined[KEEP]
+        del combined[KEEP]
     else:
         data_keep = pd.DataFrame()
 
-    return dataset, data_keep, tp_conditions
-
-
-def filter_missing(data, mincount, window):
-    for condition in data:
-        if window:
-            window["--status2--"].update(condition)
-            window.read(timeout=50)
-        data[condition].dropna(thresh=mincount, inplace=True)
-    return data
+    return combined, data_keep
 
 
 def calculate_correlations(data):
@@ -244,31 +240,28 @@ def create_window() -> sg.Window:
 
 
 def start_total_proteome_processing(
-    tp_data: dict[str, pd.DataFrame],
-    tp_tables: dict[str, list[tuple[str, str]]],
+    tp_input: dict[str, TotalProtDataset],
     tp_preparams: dict[str, Any],
-    tp_identifiers: dict[str, str],
+    tp_data: dict[str, pd.DataFrame],
     tp_info: pd.DataFrame,
     tp_icorr: dict,
-    tp_indata: dict[str, pd.DataFrame],
-    tp_conditions: list,
     window: sg.Window | None = None,
-):
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict]:
     # validate input
     if not all(
-        any(IDENTIFIER == sample[1] for sample in table)
-        for table in tp_tables.values()
+        any(IDENTIFIER == sample[1] for sample in dset.table)
+        for dset in tp_input.values()
     ):
         messagebox.showerror("Error", "At least one Identifier is missing.")
-        return tp_data, tp_info, tp_conditions, tp_icorr
+        return tp_data, tp_info, tp_icorr
 
     if any(
-        sample[1] == "" for table in tp_tables.values() for sample in table
+        sample[1] == "" for dset in tp_input.values() for sample in dset.table
     ):
         messagebox.showerror(
             "Error", "At least one row does not have a condition assigned."
         )
-        return tp_data, tp_info, tp_conditions, tp_icorr
+        return tp_data, tp_info, tp_icorr
 
     if window:
         # deactivate buttons
@@ -281,14 +274,8 @@ def start_total_proteome_processing(
         window["--status1--"].update(value="creating dataset...")
         window.read(timeout=50)
 
-    conditions = unique_preserve_order(
-        sample[1] for table in tp_tables.values() for sample in table
-    )
-    tp_data, tp_info, tp_conditions = create_dataset(
-        tp_indata,
-        tp_tables,
-        tp_identifiers,
-        conditions,
+    tp_data, tp_info = create_dataset(
+        tp_input,
         window,
     )
 
@@ -300,7 +287,8 @@ def start_total_proteome_processing(
         window["--progress--"].update(progress)
         window.read(timeout=50)
 
-    tp_data = filter_missing(tp_data, tp_preparams["minrep"], window)
+    for df in tp_data.values():
+        df.dropna(thresh=tp_preparams["minrep"], inplace=True)
 
     # ---------------------------------------------------------------------
     logger.info("transforming data...")
@@ -349,19 +337,16 @@ def start_total_proteome_processing(
         window["--progress--"].update(progress)
         window.read(timeout=50)
 
-    return tp_data, tp_info, tp_conditions, tp_icorr
+    return tp_data, tp_info, tp_icorr
 
 
 def total_proteome_processing_dialog(
-    tp_data: dict[str, pd.DataFrame],
-    tp_tables: dict[str, list[tuple[str, str]]],
+    tp_input: dict[str, TotalProtDataset],
     tp_preparams: dict[str, Any],
-    tp_identifiers: dict[str, str],
+    tp_data: dict[str, pd.DataFrame],
     tp_info: pd.DataFrame,
     tp_icorr: dict,
-    tp_indata: dict[str, pd.DataFrame],
-    tp_conditions: list,
-):
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict]:
     """Show the total proteome processing dialog."""
     window = create_window()
 
@@ -372,21 +357,16 @@ def total_proteome_processing_dialog(
             break
 
         if event == "--start--":
-            tp_data, tp_info, tp_conditions, tp_icorr = (
-                start_total_proteome_processing(
-                    tp_data,
-                    tp_tables,
-                    tp_preparams,
-                    tp_identifiers,
-                    tp_info,
-                    tp_icorr,
-                    tp_indata,
-                    tp_conditions,
-                    window,
-                )
+            tp_data, tp_info, tp_icorr = start_total_proteome_processing(
+                tp_input,
+                tp_preparams,
+                tp_data,
+                tp_info,
+                tp_icorr,
+                window,
             )
             break
 
     window.close()
 
-    return tp_data, tp_info, tp_conditions, tp_icorr
+    return tp_data, tp_info, tp_icorr
