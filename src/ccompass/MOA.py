@@ -811,15 +811,22 @@ def class_centric_comparison(
     #  This should be moved elsewhere, so results are constant in here,
     #  to facilitate parallelization.
     for classname in result1.classnames:
-        metrics_own["CPA_log_" + classname] = np.log2(
-            metrics_own["CPA_" + classname]
-        )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            metrics_own["CPA_log_" + classname] = np.log2(
+                metrics_own["CPA_" + classname]
+            )
+            metrics_other["CPA_log_" + classname] = np.log2(
+                metrics_other["CPA_" + classname]
+            )
+            metrics_own["nCPA_log_" + classname] = np.log2(
+                metrics_own["nCPA_" + classname]
+            )
+            metrics_other["nCPA_log_" + classname] = np.log2(
+                metrics_other["nCPA_" + classname]
+            )
+
         metrics_own = impute_data(
             metrics_own, "CPA_log_" + classname, "CPA_imp_" + classname
-        )
-
-        metrics_other["CPA_log_" + classname] = np.log2(
-            metrics_other["CPA_" + classname]
         )
         metrics_other = impute_data(
             metrics_other, "CPA_log_" + classname, "CPA_imp_" + classname
@@ -830,15 +837,8 @@ def class_centric_comparison(
             - metrics_own["CPA_imp_" + classname]
         )
 
-        metrics_own["nCPA_log_" + classname] = np.log2(
-            metrics_own["nCPA_" + classname]
-        )
         metrics_own = impute_data(
             metrics_own, "nCPA_log_" + classname, "nCPA_imp_" + classname
-        )
-
-        metrics_other["nCPA_log_" + classname] = np.log2(
-            metrics_other["nCPA_" + classname]
         )
         metrics_other = impute_data(
             metrics_other, "nCPA_log_" + classname, "nCPA_imp_" + classname
