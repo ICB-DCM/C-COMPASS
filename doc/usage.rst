@@ -21,20 +21,33 @@ Usage Guide
   * One column per total proteome sample.
   * One column containing the **same unique identifier** as used in the fractionation samples (see above).
 
-
-Sample data files are available for download at |sample_data|.
-
-.. |sample_data| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.13901167.svg
-  :target: https://doi.org/10.5281/zenodo.13901167
-
-
-
 Additional Notes
 ----------------
 
 * All input files must be **tab-delimited** (.tsv or .txt).
 * If using an export file from **Perseus**, ensure that the file does not contain a second-layer header.
 * Input datasets (for both fractionation and total proteome) can be stored in the same file or split across different files. If they are split, ensure that the **identifiers** are consistent.
+
+
+Sample Data
+-----------
+
+Sample data files are available for download at |sample_data|.
+
+.. |sample_data| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.13901167.svg
+  :target: https://doi.org/10.5281/zenodo.13901167
+
+Computation time for this dataset using a single core on a standard desktop
+computer:
+
+* Preprocessing of Gradient and TotalProteome Data takes only up to a few
+  minutes.
+* Neural Network training for a dataset with three conditions and four
+  replicates takes around 1-2h.
+* Calculation of static predictions (per condition) takes a few minutes.
+* Calculation of conditional comparisons (global comparison) takes up to
+  30min.
+* Calculation of class-centric statistics and comparison takes up to 10 min.
 
 
 1. Graphical User Interface (GUI)

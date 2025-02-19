@@ -62,27 +62,14 @@ If you encounter any issues during installation, please refer to the
 
 See also https://c-compass.readthedocs.io/en/latest/usage.html.
 
-### Graphical User Interface (GUI)
-
 * The GUI will guide you through the process of loading and analyzing your
   proteomics dataset, including fractionation samples and Total Proteome
   samples.
 * Follow the on-screen instructions to perform the analysis and configure
   settings only if required
 * Standard parameters should fit for the majority of experiments.
-  You **don't need to change the default settings!**
+  You don't need to change the default settings.
 
-### Computation time (on a standard desktop computer)
-
-* Preprocessing of Gradient and TotalProteome Data takes only up to a few
-  minutes.
-* Neural Network training for a dataset with three conditions and four
-  replicates takes around 1-2h.
-* Calculation of static predictions (per condition) takes a few minutes.
-* Calculation of conditional comparisons (global comparison) takes up to
-  30min. (for the above-mentioned dataset)
-* Calculation of class-centric statistics and comparison takes up to 10 min.
-  (for the above-mentioned dataset)
 
 ## Contributing
 
