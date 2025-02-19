@@ -26,12 +26,18 @@ Further documentation is available at https://c-compass.readthedocs.io/en/latest
 ### Single-file executables
 
 Single-file executables that don't require a Python installation are available
-on the release page for Linux, Windows, and MacOS. Download the appropriate
-file for your operating system and run it.
+on the [release page](https://github.com/ICB-DCM/C-COMPASS/releases)
+for Linux, Windows, and macOS.
+Download the appropriate file for your operating system and run it.
 
 On Windows, make sure to install the Microsoft C and C++ (MSVC) runtime
 libraries before ([further information](ttps://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170),
 [direct download](https://aka.ms/vs/17/release/vc_redist.x64.exe)).
+
+Unreleased versions can be downloaded from
+[![Build and Package](https://github.com/ICB-DCM/C-COMPASS/actions/workflows/bundle.yml/badge.svg?branch=main)](https://github.com/ICB-DCM/C-COMPASS/actions/workflows/bundle.yml).
+(Click on the latest run, then choose the version for your operating system
+from the "Artifacts" section. Requires a GitHub account.)
 
 ### Via pip
 
