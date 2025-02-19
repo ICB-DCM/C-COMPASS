@@ -1,6 +1,7 @@
 """Internal utility functions."""
 
 import logging
+import multiprocessing
 import os
 import platform
 import sys
@@ -89,3 +90,11 @@ def stdout_to_logger(logger: logging.Logger, log_level=logging.INFO):
         yield
     finally:
         sys.stdout = old_stdout
+
+
+def get_mp_ctx() -> multiprocessing.context.BaseContext:
+    """Get the multiprocessing context."""
+    if platform.system() == "Windows":
+        return multiprocessing.get_context("spawn")
+    else:
+        return multiprocessing.get_context("forkserver")

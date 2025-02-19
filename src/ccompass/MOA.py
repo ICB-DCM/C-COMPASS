@@ -1,14 +1,13 @@
 """Multiple organelle analysis."""
 
 import logging
-import multiprocessing as mp
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.stats import ttest_ind
 
-from ._utils import PrefixFilter
+from ._utils import PrefixFilter, get_mp_ctx
 from .core import KEEP, ComparisonModel, ResultsModel, XYZ_Model
 
 logger = logging.getLogger(__package__)
@@ -442,7 +441,8 @@ def global_comparisons(
         if con_1 != con_2
     ]
 
-    with mp.Pool(processes=max_processes) as pool:
+    ctx = get_mp_ctx()
+    with ctx.Pool(processes=max_processes) as pool:
         comparisons = dict(pool.map(_global_comparison_entry, arg_lists))
 
     logger.info("Global changes calculated.")

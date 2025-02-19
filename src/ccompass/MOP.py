@@ -19,7 +19,12 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from ._utils import PrefixFilter, get_ccmps_data_directory, stdout_to_logger
+from ._utils import (
+    PrefixFilter,
+    get_ccmps_data_directory,
+    get_mp_ctx,
+    stdout_to_logger,
+)
 from .core import (
     NeuralNetworkParametersModel,
     TrainingRound_Model,
@@ -277,7 +282,8 @@ def multi_organelle_prediction(
         if progress_queue:
             progress_queue.put((condition, round_id))
 
-    with mp.Pool(processes=max_processes) as pool:
+    ctx = get_mp_ctx()
+    with ctx.Pool(processes=max_processes) as pool:
         results = [
             pool.apply_async(
                 execute_round_wrapper, (args,), callback=on_task_done
