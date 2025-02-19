@@ -102,73 +102,62 @@ def create_dataset(
     return combined, data_keep
 
 
-def calculate_correlations(data):
+def calculate_correlations(data: dict[str, pd.DataFrame]) -> dict[str, float]:
+    """Calculate the mean Pearson correlation coefficient of the different
+    replicates for each condition."""
     tp_icorr = {}
-    for condition in data:
-        corrs = []
+    for condition, df in data.items():
         data[condition].dropna(
             thresh=len(data[condition].columns), inplace=True
         )
-        for rep_own in data[condition].columns.tolist():
-            for rep_other in data[condition].columns.tolist():
-                if not rep_own == rep_other:
-                    corrs.append(
-                        pearsonr(
-                            data[condition][rep_own].tolist(),
-                            data[condition][rep_other].tolist(),
-                        )[0]
-                    )
+        corrs = [
+            pearsonr(
+                df[rep_own],
+                df[rep_other],
+            )[0]
+            for rep_own in df
+            for rep_other in df
+            if not rep_own == rep_other
+        ]
         tp_icorr[condition] = np.mean(corrs)
 
     return tp_icorr
 
 
-def transform_data(data, window):
-    for condition in data:
-        if window:
-            window["--status2--"].update(condition)
-            window.read(timeout=50)
-        # data[condition] = pd.to_numeric(data[condition], errors='coerce')
-        data[condition] = np.log2(data[condition])
-    return data
-
-
 def impute_data(
-    data, window: sg.Window | None, mode: Literal["normal", "constant"]
-):
-    s = 1.8
-    w = 0.3
-    for condition in data:
-        if window:
-            window["--status2--"].update(condition)
-            window.read(timeout=50)
-        if mode == "normal":
-            for sample in data[condition]:
-                mean = np.mean(data[condition][sample])
-                std = np.std(data[condition][sample])
-                mean_imp = mean - s * std
-                sigma = std * w
-                data[condition][sample] = data[condition][sample].apply(
-                    lambda x: np.random.normal(mean_imp, sigma, 1)[0]
-                    if math.isnan(x)
-                    else x
-                )
-        elif mode == "constant":
-            for sample in data[condition]:
-                data[condition][sample] = data[condition][sample].apply(
-                    lambda x: 0 if math.isnan(x) else x
-                )
+    data: pd.DataFrame,
+    mode: Literal["normal", "constant"],
+    s: float = 1.8,
+    w: float = 0.3,
+) -> pd.DataFrame:
+    if mode == "normal":
+        for sample in data:
+            mean = np.mean(data[sample])
+            std = np.std(data[sample])
+            mean_imp = mean - s * std
+            sigma = std * w
+            data[sample] = data[sample].apply(
+                lambda x: np.random.normal(mean_imp, sigma, 1)[0]
+                if math.isnan(x)
+                else x
+            )
+    elif mode == "constant":
+        for sample in data:
+            data[sample] = data[sample].apply(
+                lambda x: 0 if math.isnan(x) else x
+            )
     return data
 
 
-def normalize_data(data):
-    for condition in data:
-        for replicate in data[condition]:
-            q1 = np.percentile(data[condition][replicate], 25)
-            q2 = np.percentile(data[condition][replicate], 50)
-            q3 = np.percentile(data[condition][replicate], 75)
+def normalize_data(data: dict[str, pd.DataFrame]) -> None:
+    """Normalize the data by quantile normalization."""
+    for df in data.values():
+        for replicate in df:
+            q1 = np.percentile(df[replicate], 25)
+            q2 = np.percentile(df[replicate], 50)
+            q3 = np.percentile(df[replicate], 75)
 
-            data[condition][replicate] = data[condition][replicate].apply(
+            df[replicate] = df[replicate].apply(
                 lambda x: (x - q2) / (q3 - q2)
                 if x - q2 >= 0
                 else (x - q2) / (q2 - q1)
@@ -298,17 +287,24 @@ def start_total_proteome_processing(
         window["--progress--"].update(progress)
         window.read(timeout=50)
 
-    tp_data = transform_data(tp_data, window)
+    for condition in tp_data:
+        tp_data[condition] = np.log2(tp_data[condition])
 
     # ---------------------------------------------------------------------
     logger.info("imputing MissingValues...")
     progress = 30
     if window:
-        window["--status1--"].update(value="imputing MissingValues...")
+        window["--status1--"].update(value="imputing missing values...")
         window["--progress--"].update(progress)
         window.read(timeout=50)
 
-    tp_data = impute_data(tp_data, window, tp_preparams["imputation"])
+    for condition in tp_data:
+        if window:
+            window["--status2--"].update(condition)
+            window.read(timeout=50)
+        tp_data[condition] = impute_data(
+            tp_data[condition], tp_preparams["imputation"]
+        )
 
     # ---------------------------------------------------------------------
     logger.info("calculating correlations...")

@@ -1764,25 +1764,26 @@ def fract_modifytable(
     ask: Literal["integer", "string"],
 ):
     """Show dialog for updating values in the fractionation table."""
-    if values["-fractionation_table-"]:
-        path = values["-fractionation_path-"]
-        table = fract_input[path].table
-        if ask == "integer":
-            value = simpledialog.askinteger(title, prompt)
-            p = 0
-            if value:
-                for i in values["-fractionation_table-"]:
-                    table[i][pos] = value + p
-                    p = p + q
-        elif ask == "string":
-            value = simpledialog.askstring(title, prompt)
-            if value:
-                for i in values["-fractionation_table-"]:
-                    table[i][pos] = value
-        else:
-            raise ValueError(f"Invalid ask value: {ask}")
-    else:
+    if not values["-fractionation_table-"]:
         messagebox.showerror("Error", "Select (a) sample(s).")
+        return
+
+    path = values["-fractionation_path-"]
+    table = fract_input[path].table
+    if ask == "integer":
+        value = simpledialog.askinteger(title, prompt)
+        if value:
+            p = 0
+            for i in values["-fractionation_table-"]:
+                table[i][pos] = value + p
+                p = p + q
+    elif ask == "string":
+        value = simpledialog.askstring(title, prompt)
+        if value:
+            for i in values["-fractionation_table-"]:
+                table[i][pos] = value
+    else:
+        raise ValueError(f"Invalid ask value: {ask}")
 
 
 def fract_buttons(window: sg.Window, status: bool) -> None:
@@ -1871,14 +1872,12 @@ def fract_add(
     window["-fractionation_path-"].update(
         values=model.fract_paths, value=filename
     )
+
     df = pd.read_csv(filename, sep="\t", header=0)
     df = df.replace("NaN", np.nan)
     df = df.replace("Filtered", np.nan)
-    colnames = df.columns.values.tolist()
-    table = []
-    for name in colnames:
-        namelist = [name, "", "", ""]
-        table.append(namelist)
+
+    table = [[name, "", "", ""] for name in df.columns]
     model.fract_input[filename] = FractDataset(df=df, table=table)
 
     fract_refreshtable(window, table)
@@ -2038,7 +2037,6 @@ def tp_add_dataset(
     df = df[rows_with_float]
 
     table = [[name, ""] for name in df.columns]
-
     tp_input[filename] = TotalProtDataset(df=df, table=table)
 
     tp_refreshtable(window, table)
@@ -2151,6 +2149,7 @@ def tp_export(export_folder: str | Path, experiment: str, tp_data, tp_info):
             how="outer",
         )
 
+    # add [KEEP] columns
     for info in tp_info:
         export_full = pd.merge(
             export_full,

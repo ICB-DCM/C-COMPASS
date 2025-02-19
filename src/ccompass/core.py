@@ -554,19 +554,20 @@ class SessionModel(BaseModel):
     #: Conditions in the fractionation data, including "[KEEP]"
     fract_conditions: list[str] = []
 
-    #: Fractionation data for the different conditions x replicates
-    #  "{condition}_Rep.{replicate}" => DataFrame
-    fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Marker abundance in the different fractions
+    #: Marker profiles for the different conditions / replicates
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_marker: dict[ConditionReplicate, pd.DataFrame] = {}
-    #: Marker abundance in the different fractions for visualization
+    #: Median of marker profiles across replicates for each condition
+    #  for visualization
     #  "{condition}_median" => DataFrame
     fract_marker_vis: dict[str, pd.DataFrame] = {}
-
-    #: ??
+    #: Fractionation data for non-marker proteins
     #  "{condition}_Rep.{replicate}" => DataFrame
     fract_test: dict[ConditionReplicate, pd.DataFrame] = {}
+    #: Combined marker and non-marker profiles for the different
+    #  conditions x replicates
+    #  "{condition}_Rep.{replicate}" => DataFrame
+    fract_full: dict[ConditionReplicate, pd.DataFrame] = {}
 
     #: The consolidated marker list, after merging `marker_sets`
     #  according to `marker_params`, and accounting for renaming
@@ -590,7 +591,7 @@ class SessionModel(BaseModel):
     tp_data: dict[ConditionReplicate, pd.DataFrame] = {}
     #: ??
     tp_icorr: dict = {}
-    #: ??
+    #: The [KEEP] columns for the combined total proteome dataset
     tp_info: pd.DataFrame = pd.DataFrame()
 
     ## User input classification data
