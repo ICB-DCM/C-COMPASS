@@ -170,16 +170,6 @@ def create_fractionation_tab(fract_paths: Sequence[Any]) -> sg.Tab:
                             button_color="darkgreen",
                         )
                     ],
-                    [
-                        sg.Text(
-                            "...ready!",
-                            font=("Arial", 8),
-                            size=(40, 1),
-                            key="-fractionation_status-",
-                            visible=True,
-                            justification="center",
-                        )
-                    ],
                 ],
                 size=(260, 70),
             ),
@@ -324,16 +314,6 @@ def create_total_proteome_tab(tp_paths: Sequence[Any]) -> sg.Tab:
                             disabled=False,
                             enable_events=True,
                             button_color="darkgreen",
-                        )
-                    ],
-                    [
-                        sg.Text(
-                            "...ready!",
-                            font=("Arial", 8),
-                            size=(40, 1),
-                            key="-tp_status-",
-                            visible=True,
-                            justification="center",
                         )
                     ],
                 ],
@@ -1810,15 +1790,6 @@ def fract_buttons(window: sg.Window, status: bool) -> None:
     for button in inactive:
         window[button].update(disabled=not status)
 
-    if status:
-        window["-fractionation_status-"].update(
-            value="done!", text_color="dark green"
-        )
-    else:
-        window["-fractionation_status-"].update(
-            value="...ready!", text_color="white"
-        )
-
 
 def tp_buttons(window: sg.Window, status: bool) -> None:
     active = [
@@ -1836,11 +1807,6 @@ def tp_buttons(window: sg.Window, status: bool) -> None:
         window[button].update(disabled=status)
     for button in inactive:
         window[button].update(disabled=not status)
-
-    if status:
-        window["-tp_status-"].update(value="done!", text_color="dark green")
-    else:
-        window["-tp_status-"].update(value="...ready!", text_color="white")
 
 
 def fract_clearinput(window):
