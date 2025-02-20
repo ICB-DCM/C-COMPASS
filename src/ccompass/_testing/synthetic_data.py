@@ -1,10 +1,17 @@
 """Create synthetic datasets for C-COMPASS testing."""
 
+import re
 from collections import Counter
 
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
+
+from ccompass.core import (
+    IDENTIFIER,
+    KEEP,
+    NA,
+)
 
 
 class SyntheticDataConfig(BaseModel):
@@ -231,6 +238,10 @@ def create_profiles(c: SyntheticDataConfig):
     # CREATE UNKNOWN DOUBLE LOCALIZATIONS:
     for comp in comp_list:
         comp_others = [c for c in comp_list if c != comp]
+        assert (
+            c.num_compartments >= 2
+            or comp_specs[cond][comp]["number_double"] == 0
+        )
         for d in range(comp_specs[cond][comp]["number_double"]):
             count = count + 1
             prot_name = f"Prot{count}"
@@ -291,6 +302,9 @@ def create_profiles(c: SyntheticDataConfig):
             all_profiles.append(profile_conc)
 
     # CREATE UNKNOWN TRIPLE LOCALIZATIONS:
+    assert (
+        c.num_compartments >= 3 or comp_specs[cond][comp]["number_triple"] == 0
+    )
     for comp in comp_list:
         comp_others = [c for c in comp_list if c != comp]
         for d in range(comp_specs[cond][comp]["number_triple"]):
@@ -417,6 +431,41 @@ def total_proteome(
         all_values.append(values)
 
     return pd.DataFrame(all_values, columns=tp_columns)
+
+
+# regexes to parse column IDs
+fract_id_rx = re.compile(
+    r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)_Fr(?P<fraction>\d+)"
+)
+tp_id_rx = re.compile(r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)")
+
+
+def fract_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
+    """Convert fractionation data column id to fractionation table rows."""
+    if col_id == c.protein_id_col:
+        return [col_id, IDENTIFIER, NA, NA]
+    if col_id == c.gene_id_col:
+        return [col_id, KEEP, NA, NA]
+
+    if not (match := fract_id_rx.match(col_id)):
+        raise ValueError(f"Invalid fractionation ID: {col_id}")
+
+    condition = match["condition"]
+    replicate = int(match["replicate"])
+    fraction = int(match["fraction"])
+    return [col_id, condition, replicate, fraction]
+
+
+def tp_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
+    """Convert total proteome data column id to total proteome table rows."""
+    if col_id == c.protein_id_col:
+        return [col_id, IDENTIFIER]
+
+    if not (match := tp_id_rx.match(col_id)):
+        raise ValueError(f"Invalid total proteome ID: {col_id}")
+
+    condition = match["condition"]
+    return [col_id, condition]
 
 
 def main():

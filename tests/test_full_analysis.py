@@ -1,16 +1,16 @@
 import os
-import re
 from pathlib import Path
 
 from ccompass._testing.synthetic_data import (
     SyntheticDataConfig,
     create_profiles,
+    fract_col_id_to_row,
     total_proteome,
+    tp_col_id_to_row,
 )
 from ccompass.core import (
     IDENTIFIER,
     KEEP,
-    NA,
     FractDataset,
     MarkerSet,
     NeuralNetworkParametersModel,
@@ -27,40 +27,6 @@ from ccompass.main_gui import (
 )
 from ccompass.MOA import class_comparisons, global_comparisons, stats_proteome
 from ccompass.TPP import start_total_proteome_processing
-
-# regexes to parse column IDs
-fract_id_rx = re.compile(
-    r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)_Fr(?P<fraction>\d+)"
-)
-tp_id_rx = re.compile(r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)")
-
-
-def fract_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
-    """Convert fractionation data column id to fractionation table rows."""
-    if col_id == c.protein_id_col:
-        return [col_id, IDENTIFIER, NA, NA]
-    if col_id == c.gene_id_col:
-        return [col_id, KEEP, NA, NA]
-
-    if not (match := fract_id_rx.match(col_id)):
-        raise ValueError(f"Invalid fractionation ID: {col_id}")
-
-    condition = match["condition"]
-    replicate = int(match["replicate"])
-    fraction = int(match["fraction"])
-    return [col_id, condition, replicate, fraction]
-
-
-def tp_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
-    """Convert total proteome data column id to total proteome table rows."""
-    if col_id == c.protein_id_col:
-        return [col_id, IDENTIFIER]
-
-    if not (match := tp_id_rx.match(col_id)):
-        raise ValueError(f"Invalid total proteome ID: {col_id}")
-
-    condition = match["condition"]
-    return [col_id, condition]
 
 
 def test_full():

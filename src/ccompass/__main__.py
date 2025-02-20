@@ -21,7 +21,19 @@ def main():
         action="version",
         version=f"{app_name} {version('ccompass')}",
     )
-    parser.parse_args()
+    parser.add_argument(
+        "--test-run",
+        action="store_true",
+        help="For testing purposes only. "
+        "Perform a test run of the application.",
+    )
+    args = parser.parse_args()
+
+    if args.test_run:
+        from ._testing import do_test_run
+
+        do_test_run()
+        return
 
     launch_gui()
 
@@ -58,7 +70,6 @@ def launch_gui():
     from .core import SessionModel
     from .main_gui import MainController
 
-    logger = init_logging()
     logger.info(f"Launching {app_name} GUI")
 
     # GUI theme
@@ -67,6 +78,9 @@ def launch_gui():
     model = SessionModel()
     controller = MainController(model=model)
     controller.run()
+
+
+logger = init_logging()
 
 
 if __name__ == "__main__":
