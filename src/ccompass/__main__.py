@@ -5,10 +5,7 @@ import logging
 import os
 import sys
 
-from rich.console import Console
-from rich.logging import RichHandler
-
-from ccompass.core import app_name
+from .core import app_name
 
 
 def main():
@@ -40,6 +37,9 @@ def main():
 
 def init_logging() -> logging.Logger:
     """Initialize logging."""
+    from rich.console import Console
+    from rich.logging import RichHandler
+
     console = Console(
         # Write to sys.__stdout__ instead of sys.stdout to avoid infinite
         #  recursion, because we will redirect sys.stdout to the logger later
