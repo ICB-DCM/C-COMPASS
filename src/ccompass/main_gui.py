@@ -992,8 +992,8 @@ def create_main_window(
                 "E&xit",
             ],
         ],
-        ["&Help", ["&About...", "Open &Website", "&Manual"]],
         ["&Settings", ["&Settings..."]],
+        ["&Help", ["&About...", "Open &Website", "&Manual"]],
     ]
 
     layout = [
