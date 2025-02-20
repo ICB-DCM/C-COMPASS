@@ -42,6 +42,7 @@ jobs:
         pre-commit run --all-files
 
     - name: Run tests
+      timeout-minutes: 8
       run: |
         pytest
 
@@ -82,6 +83,7 @@ jobs:
         pip install -e .[test]
 
     - name: Run tests
+      timeout-minutes: 8
       run: |
         pytest
 
@@ -121,6 +123,7 @@ jobs:
         pip install -e .[test]
 
     - name: Run tests
+      timeout-minutes: 8
       run: |
         pytest
 

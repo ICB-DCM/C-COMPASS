@@ -7,6 +7,7 @@ from importlib.metadata import Distribution, distributions, version
 
 import FreeSimpleGUI as sg
 
+from . import is_frozen
 from .core import app_name, repository_url
 
 
@@ -60,12 +61,20 @@ def show_about_dialog():
     default_font_size = default_font[1]
     heading_font = (default_font[0], default_font_size + 4, "bold")
 
+    # Currently, for pyinstaller executables, we have to manually include the
+    #  metadata for each package we want to show here ...
+    package_table_caption = (
+        "Installed Packages (this list may be incomplete):"
+        if is_frozen
+        else "Installed Packages:"
+    )
+
     layout = [
         [sg.Text(app_name, font=heading_font)],
         [sg.Text(f"Version: {version('ccompass')}")],
         [sg.Text(f"Website: {repository_url}", enable_events=True, key="URL")],
         [sg.HSeparator()],
-        [sg.Text("Installed Packages:")],
+        [sg.Text(package_table_caption)],
         [
             sg.Table(
                 values=package_data,

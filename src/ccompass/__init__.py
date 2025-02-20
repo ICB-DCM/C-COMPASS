@@ -20,3 +20,13 @@ Acronyms / terms:
 * CPA: compartment protein amount (= CC * TPA)
 * nCPA: normalized CPA (= nCC * TPA)
 """
+
+# If the application is frozen (e.g. by PyInstaller), we need to call
+#  multiprocessing.freeze_support() to avoid issues with multiprocessing.
+#  Do this before importing any other modules!
+import sys
+
+if is_frozen := getattr(sys, "frozen", False):
+    import multiprocessing
+
+    multiprocessing.freeze_support()

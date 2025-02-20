@@ -37,17 +37,32 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -e .
+        pip install .
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller --name ccompass_bundle_onefile --onefile --windowed -p . $(which ccompass)
+        pyinstaller --name ccompass_bundle_onefile \
+          --onefile -p . $(which ccompass) \
+          --hidden-import numpy.core._dtype_ctypes \
+          --hidden-import numpy.core.multiarray \
+          --copy-metadata numpy \
+          --copy-metadata scipy \
+          --copy-metadata matplotlib \
+          --copy-metadata pandas \
+          --copy-metadata tensorflow \
+          --copy-metadata keras \
+          --copy-metadata keras-tuner \
+          --copy-metadata scikit-learn
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
 
-    - name: Test the bundle
+    - name: Test --version
       run: dist/ccompass_bundle_onefile --version
+
+    - name: Test --test-run
+      run: dist/ccompass_bundle_onefile --test-run
+      timeout-minutes: 5
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -79,7 +94,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -e .
+        pip install .
 
     - name: Create launcher script
       # we can't use the setuptools shim (.exe) on Windows
@@ -92,20 +107,30 @@ jobs:
         pyinstaller \
           --name ccompass_bundle_onefile \
           --onefile \
-          --windowed \
           -p . \
           launcher.py \
           --hidden-import numpy.core._dtype_ctypes \
-          --hidden-import numpy.core.multiarray
+          --hidden-import numpy.core.multiarray \
+          --copy-metadata numpy \
+          --copy-metadata scipy \
+          --copy-metadata matplotlib \
+          --copy-metadata pandas \
+          --copy-metadata tensorflow \
+          --copy-metadata keras \
+          --copy-metadata keras-tuner \
+          --copy-metadata scikit-learn
       shell: bash
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
       shell: bash
 
-    - name: Test the bundle
-      run: dist/ccompass_bundle_onefile.exe --version
-      shell: bash
+    - name: Test --version
+      run: dist/ccompass_bundle_onefile --version
+
+    - name: Test --test-run
+      run: dist/ccompass_bundle_onefile --test-run
+      timeout-minutes: 5
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -137,17 +162,32 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -e .
+        pip install .
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller --name ccompass_bundle_onefile --onefile --windowed -p . $(which ccompass)
+        pyinstaller --name ccompass_bundle_onefile \
+          --onefile -p . $(which ccompass) \
+          --hidden-import numpy.core._dtype_ctypes \
+          --hidden-import numpy.core.multiarray \
+          --copy-metadata numpy \
+          --copy-metadata scipy \
+          --copy-metadata matplotlib \
+          --copy-metadata pandas \
+          --copy-metadata tensorflow \
+          --copy-metadata keras \
+          --copy-metadata keras-tuner \
+          --copy-metadata scikit-learn
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
 
-    - name: Test the bundle
+    - name: Test --version
       run: dist/ccompass_bundle_onefile --version
+
+    - name: Test --test-run
+      run: dist/ccompass_bundle_onefile --test-run
+      timeout-minutes: 5
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
