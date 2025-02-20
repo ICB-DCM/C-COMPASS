@@ -4,8 +4,7 @@ import os
 
 import FreeSimpleGUI as sg
 
-from . import app_name
-from .core import AppSettings
+from .core import AppSettings, app_name
 
 
 def show_settings_dialog(settings: AppSettings) -> None:

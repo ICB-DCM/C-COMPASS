@@ -18,9 +18,19 @@ from pydantic import (
     field_validator,
 )
 
-from . import config_filepath
+from ._utils import get_ccmps_data_directory
 
 logger = logging.getLogger(__name__)
+
+
+#: the application settings file
+config_filepath: Path = get_ccmps_data_directory() / "settings.yaml"
+#: the repository URL
+repository_url = "https://github.com/ICB-DCM/C-COMPASS/"
+#: the ReadTheDocs URL
+readthedocs_url = "https://c-compass.readthedocs.io/en/latest/"
+#: name of the application
+app_name = "C-COMPASS"
 
 
 #: The value used in the sample tables as condition IDs to indicate the column

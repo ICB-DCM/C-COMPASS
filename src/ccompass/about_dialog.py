@@ -7,7 +7,7 @@ from importlib.metadata import Distribution, distributions, version
 
 import FreeSimpleGUI as sg
 
-from . import app_name, repository_url
+from .core import app_name, repository_url
 
 
 def get_license_id(dist: Distribution) -> str:

@@ -8,7 +8,7 @@ import sys
 from rich.console import Console
 from rich.logging import RichHandler
 
-from . import app_name
+from ccompass.core import app_name
 
 
 def main():

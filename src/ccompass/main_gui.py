@@ -13,7 +13,7 @@ import FreeSimpleGUI as sg
 import numpy as np
 import pandas as pd
 
-from . import MOA, RP, app_name, readthedocs_url, repository_url
+from . import MOA, RP
 from ._gui_utils import wait_cursor
 from .core import (
     IDENTIFIER,
@@ -25,10 +25,13 @@ from .core import (
     SessionModel,
     SessionStatusModel,
     TotalProtDataset,
+    app_name,
     create_fullprofiles,
     create_identity_conversion,
     create_marker_profiles,
     create_markerlist,
+    readthedocs_url,
+    repository_url,
     write_class_changes_reports,
     write_comparison_reports,
     write_global_changes_reports,
