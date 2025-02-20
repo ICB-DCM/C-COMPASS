@@ -4,80 +4,95 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
-
-# random number generator
-rng = np.random.default_rng(1)
-
-# number of simulated replicates per condition
-replicates = 3
-# number of simulated conditions
-conditions = 2
-
-## SIMULATE FRACTIONATION:
-# number of simulated compartments
-num_compartments = 5
-# number of fractions per gradient
-fractions = 14
-# peak width in fractions (range)
-spread = [3, 4]
-# peak height as intensities (range)
-intensities = [5000, 8000]
-# increase for more intensity-variance across a single peaks
-intensity_variance = 50
-# increase this value for more accurate peaks
-peak_accuracy = 200
-# number of marker proteins per compartment (range)
-markers = [50, 100]
-# number of proteins per compartment with one unknown localization (range)
-unknown_single = [50, 100]
-# number of proteins per compartment with a random second localization (range)
-unknown_double = [10, 20]
-# possible mixing ratios for double localizations
-ratios_double = [(75, 25), (50, 50)]
-# number of proteins per compartment with two random additional localizations (range)
-unknown_triple = [3, 8]
-# possible mixing ratios for triple localizations
-ratios_triple = [(50, 25, 25)]
-# chance for a protein to be missing in single replicates
-missing_rep = 0.04
-# chance for a protein to be missing in single conditions
-missing_cond = 0.02
-# probability for relocalization
-reloc_rate = 0.1
-
-protein_id_col = "ProteinName"
-gene_id_col = "GeneName"
-class_id_col = "Marker"
+from pydantic import BaseModel, ConfigDict, Field
 
 
-def create_compspecs() -> dict:
+class SyntheticDataConfig(BaseModel):
+    """Configuration for synthetic data generation."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    #: number of simulated replicates per condition
+    replicates: int = 3
+    #: number of simulated conditions
+    conditions: int = 2
+    #: number of simulated compartments
+    num_compartments: int = 5
+    #: number of fractions per gradient
+    fractions: int = 14
+
+    #: peak width in fractions (range)
+    spread: list[int] = [3, 4]
+    #: peak height as intensities (range)
+    intensities: list[int] = [5000, 8000]
+    #: increase for more intensity-variance across a single peaks
+    intensity_variance: int = 50
+    #: increase this value for more accurate peaks
+    peak_accuracy: int = 200
+    #: number of marker proteins per compartment (range)
+    markers: list[int] = [50, 100]
+    #: number of proteins per compartment with one unknown localization (range)
+    unknown_single: list[int] = [50, 100]
+    #: number of proteins per compartment with a random second localization (range)
+    unknown_double: list[int] = [10, 20]
+    #: possible mixing ratios for double localizations
+    ratios_double: list[tuple[int, int]] = [(75, 25), (50, 50)]
+    #: number of proteins per compartment with two random additional localizations (range)
+    unknown_triple: list[int] = [3, 8]
+    #: possible mixing ratios for triple localizations
+    ratios_triple: list[tuple[int, int, int]] = [(50, 25, 25)]
+    #: chance for a protein to be missing in single replicates
+    missing_rep: float = 0.04
+    #: chance for a protein to be missing in single conditions
+    missing_cond: float = 0.02
+    #: probability for relocalization
+    reloc_rate: float = 0.1
+
+    #: protein ID column name
+    protein_id_col: str = "ProteinName"
+    #: gene ID column name
+    gene_id_col: str = "GeneName"
+    #: class ID column name
+    class_id_col: str = "Marker"
+
+    #: random number generator seed
+    rng_seed: int = 1
+    #: random number generator
+    rng: np.random.Generator = Field(
+        default_factory=lambda data: np.random.default_rng(data["rng_seed"])
+    )
+
+
+def create_compspecs(c: SyntheticDataConfig) -> dict:
     """Create compartment specifications."""
     comp_specs = {}
-    for i in range(num_compartments):
+    rng = c.rng
+
+    for i in range(c.num_compartments):
         name = f"Compartment{i + 1}"
         comp_specs[name] = {}
 
-        bins = np.linspace(1, fractions, num_compartments + 1)
+        bins = np.linspace(1, c.fractions, c.num_compartments + 1)
         middle = rng.integers(int(bins[i]), int(bins[i + 1]))
         comp_specs[name]["middle"] = middle
 
-        sigma = rng.uniform(spread[0] / 2, spread[1] / 2)
+        sigma = rng.uniform(c.spread[0] / 2, c.spread[1] / 2)
         comp_specs[name]["sigma"] = sigma
 
-        height = rng.uniform(intensities[0], intensities[1])
+        height = rng.uniform(c.intensities[0], c.intensities[1])
         comp_specs[name]["height"] = height
 
         comp_specs[name]["number_marker"] = int(
-            rng.uniform(markers[0], markers[1])
+            rng.uniform(c.markers[0], c.markers[1])
         )
         comp_specs[name]["number_single"] = int(
-            rng.uniform(unknown_single[0], unknown_single[1])
+            rng.uniform(c.unknown_single[0], c.unknown_single[1])
         )
         comp_specs[name]["number_double"] = int(
-            rng.uniform(unknown_double[0], unknown_double[1])
+            rng.uniform(c.unknown_double[0], c.unknown_double[1])
         )
         comp_specs[name]["number_triple"] = int(
-            rng.uniform(unknown_triple[0], unknown_triple[1])
+            rng.uniform(c.unknown_triple[0], c.unknown_triple[1])
         )
     return comp_specs
 
@@ -89,27 +104,28 @@ def reflect_distribution(distribution, lower, upper):
     return reflected
 
 
-def create_profile(middle, sigma, height):
+def create_profile(middle, sigma, height, c: SyntheticDataConfig):
     """Create a single profile."""
-    num_samples = int(rng.normal(peak_accuracy, peak_accuracy / 10))
+    rng = c.rng
+    num_samples = int(rng.normal(c.peak_accuracy, c.peak_accuracy / 10))
     random_values = rng.normal(middle, sigma, num_samples)
 
-    reflected_values = reflect_distribution(random_values, 1, fractions)
-    discrete_values = np.clip(np.round(reflected_values), 1, fractions).astype(
-        int
-    )
+    reflected_values = reflect_distribution(random_values, 1, c.fractions)
+    discrete_values = np.clip(
+        np.round(reflected_values), 1, c.fractions
+    ).astype(int)
     value_counts = Counter(discrete_values)
     value_counts_x = np.array(
         [
             value_counts[i] if i in value_counts else 0
-            for i in range(1, fractions + 1)
+            for i in range(1, c.fractions + 1)
         ]
     )
 
     factor = height / max(value_counts_x)
     value_counts_scaled = np.copy(value_counts_x)
-    for j in range(fractions):
-        factor_rand = float(rng.normal(factor, height / intensity_variance))
+    for j in range(c.fractions):
+        factor_rand = float(rng.normal(factor, height / c.intensity_variance))
         new_value = value_counts_x[j] * factor_rand
         if new_value >= 0:
             value_counts_scaled[j] = new_value
@@ -121,21 +137,22 @@ def create_profile(middle, sigma, height):
     return value_counts_scaled
 
 
-def create_profiles():
+def create_profiles(c: SyntheticDataConfig):
+    rng = c.rng
     comp_specs = {}
-    for cond in range(conditions):
-        comp_specs[cond] = create_compspecs()
-    comp_list = [f"Compartment{i}" for i in range(1, num_compartments + 1)]
-    data_columns = [protein_id_col, gene_id_col]
-    for cond in range(conditions):
-        for rep in range(replicates):
-            for fract in range(fractions):
+    for cond in range(c.conditions):
+        comp_specs[cond] = create_compspecs(c)
+    comp_list = [f"Compartment{i}" for i in range(1, c.num_compartments + 1)]
+    data_columns = [c.protein_id_col, c.gene_id_col]
+    for cond in range(c.conditions):
+        for rep in range(c.replicates):
+            for fract in range(c.fractions):
                 data_columns.append(
                     f"Con{cond + 1}_Rep{rep + 1}_Fr{str(fract + 1).zfill(2)}"
                 )
         for comp in comp_specs[cond]:
             data_columns.append(f"Amount_{comp}")
-    data_columns.append(class_id_col)
+    data_columns.append(c.class_id_col)
 
     # CREATE MARKER PROFILES:
     count = 0
@@ -146,11 +163,12 @@ def create_profiles():
             prot_name = f"Prot{count}"
             gene_name = f"Gene{count}"
             profile_conc = [prot_name, gene_name]
-            for cond in range(conditions):
-                empty_condition = rng.random() < missing_cond
+            for cond in range(c.conditions):
+                empty_condition = rng.random() < c.missing_cond
                 if empty_condition:
                     profile_conc.extend(
-                        (fractions * replicates + len(comp_list)) * [np.nan]
+                        (c.fractions * c.replicates + len(comp_list))
+                        * [np.nan]
                     )
                 else:
                     specs = comp_specs[cond]
@@ -158,13 +176,13 @@ def create_profiles():
                     middle_1 = specs[comp]["middle"]
                     sigma_1 = specs[comp]["sigma"]
                     height_1 = specs[comp]["height"]
-                    for rep in range(replicates):
-                        empty_replicate = rng.random() < missing_rep
+                    for rep in range(c.replicates):
+                        empty_replicate = rng.random() < c.missing_rep
                         if empty_replicate:
-                            profile_conc.extend(fractions * [np.nan])
+                            profile_conc.extend(c.fractions * [np.nan])
                         else:
                             profile_1 = create_profile(
-                                middle_1, sigma_1, height_1
+                                middle_1, sigma_1, height_1, c
                             )
                             profile_conc.extend(profile_1.astype(float))
                     profile_conc.extend(location)
@@ -179,30 +197,31 @@ def create_profiles():
             prot_name = f"Prot{count}"
             gene_name = f"Gene{count}"
             profile_conc = [prot_name, gene_name]
-            for cond in range(conditions):
-                empty_condition = rng.random() < missing_cond
+            for cond in range(c.conditions):
+                empty_condition = rng.random() < c.missing_cond
                 if empty_condition:
                     profile_conc.extend(
-                        (fractions * replicates + len(comp_list)) * [np.nan]
+                        (c.fractions * c.replicates + len(comp_list))
+                        * [np.nan]
                     )
                 else:
                     specs = comp_specs[cond]
-                    reloc = rng.random() < reloc_rate
+                    reloc = rng.random() < c.reloc_rate
                     if reloc:
-                        c = rng.choice(comp_others)
+                        cc = rng.choice(comp_others)
                     else:
-                        c = comp
-                    location = [0 if key != c else 1 for key in specs]
-                    middle_1 = specs[c]["middle"]
-                    sigma_1 = specs[c]["sigma"]
-                    height_1 = specs[c]["height"]
-                    for rep in range(replicates):
-                        empty_replicate = rng.random() < missing_rep
+                        cc = comp
+                    location = [0 if key != cc else 1 for key in specs]
+                    middle_1 = specs[cc]["middle"]
+                    sigma_1 = specs[cc]["sigma"]
+                    height_1 = specs[cc]["height"]
+                    for rep in range(c.replicates):
+                        empty_replicate = rng.random() < c.missing_rep
                         if empty_replicate:
-                            profile_conc.extend(fractions * [np.nan])
+                            profile_conc.extend(c.fractions * [np.nan])
                         else:
                             profile_1 = create_profile(
-                                middle_1, sigma_1, height_1
+                                middle_1, sigma_1, height_1, c
                             )
                             profile_conc.extend(profile_1.astype(float))
                     profile_conc.extend(location)
@@ -217,15 +236,16 @@ def create_profiles():
             prot_name = f"Prot{count}"
             gene_name = f"Gene{count}"
             profile_conc = [prot_name, gene_name]
-            for cond in range(conditions):
-                empty_condition = rng.random() < missing_cond
+            for cond in range(c.conditions):
+                empty_condition = rng.random() < c.missing_cond
                 if empty_condition:
                     profile_conc.extend(
-                        (fractions * replicates + len(comp_list)) * [np.nan]
+                        (c.fractions * c.replicates + len(comp_list))
+                        * [np.nan]
                     )
                 else:
                     specs = comp_specs[cond]
-                    reloc = rng.random() < reloc_rate
+                    reloc = rng.random() < c.reloc_rate
                     if reloc:
                         c_1 = rng.choice(comp_others)
                         c_others = [co for co in comp_list if co != c_1]
@@ -241,7 +261,7 @@ def create_profiles():
                     sigma_2 = specs[c_2]["sigma"]
                     height_2 = specs[c_2]["height"]
 
-                    ratio = rng.choice(ratios_double)
+                    ratio = rng.choice(c.ratios_double)
                     location = [
                         0
                         if key != c_1 and key != c_2
@@ -251,16 +271,16 @@ def create_profiles():
                         for key in specs
                     ]
 
-                    for rep in range(replicates):
-                        empty_replicate = rng.random() < missing_rep
+                    for rep in range(c.replicates):
+                        empty_replicate = rng.random() < c.missing_rep
                         if empty_replicate:
-                            profile_conc.extend(fractions * [np.nan])
+                            profile_conc.extend(c.fractions * [np.nan])
                         else:
                             profile_1 = create_profile(
-                                middle_1, sigma_1, height_1
+                                middle_1, sigma_1, height_1, c
                             ).astype(float)
                             profile_2 = create_profile(
-                                middle_2, sigma_2, height_2
+                                middle_2, sigma_2, height_2, c
                             ).astype(float)
                             profile_combined = (ratio[0] / 100 * profile_1) + (
                                 ratio[1] / 100 * profile_2
@@ -278,15 +298,16 @@ def create_profiles():
             prot_name = f"Prot{count}"
             gene_name = f"Gene{count}"
             profile_conc = [prot_name, gene_name]
-            for cond in range(conditions):
-                empty_condition = rng.random() < missing_cond
+            for cond in range(c.conditions):
+                empty_condition = rng.random() < c.missing_cond
                 if empty_condition:
                     profile_conc.extend(
-                        (fractions * replicates + len(comp_list)) * [np.nan]
+                        (c.fractions * c.replicates + len(comp_list))
+                        * [np.nan]
                     )
                 else:
                     specs = comp_specs[cond]
-                    reloc = rng.random() < reloc_rate
+                    reloc = rng.random() < c.reloc_rate
                     if reloc:
                         c_1 = rng.choice(comp_others)
                         c_others = [co for co in comp_list if co != c_1]
@@ -311,7 +332,7 @@ def create_profiles():
                     sigma_3 = specs[c_3]["sigma"]
                     height_3 = specs[c_3]["height"]
 
-                    ratio = rng.choice(ratios_triple)
+                    ratio = rng.choice(c.ratios_triple)
                     location = [
                         0
                         if key != c_1 and key != c_2 and key != c_3
@@ -323,19 +344,19 @@ def create_profiles():
                         for key in specs
                     ]
 
-                    for rep in range(replicates):
-                        empty_replicate = rng.random() < missing_rep
+                    for rep in range(c.replicates):
+                        empty_replicate = rng.random() < c.missing_rep
                         if empty_replicate:
-                            profile_conc.extend(fractions * [np.nan])
+                            profile_conc.extend(c.fractions * [np.nan])
                         else:
                             profile_1 = create_profile(
-                                middle_1, sigma_1, height_1
+                                middle_1, sigma_1, height_1, c
                             ).astype(float)
                             profile_2 = create_profile(
-                                middle_2, sigma_2, height_2
+                                middle_2, sigma_2, height_2, c
                             ).astype(float)
                             profile_3 = create_profile(
-                                middle_3, sigma_3, height_3
+                                middle_3, sigma_3, height_3, c
                             ).astype(float)
                             profile_combined = (
                                 (ratio[0] / 100 * profile_1)
@@ -352,23 +373,26 @@ def create_profiles():
         drop=True
     )
 
-    markerset = dataset[[gene_id_col, class_id_col]].dropna(
-        subset=[class_id_col]
+    markerset = dataset[[c.gene_id_col, c.class_id_col]].dropna(
+        subset=[c.class_id_col]
     )
 
     return dataset_shuffled, markerset
 
 
-def total_proteome(proteins: list[str]) -> pd.DataFrame:
+def total_proteome(
+    proteins: list[str], c: SyntheticDataConfig
+) -> pd.DataFrame:
     """Generate total proteome data."""
     tp_intensities = [7000, 10000]
     variance = 500
     regulated = 20  # precentage of proteins with changing expression level
     changes = [0.1, 10]  # possible fold changes for regulated proteins (range)
+    rng = c.rng
 
-    tp_columns = [protein_id_col]
-    for cond in range(conditions):
-        for rep in range(replicates):
+    tp_columns = [c.protein_id_col]
+    for cond in range(c.conditions):
+        for rep in range(c.replicates):
             colname = f"Con{cond + 1}_Rep{rep + 1}"
             tp_columns.append(colname)
         tp_columns.append(f"RelativeRegulation_Con{cond + 1}")
@@ -384,10 +408,10 @@ def total_proteome(proteins: list[str]) -> pd.DataFrame:
         else:
             fc = rng.normal(1, 0.2)
 
-        for cond in range(conditions):
+        for cond in range(c.conditions):
             height_cond = height * fc
             variance_cond = variance * fc
-            for rep in range(replicates):
+            for rep in range(c.replicates):
                 values.append(rng.normal(height_cond, variance_cond))
             values.append(fc)
         all_values.append(values)
@@ -395,17 +419,20 @@ def total_proteome(proteins: list[str]) -> pd.DataFrame:
     return pd.DataFrame(all_values, columns=tp_columns)
 
 
-if __name__ == "__main__":
-    rng = np.random.default_rng(1)
-
+def main():
     # filenames for the synthetic data
     filename_fract = "sim_Fractionation.txt"
     filename_marker = "sim_Markerlist.txt"
     filename_tp = "sim_TotalProteome.txt"
 
-    dataset, markerset = create_profiles()
-    dataset_tp = total_proteome(proteins=list(dataset[protein_id_col]))
+    c = SyntheticDataConfig()
+    dataset, markerset = create_profiles(c)
+    dataset_tp = total_proteome(proteins=list(dataset[c.protein_id_col]), c=c)
 
     dataset.to_csv(filename_fract, sep="\t", index=False)
     markerset.to_csv(filename_marker, sep="\t", index=False)
     dataset_tp.to_csv(filename_tp, sep="\t", index=False)
+
+
+if __name__ == "__main__":
+    main()

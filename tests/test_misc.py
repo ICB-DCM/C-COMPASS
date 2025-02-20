@@ -2,7 +2,13 @@
 
 import numpy as np
 import pandas as pd
+from pandas._testing import assert_frame_equal
 
+from ccompass._testing.synthetic_data import (
+    SyntheticDataConfig,
+    create_profiles,
+    total_proteome,
+)
 from ccompass.core import MarkerSet, create_markerlist
 
 
@@ -100,3 +106,22 @@ def test_create_markerlist():
             "mismatch": "PROTEIN_COMPLEX",
         }
     }
+
+
+def test_synth_data_deterministic():
+    """Test that the synthetic data generation is deterministic."""
+    c = SyntheticDataConfig()
+    fractionation_df1, marker_df1 = create_profiles(c=c)
+    total_prot_df1 = total_proteome(
+        proteins=list(fractionation_df1[c.protein_id_col]), c=c
+    )
+
+    c = SyntheticDataConfig()
+    fractionation_df2, marker_df2 = create_profiles(c=c)
+    total_prot_df2 = total_proteome(
+        proteins=list(fractionation_df2[c.protein_id_col]), c=c
+    )
+
+    assert_frame_equal(fractionation_df1, fractionation_df2)
+    assert_frame_equal(marker_df1, marker_df2)
+    assert_frame_equal(total_prot_df1, total_prot_df2)

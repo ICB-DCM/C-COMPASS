@@ -2,14 +2,11 @@ import os
 import re
 from pathlib import Path
 
-from create_synthetic_data import (
-    class_id_col,
+from ccompass._testing.synthetic_data import (
+    SyntheticDataConfig,
     create_profiles,
-    gene_id_col,
-    protein_id_col,
     total_proteome,
 )
-
 from ccompass.core import (
     IDENTIFIER,
     KEEP,
@@ -38,11 +35,11 @@ fract_id_rx = re.compile(
 tp_id_rx = re.compile(r"(?P<condition>Con\d+)_Rep(?P<replicate>\d+)")
 
 
-def fract_col_id_to_row(col_id: str) -> list:
+def fract_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
     """Convert fractionation data column id to fractionation table rows."""
-    if col_id == protein_id_col:
+    if col_id == c.protein_id_col:
         return [col_id, IDENTIFIER, NA, NA]
-    if col_id == gene_id_col:
+    if col_id == c.gene_id_col:
         return [col_id, KEEP, NA, NA]
 
     if not (match := fract_id_rx.match(col_id)):
@@ -54,9 +51,9 @@ def fract_col_id_to_row(col_id: str) -> list:
     return [col_id, condition, replicate, fraction]
 
 
-def tp_col_id_to_row(col_id: str) -> list:
+def tp_col_id_to_row(col_id: str, c: SyntheticDataConfig) -> list:
     """Convert total proteome data column id to total proteome table rows."""
-    if col_id == protein_id_col:
+    if col_id == c.protein_id_col:
         return [col_id, IDENTIFIER]
 
     if not (match := tp_id_rx.match(col_id)):
@@ -74,11 +71,12 @@ def test_full():
     max_procs = os.cpu_count()
 
     # generate synthetic data
-    fractionation_df0, marker_df = create_profiles()
+    c = SyntheticDataConfig()
+    fractionation_df0, marker_df = create_profiles(c=c)
     total_prot_df = total_proteome(
-        proteins=list(fractionation_df0[protein_id_col])
+        proteins=list(fractionation_df0[c.protein_id_col]), c=c
     )
-    fractionation_df = fractionation_df0.drop(columns=[class_id_col])
+    fractionation_df = fractionation_df0.drop(columns=[c.class_id_col])
     # uppercase is expected elsewhere
     marker_df = marker_df.apply(lambda x: x.astype(str).str.upper())
 
@@ -89,7 +87,7 @@ def test_full():
     fract_dset = FractDataset(
         df=fractionation_df,
         table=[
-            fract_col_id_to_row(col_id)
+            fract_col_id_to_row(col_id, c)
             for col_id in fractionation_df
             if not col_id.startswith("Amount_")
         ],
@@ -97,7 +95,7 @@ def test_full():
     tp_dset = TotalProtDataset(
         df=total_prot_df,
         table=[
-            tp_col_id_to_row(col_id)
+            tp_col_id_to_row(col_id, c=c)
             for col_id in total_prot_df
             if not col_id.startswith("RelativeRegulation")
         ],
@@ -121,11 +119,11 @@ def test_full():
     sess.marker_sets = {
         marker_filepath: MarkerSet(
             df=marker_df,
-            identifier_col=gene_id_col,
-            class_col=class_id_col,
+            identifier_col=c.gene_id_col,
+            class_col=c.class_id_col,
         )
     }
-    sess.marker_fractkey = gene_id_col
+    sess.marker_fractkey = c.gene_id_col
     sess.marker_conv = create_identity_conversion(sess.marker_sets.values())
 
     sess.marker_list = create_markerlist(
