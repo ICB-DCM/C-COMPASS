@@ -180,64 +180,32 @@ def stats_proteome(
             )
 
         ## add SVM results:
-        result.SVM["winner_combined"] = pd.DataFrame(
-            index=result.metrics.index
-        )
-        result.SVM["prob_combined"] = pd.DataFrame(index=result.metrics.index)
-        for subcon in subcons:
-            xyz = learning_xyz[subcon]
-            logger.info(f"Processing {condition} / {subcon}...")
-
-            combine_svm_round_results(xyz)
-
-            result.SVM["winner_combined"] = pd.merge(
-                result.SVM["winner_combined"],
-                xyz.w_full_combined["SVM_winner"].rename(
-                    f"SVM_winner_{subcon}"
-                ),
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-            result.SVM["winner_combined"] = result.SVM["winner_combined"].loc[
-                ~result.SVM["winner_combined"].index.duplicated(keep="first")
-            ]
-            result.SVM["prob_combined"] = pd.merge(
-                result.SVM["prob_combined"],
-                xyz.w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-            result.SVM["prob_combined"] = result.SVM["prob_combined"].loc[
-                ~result.SVM["prob_combined"].index.duplicated(keep="first")
-            ]
-
-        SVM_equal = result.SVM["winner_combined"].apply(
+        combine_svm_replicate_results(result, learning_xyz, subcons)
+        svm_equal = result.SVM["winner_combined"].apply(
             lambda row: row.nunique() == 1, axis=1
         )
-        # SVM_equal =
-        SVM_major = result.SVM["winner_combined"].apply(
-            most_frequent_or_nan, axis=1
+        svm_major = (
+            result.SVM["winner_combined"]
+            .apply(most_frequent_or_nan, axis=1)
+            .rename("SVM_subwinner")
         )
-        SVM_major.name = "SVM_subwinner"
+
         result.metrics["SVM_winner"] = np.where(
-            SVM_equal,
+            svm_equal,
             result.SVM["winner_combined"].iloc[:, 0],
             np.nan,
         )
         result.metrics = pd.merge(
             result.metrics,
-            SVM_major,
+            svm_major,
             left_index=True,
             right_index=True,
             how="left",
         )
-        prob_means = result.SVM["prob_combined"].mean(axis=1)
         result.metrics["SVM_prob"] = np.nan
         result.metrics.loc[
             result.metrics["SVM_winner"].notna(), "SVM_prob"
-        ] = prob_means
+        ] = result.SVM["prob_combined"].mean(axis=1)
 
         ## add CClist:
         for subcon in subcons:
@@ -358,8 +326,8 @@ def combine_svm_round_results(xyz: XYZ_Model):
     """Combine SVM result from the different training rounds.
 
     Combine the SVM predictions and probabilities from the different training
-    rounds into a single DataFrame and compute the combined winner and
-    mean probability.
+    rounds of a single replicate into a single DataFrame and compute the
+    combined winner and mean probability.
     """
 
     # combine predictions
@@ -425,6 +393,49 @@ def combine_svm_round_results(xyz: XYZ_Model):
         xyz.w_full_combined["SVM_winner"].isna(),
         "SVM_prob",
     ] = np.nan
+
+
+def combine_svm_replicate_results(
+    result: ResultsModel,
+    learning_xyz: dict[str, XYZ_Model],
+    subcons: list[str],
+):
+    """Combine SVM results from the different replicates.
+
+    Combine the SVM predictions and probabilities from the different
+    replicates of a single condition into a single DataFrame and compute
+    the combined winner and mean probability.
+
+    Populates `result.SVM`.
+    """
+    result.SVM["winner_combined"] = pd.DataFrame(index=result.metrics.index)
+    result.SVM["prob_combined"] = pd.DataFrame(index=result.metrics.index)
+    for subcon in subcons:
+        xyz = learning_xyz[subcon]
+        logger.info(f"Processing {subcon}...")
+
+        combine_svm_round_results(xyz)
+
+        result.SVM["winner_combined"] = pd.merge(
+            result.SVM["winner_combined"],
+            xyz.w_full_combined["SVM_winner"].rename(f"SVM_winner_{subcon}"),
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+        result.SVM["winner_combined"] = result.SVM["winner_combined"].loc[
+            ~result.SVM["winner_combined"].index.duplicated(keep="first")
+        ]
+        result.SVM["prob_combined"] = pd.merge(
+            result.SVM["prob_combined"],
+            xyz.w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+        result.SVM["prob_combined"] = result.SVM["prob_combined"].loc[
+            ~result.SVM["prob_combined"].index.duplicated(keep="first")
+        ]
 
 
 def global_comparisons(
