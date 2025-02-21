@@ -321,16 +321,32 @@ class TrainingSubRound_Model(BaseModel):
 
 
 class ResultsModel(BaseModel):
-    """Results for a single condition."""
+    """Results for a single condition (static statistics)."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    #: Table with:
+    #  * `marker`: the compartment name if the row is a marker, NA otherwise
+    #  * `SVM_winner`: the SVM-predicted compartment if SVM predictions
+    #     agreed across replicates and rounds, NA otherwise
+    #  * `SVM_prob`: the probability of the SVM-predicted compartment
+    #  * `SVM_subwinner`: the compartment that was most often predicted
+    #     by the different SVM rounds, NA in case of a tie
+    #  * `CClist_$class`: the multi-class predictions for the different
+    #       replicates as a list
+    #  * `CC_$class`: the mean of `CClist_$class`
+    #  * `NN_winner`: the class/compartment with the highest CC value
+    #       according to the neural network predictions
+    #  * `fCC_$class`: the false-positive filtered and renormalized
+    #       class contribution
+    #  * `fNN_winner`: the class/compartment with the highest fCC value
     metrics: pd.DataFrame = pd.DataFrame()
     class_abundance: dict[str, dict[str, float | int]] = {}
     classnames: list[str] = []
     #: SVM results
-    # * winner_combined: DataFrame
-    # * prob_combined: DataFrame
+    #  (the combined results of the different replicates and SVM rounds)
+    #  * winner_combined: DataFrame
+    #  * prob_combined: DataFrame
     SVM: dict[str, pd.DataFrame] = {}
 
 
