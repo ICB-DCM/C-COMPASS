@@ -271,30 +271,22 @@ def stats_proteome(
         result.metrics[cc_cols] = result.metrics[cc_cols].div(cc_sums, axis=0)
 
         ## add NN_winner:
-        cc_columns = result.metrics[
-            [col for col in result.metrics.columns if col.startswith("CC_")]
-        ]
-        max_col = cc_columns.idxmax(axis=1)
-        max_col = max_col.astype(str)
+        max_col = result.metrics[cc_cols].idxmax(axis=1).astype(str)
         result.metrics["NN_winner"] = max_col.str.replace("CC_", "")
 
-        # add fCC:
+        # add fCC: filter out false positives, renormalize
         for class_act in result.classnames:
-            nonmarker_z = result.metrics.loc[
+            cc = result.metrics["CC_" + class_act]
+            nonmarker_z = cc[
+                # markers for other classes
                 (result.metrics["marker"] != class_act)
                 & (result.metrics["marker"].isna() == False)
-            ][["CC_" + class_act]]
+            ]
             thresh = np.percentile(
-                nonmarker_z["CC_" + class_act].tolist(),
+                nonmarker_z,
                 reliability,
             )
-            result.metrics["fCC_" + class_act] = result.metrics[
-                "CC_" + class_act
-            ]
-            result.metrics.loc[
-                result.metrics["fCC_" + class_act] < thresh,
-                "fCC_" + class_act,
-            ] = 0.0
+            result.metrics["fCC_" + class_act] = cc.mask(cc < thresh, 0.0)
 
         fcc_cols = [col for col in result.metrics if col.startswith("fCC_")]
         fcc_sums = result.metrics[fcc_cols].sum(axis=1)
@@ -303,9 +295,7 @@ def stats_proteome(
         )
 
         ## add fNN_winner:
-        fcc_columns = result.metrics[
-            [col for col in result.metrics.columns if col.startswith("fCC_")]
-        ]
+        fcc_columns = result.metrics[fcc_cols]
         # compute idxmax(axis=1), but only for rows that aren't all NaN
         #  (The behavior of DataFrame.idxmax with all-NA values,
         #   or any-NA and skipna=False, is deprecated.)
