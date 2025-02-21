@@ -187,65 +187,8 @@ def stats_proteome(
         for subcon in subcons:
             xyz = learning_xyz[subcon]
             logger.info(f"Processing {condition} / {subcon}...")
-            xyz.w_full_combined = pd.DataFrame(index=xyz.x_full_df.index)
-            xyz.w_full_prob_combined = pd.DataFrame(index=xyz.x_full_df.index)
 
-            for round_id, round_results in xyz.round_results.items():
-                w_full_prob_df = round_results.w_full_prob_df
-                xyz.w_full_combined = pd.merge(
-                    xyz.w_full_combined,
-                    w_full_prob_df["SVM_winner"],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                )
-                xyz.w_full_combined = xyz.w_full_combined.loc[
-                    ~xyz.w_full_combined.index.duplicated(keep="first")
-                ]
-                xyz.w_full_combined.rename(
-                    columns={"SVM_winner": f"{round_id}_SVM_winner"},
-                    inplace=True,
-                )
-                xyz.w_full_prob_combined = pd.merge(
-                    xyz.w_full_prob_combined,
-                    w_full_prob_df["SVM_prob"],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                )
-                xyz.w_full_prob_combined = xyz.w_full_prob_combined.loc[
-                    ~xyz.w_full_prob_combined.index.duplicated(keep="first")
-                ]
-                xyz.w_full_prob_combined.rename(
-                    columns={"SVM_prob": f"{round_id}_SVM_prob"}, inplace=True
-                )
-
-            SVM_equal = xyz.w_full_combined.apply(
-                lambda row: row.nunique() == 1, axis=1
-            )
-            xyz.w_full_combined["SVM_winner"] = np.where(
-                SVM_equal,
-                xyz.w_full_combined.iloc[:, 0],
-                np.nan,
-            )
-            xyz.w_full_prob_combined["SVM_prob"] = (
-                xyz.w_full_prob_combined.mean(axis=1)
-            )
-
-            xyz.w_full_combined = pd.merge(
-                xyz.w_full_combined,
-                xyz.w_full_prob_combined[["SVM_prob"]],
-                left_index=True,
-                right_index=True,
-                how="left",
-            )
-            xyz.w_full_combined = xyz.w_full_combined.loc[
-                ~xyz.w_full_combined.index.duplicated(keep="first")
-            ]
-            xyz.w_full_combined.loc[
-                xyz.w_full_combined["SVM_winner"].isna(),
-                "SVM_prob",
-            ] = np.nan
+            combine_svm_round_results(xyz)
 
             result.SVM["winner_combined"] = pd.merge(
                 result.SVM["winner_combined"],
@@ -409,6 +352,79 @@ def stats_proteome(
     logger.info("Proteome prediction done.")
 
     return results
+
+
+def combine_svm_round_results(xyz: XYZ_Model):
+    """Combine SVM result from the different training rounds.
+
+    Combine the SVM predictions and probabilities from the different training
+    rounds into a single DataFrame and compute the combined winner and
+    mean probability.
+    """
+
+    # combine predictions
+    xyz.w_full_combined = pd.DataFrame(index=xyz.x_full_df.index)
+
+    for round_id, round_results in xyz.round_results.items():
+        xyz.w_full_combined = pd.merge(
+            xyz.w_full_combined,
+            round_results.w_full_prob_df["SVM_winner"],
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+        xyz.w_full_combined = xyz.w_full_combined.loc[
+            ~xyz.w_full_combined.index.duplicated(keep="first")
+        ]
+        xyz.w_full_combined.rename(
+            columns={"SVM_winner": f"{round_id}_SVM_winner"},
+            inplace=True,
+        )
+
+    svm_equal = xyz.w_full_combined.apply(
+        lambda row: row.nunique() == 1, axis=1
+    )
+    xyz.w_full_combined["SVM_winner"] = np.where(
+        svm_equal,
+        xyz.w_full_combined.iloc[:, 0],
+        np.nan,
+    )
+    xyz.w_full_combined = xyz.w_full_combined.loc[
+        ~xyz.w_full_combined.index.duplicated(keep="first")
+    ]
+
+    # combine probabilities
+    xyz.w_full_prob_combined = pd.DataFrame(index=xyz.x_full_df.index)
+
+    for round_id, round_results in xyz.round_results.items():
+        xyz.w_full_prob_combined = pd.merge(
+            xyz.w_full_prob_combined,
+            round_results.w_full_prob_df["SVM_prob"],
+            left_index=True,
+            right_index=True,
+            how="left",
+        )
+        xyz.w_full_prob_combined = xyz.w_full_prob_combined.loc[
+            ~xyz.w_full_prob_combined.index.duplicated(keep="first")
+        ]
+        xyz.w_full_prob_combined.rename(
+            columns={"SVM_prob": f"{round_id}_SVM_prob"}, inplace=True
+        )
+
+    xyz.w_full_prob_combined["SVM_prob"] = xyz.w_full_prob_combined.mean(
+        axis=1
+    )
+    xyz.w_full_combined = pd.merge(
+        xyz.w_full_combined,
+        xyz.w_full_prob_combined[["SVM_prob"]],
+        left_index=True,
+        right_index=True,
+        how="left",
+    )
+    xyz.w_full_combined.loc[
+        xyz.w_full_combined["SVM_winner"].isna(),
+        "SVM_prob",
+    ] = np.nan
 
 
 def global_comparisons(
