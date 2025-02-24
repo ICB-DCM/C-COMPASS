@@ -450,10 +450,14 @@ def global_comparisons(
         if con_1 != con_2
     ]
 
-    ctx = get_mp_ctx()
-    with ctx.Pool(processes=max_processes) as pool:
-        comparisons = dict(pool.map(_global_comparison_entry, arg_lists))
-
+    if max_processes >= 1:
+        ctx = get_mp_ctx()
+        with ctx.Pool(processes=max_processes) as pool:
+            comparisons = dict(pool.map(_global_comparison_entry, arg_lists))
+    else:
+        comparisons = dict(
+            _global_comparison_entry(args) for args in arg_lists
+        )
     logger.info("Global changes calculated.")
 
     return comparisons
