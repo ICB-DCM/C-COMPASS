@@ -5,29 +5,183 @@ Usage Guide
 0. Data Preparation
 ===================
 
-* To analyze your spatial proteomics datasets, you need the proteomics report file(s) derived from your spectral search software, such as MaxQuant, Spectronaut, DIANN, or others. Your data must be reported as a **pivot report table**, meaning that your table includes one column per sample, as well as additional columns for further information. The necessary columns are:
+To analyze your spatial proteomics datasets with C-COMPASS, you need the
+following input files: a :ref:`fractionation dataset <input_fract>`,
+a :ref:`marker list <input_marker>`, and, for some analyses,
+a :ref:`total proteome dataset <input_tp>`.
+These are described in detail below. There is also a
+:ref:`sample dataset <sample_data>` available.
 
-  * One column per sample (fraction).
-  * One column containing a **unique identifier** (e.g., protein groups, protein ID, etc.).
-  * One column containing key names that match the key names in your marker list (usually gene names). Ensure these keys are compatible, including case sensitivity.
+.. _input_fract:
 
-* Furthermore, you need a file containing your marker proteins. C-COMPASS provides prepared marker lists from previous publications, or you can use a custom export from a database relevant to your project. This file must include at least two columns:
+Fractionation Data (required)
+-----------------------------
 
-  * A column containing key names matching those in your dataset (usually gene names, see above).
-  * A column containing **class annotations** (for spatial proteomics experiments, this should represent the compartments where the marker proteins are located).
+The fractionation dataset contains the protein amounts across different
+fractions. This dataset is typically derived from a spectral search software,
+such as MaxQuant, Spectronaut, DIANN, or others.
+The data must be reported as a **pivot report table**, meaning that your table
+includes one row per protein and one column per sample
+(e.g., 'Condition1_Replicate1_Fraction1', 'Condition1_Replicate1_Fraction2',
+and so on...).
+The data is expected to be in a tab-delimited format (``.txt`` or ``.tsv``).
 
-* An additional dataset containing the total proteomes of the fractionation samples (proteomes derived from whole cell/tissue lysate) can be provided for **class-centric analysis** of compartments. This file should contain:
+Example:
 
-  * One column per total proteome sample.
-  * One column containing the **same unique identifier** as used in the fractionation samples (see above).
+  .. list-table:: Fractionation data example table
+   :header-rows: 1
+
+   * - ProteinGroups
+     - GeneName
+     - Condition1_Replicate1_Fraction1
+     - Condition1_Replicate1_Fraction2
+   * - P001
+     - G001
+     - 0.45
+     - 0.78
+   * - P002
+     - G002
+     - 0.67
+     - 0.34
+   * - P003
+     - G003
+     - 0.89
+     - 0.56
+   * - P004
+     - G004
+     - 0.12
+     - 0.91
+
+The required columns are:
+
+* A unique protein identifier column
+  (such as ProteinGroups, UniProtID, or similar)
+* Potentially a second identifier/key that is compatible with your
+  :ref:`marker list <input_marker>` (usually the GeneName).
+  Ensure that these keys exactly match the ones in your marker list.
+* Columns for each condition/fraction/replicate.
+
+The table may also contain additional columns.
+You can remove them in C-COMPASS.
+
+There are no restrictions on the column names or order. However, assigning the
+condition, replicate, and fraction IDs/numbers in C-COMPASS will be easier
+if the columns for the different fractions of a given condition/replicate are
+grouped together, and the order of the columns is consistent across replicates
+and conditions.
+
+.. note::
+
+    You should not apply any data processing before loading the dataset in
+    C-COMPASS.
+
+    If you have a dataset that is already pre-processed, please make sure that
+    the data still fulfill the following requirements:
+
+    * Any normalization must conserve the intensity ratios between fractions.
+      That means, a 0-1 MinMax scaling or area-based scaling is ok,
+      but do not apply any log-transformation.
+    * A normalization that corrects values across different replicates or
+      conditions is ok as long as the integrity of the profiles per replicate
+      are conserved.
+
+C-COMPASS was optimized on LFQ values but other quantities like TMT can
+also be used.
+Different conditions or different replicates can derive from several
+experiments/runs as long as the identifier is compatible, but each replicate
+fractionation must derive from the same analysis file.
+
+The number of fractions can differ across replicates.
+
+.. _input_marker:
+
+Marker List (necessary)
+-----------------------
+
+A list of marker proteins is required to train the neural network model.
+This list should contain proteins that are known to be localized to specific
+compartments. The marker list can be derived from previous publications or
+databases relevant to your project.
+
+The data is expected to be in a tab-delimited format (``.txt`` or ``.tsv``).
+The table must contain at least two columns:
+
+* An identifier/key compatible with the key column in the
+  :ref:`fractionation dataset <input_fract>`, usually the GeneName
+* A compartment annotation column that specifies on which in compartment the
+  each protein are located
+
+.. list-table:: Marker list example
+   :header-rows: 1
+
+   * - GeneName
+     - Compartment
+   * - G001
+     - ER
+   * - G002
+     - Golgi
+   * - G003
+     - Mitochondria
+
+Multiple files can be combined in C-COMPASS and compartments can be renamed or
+excluded.
+
+.. _input_tp:
+
+Total Proteome Data (optional)
+------------------------------
+
+Total proteome data is only necessary for normalization of relocalization
+events to study the abundance change inside compartments across conditions
+(referred to as *class-centric analysis* in the GUI).
+
+The data is expected to be in a tab-delimited format (``.txt`` or ``.tsv``).
+Data must be presented as a 'pivot report table' That means, you need one
+column for each of your samples (e.g. 'TP_Condition1_Replicate1',
+'TP_Condition1_Replicate2', and so on...).
+
+Table must contain the same unique identifier column that was used for the
+fractionation file (ProteinGroups, UniProtID or similar).
+
+Example:
+
+  .. list-table:: Total Proteome data example table
+   :header-rows: 1
+
+   * - ProteinGroups
+     - TP_Condition1_Replicate1
+     - TP_Condition1_Replicate2
+   * - P001
+     - 0.45
+     - 0.78
+   * - P002
+     - 0.67
+     - 0.34
+   * - P003
+     - 0.89
+     - 0.56
+   * - P004
+     - 0.12
+     - 0.91
+
+
+You can apply normalizations like batch-corrections or median-normalization,
+but do not apply log-transformations.
+Total proteome analysis was also optimized on LFQ intensities but other
+quantities like TMT can be used.
+The table can also contain additional columns that are not necessary.
+You can remove them in C-COMPASS.
+Total Proteome data should derive from the same experiment to be comparable.
+
+
 
 Additional Notes
 ----------------
 
-* All input files must be **tab-delimited** (.tsv or .txt).
 * If using an export file from **Perseus**, ensure that the file does not contain a second-layer header.
 * Input datasets (for both fractionation and total proteome) can be stored in the same file or split across different files. If they are split, ensure that the **identifiers** are consistent.
 
+.. _sample_data:
 
 Sample Data
 -----------
@@ -64,12 +218,13 @@ fully restored upon loading.
 
 #. **Data Import**
 
-   #. There are two tabs for data import: `Fractionation` and `TotalProteome`.
+   #. There are two tabs for data import:
+      :guilabel:`Fractionation` and :guilabel:`TotalProteome`.
 
-   #. Fractionation data can be analyzed independently, but TotalProteome is
-      required for final class-centric statistics.
+   #. Fractionation data can be analyzed independently, but
+      :guilabel:`TotalProteome` is required for final class-centric statistics.
 
-   #. Use the `Add file...` button to import datasets.
+   #. Use the :guilabel:`Add file...` button to import datasets.
       Multiple datasets can be imported and will appear in the dropdown menu.
       To remove a dataset, select it from the dropdown and click `Remove.`
 
@@ -97,43 +252,51 @@ fully restored upon loading.
 
 #. **Pre-Processing**
 
-   #. Once columns are annotated, click `Process Fract.` or `Process TP`
-      to import the data.
+   #. Once columns are annotated, click :guilabel:`Process Fract.`
+      or :guilabel:`Process TP` to import the data.
 
    #. Fractionation and TotalProteome data can be processed independently.
 
 #. **Marker List Import**
 
-   #. In the `Marker Selection` frame, load marker lists via the `Add...`
-      button. Multiple marker lists can be imported, and individual lists can
-      be removed using the `Remove` button.
+   #. In the :guilabel:`Marker Selection` frame, load marker lists via the
+      :guilabel:`Add...` button.
+      Multiple marker lists can be imported, and individual lists can
+      be removed using the :guilabel:`Remove` button.
 
    #. Imported marker lists will be displayed in the box.
 
    #. For each marker list, specify the key column (e.g., gene names)
       and the class column (e.g., compartment).
 
-   #. In the `Fract. Key` section, select the column from the fractionation dataset that contains the compatible key naming. If the identifier and key column are the same, select `[IDENTIFIER].`
+   #. In the :guilabel:`Fract. Key` section, select the column from the
+      fractionation dataset that contains the compatible key naming.
+      If the identifier and key column are the same, select
+      :guilabel:`[IDENTIFIER].`
 
 #. **Marker Check & Matching**
 
-   #. Click `Manage...` to view all class annotations from the marker lists.
+   #. Click :guilabel:`Manage...` to view all class annotations from the
+      marker lists.
       Unselect any classes you do not want in the analysis or rename them.
 
-   #. Classes with different nomenclatures (e.g., ``ER`` vs. ``Endoplasmic Reticulum``) can be merged by giving them the same name.
+   #. Classes with different nomenclatures
+      (e.g., ``ER`` vs. ``Endoplasmic Reticulum``) can be merged by giving them
+      the same name.
 
    #. Median profiles of marker proteins and Pearson correlation matrices
       can be displayed via the corresponding buttons.
       Export options for plots and tables are available.
 
-   #. Confirm your marker selection by clicking `Match!`.
+   #. Confirm your marker selection by clicking :guilabel:`Match!`.
 
 3. Training
 ===========
 
-#. Start the training process by clicking `Train C-COMPASS`.
+#. Start the training process by clicking :guilabel:`Train C-COMPASS`.
 
-#. Various network architectures will be trained and evaluated for optimal results. This process may take over an hour, depending on dataset size.
+#. Various network architectures will be trained and evaluated for optimal
+   results. This process may take over an hour, depending on dataset size.
 
 #. Progress will be shown in the background console window.
 
@@ -146,20 +309,21 @@ fully restored upon loading.
 
 #. **Statistics**
 
-   #. After training, create `Static Statistics` via `Predict Proteome`
+   #. After training, create `Static Statistics` via
+      :guilabel:`Predict Proteome`
       to generate quantitative classifications for each condition.
 
    #. Predictions can be exported or imported for comparison across sessions,
       ensuring compatible identifiers.
 
-   #. Use the `Report` button to export results.
+   #. Use the :guilabel:`Report` button to export results.
 
    #. Create simple plots and export them, along with the corresponding data tables.
 
 #. **Conditional Comparison - Global Changes**
 
-   #. `Calculate Global Changes` compares localization across conditions,
-      providing relocalization results.
+   #. :guilabel:`Calculate Global Changes` compares localization across
+      conditions, providing relocalization results.
 
    #. Results can be displayed and exported similarly to the statistics.
 
@@ -172,47 +336,68 @@ fully restored upon loading.
 5. Spatial Lipidomics
 ======================
 
-#. C-COMPASS has been used for spatial lipidomics analysis, though no dedicated feature currently exists for multi-omics analysis.
+C-COMPASS has been used for spatial lipidomics analysis, though no dedicated
+feature currently exists for multi-omics analysis.
 
-#. You can concatenate proteomics and lipidomics datasets into one file before importing into C-COMPASS. Lipids will be treated like proteins, and spatial information can be derived similarly.
-
-#. Future versions of C-COMPASS will include features specifically designed for lipidomics.
+You can concatenate proteomics and lipidomics datasets into one file before
+importing into C-COMPASS. Lipids will be treated like proteins,
+and spatial information can be derived similarly.
+Future versions of C-COMPASS will include features specifically designed for
+lipidomics.
 
 6. Parameters
 =============
 
-#. All parameters are set to default values used in our publication. It is not recommended to change them unless you are familiar with the procedure and its impact on results.
+All parameters are set to default values used in our publication.
+It is not recommended to change them unless you are familiar with the
+procedure and its impact on results.
 
-#. **Parameters - Fractionation**
+Fractionation Data Parameters
+-----------------------------
 
-   #. Parameters for analysis and visualization can be adjusted independently.
+Parameters for analysis and visualization can be adjusted independently.
 
-   #. **Min. valid fractions**: Profiles with fewer valid values across fractions can be filtered out.
+**Min. valid fractions**:
+    Profiles with fewer valid values across fractions can be filtered out.
 
-   #. **Found in at least X Replicates**: Proteins found in fewer replicates than specified will be removed.
+**Found in at least X Replicates**:
+    Proteins found in fewer replicates than specified will be removed.
 
-   #. **Pre-scaling**: Options include MinMax scaling or Area scaling.
+**Pre-scaling**:
+    Options include MinMax scaling or Area scaling.
 
-   #. **Exclude Proteins from Worst Correlated Replicate**: Removes the replicate with the lowest Pearson correlation.
+**Exclude Proteins from Worst Correlated Replicate**:
+    Removes the replicate with the lowest Pearson correlation.
 
-   #. **Post-scaling**: Same options as Pre-scaling, useful for median profiles.
+**Post-scaling**:
+    Same options as Pre-scaling, useful for median profiles.
 
-   #. **Remove Baseline Profiles**: Removes profiles with only 0 values after processing.
+**Remove Baseline Profiles**:
+    Removes profiles with only 0 values after processing.
 
-#. **Parameters - TotalProteome**
+TotalProteome Parameters
+------------------------
 
-   #. **Found in at least X**: Similar to Fractionation data, this filters proteins found in fewer replicates.
+**Found in at least X**:
+    Similar to Fractionation data, this filters proteins found in fewer replicates.
 
-   #. **Imputation**: Missing values can be replaced by 0 or other values.
+**Imputation**:
+    Missing values can be replaced by 0 or other values.
 
-#. **Parameters - Marker Selection**
+Marker Selection Parameters
+---------------------------
 
-   #. Discrepancies across marker lists can be handled by excluding markers or taking the majority annotation.
+Discrepancies across marker lists can be handled by excluding markers or taking
+the majority annotation.
 
-#. **Parameters - Spatial Prediction**
+Spatial Prediction Parameters
+-----------------------------
 
-   #. **WARNING**: Changes here are not recommended!
+**WARNING**: Changes here are not recommended!
 
-   #. Various upsampling, noise, and SVM filtering methods are available for marker prediction.
+Various upsampling, noise, and SVM filtering methods are available for marker
+prediction.
 
-#. **Other parameters** for network training and optimization can be configured, including dense layer activation, output activation, loss function, optimizers, and number of epochs.
+**Other parameters** for network training and optimization can be configured,
+including dense layer activation, output activation, loss function, optimizers,
+and number of epochs.
