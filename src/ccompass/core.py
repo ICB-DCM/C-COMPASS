@@ -248,8 +248,6 @@ class TrainingRound_Model(BaseModel):
     #: Class labels for the upsampled training data
     #  (protein (index), 'class')
     W_train_up_df: pd.Series = pd.Series()
-    #: W_train_up_df as list
-    W_train_up: list = []
     #: Features for the upsampled full dataset
     #  (protein x fraction)
     x_full_up_df: pd.DataFrame = pd.DataFrame()

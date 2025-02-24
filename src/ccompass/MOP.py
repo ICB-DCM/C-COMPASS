@@ -371,7 +371,6 @@ def execute_round(
         fract_full_up = copy.deepcopy(fract_full)
 
     result.W_train_up_df = fract_marker_up["class"]
-    result.W_train_up = list(result.W_train_up_df)
     result.x_full_up_df = fract_full_up.drop(columns=["class"])
     result.x_full_up = result.x_full_up_df.to_numpy(dtype=float)
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
@@ -710,7 +709,7 @@ def single_prediction(
     x_train_up = round_result.x_train_up
     x_test = learning_xyz.x_test
     W_train = learning_xyz.W_train
-    W_train_up = round_result.W_train_up
+    W_train_up = round_result.W_train_up_df
 
     # train classifier on the upsampled data
     clf = svm.SVC(kernel="rbf", probability=True)
