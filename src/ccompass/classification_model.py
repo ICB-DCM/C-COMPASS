@@ -38,6 +38,8 @@ class FNN_Classifier(kt.HyperModel):
     :param fixed_hp: Fixed hyperparameter values for the model.
     :param set_shapes: The shapes of the input and output sets (number of
         fractions and compartments).
+
+    :ivar chosen_hp: The hyperparameters used to build the model.
     """
 
     def __init__(
@@ -66,7 +68,7 @@ class FNN_Classifier(kt.HyperModel):
         if self.fixed_hp:
             optimizer_choice = self.fixed_hp["optimizer"]
             learning_rate = self.fixed_hp["learning_rate"]
-            units = self.fixed_hp["units"]
+            dl1_units = self.fixed_hp["dl1_units"]
         else:
             optimizer_choice = hp.Choice(
                 "optimizer", self.nn_params.optimizers
@@ -78,8 +80,8 @@ class FNN_Classifier(kt.HyperModel):
                 sampling="log",
             )
             if self.nn_params.NN_optimization == "short":
-                units = hp.Int(
-                    "units",
+                dl1_units = hp.Int(
+                    "dl1_units",
                     min_value=int(
                         min(self.set_shapes)
                         + 0.4 * (max(self.set_shapes) - min(self.set_shapes))
@@ -91,8 +93,8 @@ class FNN_Classifier(kt.HyperModel):
                     step=2,
                 )
             elif self.nn_params.NN_optimization == "long":
-                units = hp.Int(
-                    "units",
+                dl1_units = hp.Int(
+                    "dl1_units",
                     min_value=min(self.set_shapes),
                     max_value=max(self.set_shapes),
                     step=2,
@@ -104,12 +106,12 @@ class FNN_Classifier(kt.HyperModel):
 
         # dense layer 1 with tunable size
         if self.nn_params.NN_activation == "relu":
-            model.add(keras.layers.Dense(units, activation="relu"))
+            model.add(keras.layers.Dense(dl1_units, activation="relu"))
         elif self.nn_params.NN_activation == "leakyrelu":
             hp_alpha = hp.Float(
                 "alpha", min_value=0.05, max_value=0.3, step=0.05
             )
-            model.add(keras.layers.Dense(units))
+            model.add(keras.layers.Dense(dl1_units))
             model.add(keras.layers.LeakyReLU(hp_alpha))
 
         # dense layer 2 with size according to the number of compartments
@@ -141,7 +143,7 @@ class FNN_Classifier(kt.HyperModel):
             self.chosen_hp = {
                 "optimizer": optimizer_choice,
                 "learning_rate": learning_rate,
-                "units": units,
+                "dl1_units": dl1_units,
             }
 
         return model
