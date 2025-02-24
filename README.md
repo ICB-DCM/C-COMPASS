@@ -31,7 +31,7 @@ for Linux, Windows, and macOS.
 Download the appropriate file for your operating system and run it.
 
 On Windows, make sure to install the Microsoft C and C++ (MSVC) runtime
-libraries before ([further information](ttps://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170),
+libraries before ([further information](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170),
 [direct download](https://aka.ms/vs/17/release/vc_redist.x64.exe)).
 
 Unreleased versions can be downloaded from
