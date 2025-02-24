@@ -34,8 +34,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y xvfb
         python -m pip install --upgrade pip
-        pip install -e .[test,dev]
-
+        python -m pip install -e .[test,dev]
+        python -m pip freeze
 
     - name: Run pre-commit checks
       run: |
@@ -80,8 +80,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[test]
-
+        python -m pip install -e .[test]
+        python -m pip freeze
     - name: Run tests
       timeout-minutes: 8
       run: |
@@ -120,7 +120,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[test]
+        python -m pip install -e .[test]
+        python -m pip freeze
 
     - name: Run tests
       timeout-minutes: 8
