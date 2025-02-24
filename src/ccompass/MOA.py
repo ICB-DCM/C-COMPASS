@@ -55,7 +55,7 @@ def is_all_nan(list_):
 def perform_mann_whitney_t_tests_per_cell(
     df1: pd.DataFrame, df2: pd.DataFrame, prefix: str
 ) -> pd.DataFrame:
-    """Perform Mann-Whitney U tests, t-tests, and compute Cohen's D.
+    """Perform Mann-Whitney U tests, t-tests, and compute Cohen's d.
 
     Groups are compared for each cell in the given DataFrames'
     columns starting with `prefix`. Those columns are assumed to
@@ -114,6 +114,7 @@ def perform_mann_whitney_t_tests_per_cell(
                 ]
                 mean_diff = np.mean(diff)
                 std_diff = np.std(diff, ddof=1)
+
                 cohen_d = mean_diff / std_diff if std_diff != 0 else np.nan
 
                 # Storing results
@@ -496,16 +497,19 @@ def global_comparison(
 
     logger.info("performing t-tests...")
 
+    # calculate relocation = ΔCC
     for classname in classnames:
         comparison.metrics["RL_" + classname] = (
             metrics_other["CC_" + classname] - metrics_own["CC_" + classname]
         )
 
+    # calculate relocalization scores = Σ_compartment|ΔCC_compartment|
     rl_cols = [
         col for col in comparison.metrics.columns if col.startswith("RL_")
     ]
     comparison.metrics["RLS"] = comparison.metrics[rl_cols].abs().sum(axis=1)
 
+    # relocalization scores after filtering out false positives
     for classname in classnames:
         comparison.metrics["fRL_" + classname] = (
             metrics_other["fCC_" + classname] - metrics_own["fCC_" + classname]
@@ -515,6 +519,7 @@ def global_comparison(
     ]
     comparison.metrics["fRLS"] = comparison.metrics[frl_cols].abs().sum(axis=1)
 
+    # add statistics
     test_df = perform_mann_whitney_t_tests_per_cell(
         metrics_own, metrics_other, "CClist_"
     )
