@@ -1844,7 +1844,15 @@ def fract_add(
         values=model.fract_paths, value=filename
     )
 
-    df = pd.read_csv(filename, sep="\t", header=0)
+    try:
+        df = pd.read_csv(filename, sep="\t", header=0)
+    except Exception:
+        logger.exception(
+            f"Error reading fractionation dataset from {filename}"
+        )
+        messagebox.showerror("Error", "Invalid file format.")
+        return
+
     df = df.replace("NaN", np.nan)
     df = df.replace("Filtered", np.nan)
 
@@ -2000,7 +2008,15 @@ def tp_add_dataset(
         return
 
     # read file
-    df = pd.read_csv(filename, sep="\t", header=0)
+    try:
+        df = pd.read_csv(filename, sep="\t", header=0)
+    except Exception:
+        logger.exception(
+            f"Error reading total proteome dataset from {filename}"
+        )
+        messagebox.showerror("Error", "Invalid file format.")
+        return
+
     df = df.replace("NaN", np.nan)
     df = df.replace("Filtered", np.nan)
     df = df.map(convert_to_float)
@@ -2217,9 +2233,14 @@ def marker_add(window, marker_sets: dict[str, MarkerSet]):
     if not filename:
         return
 
-    df = pd.read_csv(filename, sep="\t", header=0).apply(
-        lambda x: x.astype(str).str.upper()
-    )
+    try:
+        df = pd.read_csv(filename, sep="\t", header=0).apply(
+            lambda x: x.astype(str).str.upper()
+        )
+    except Exception:
+        logger.exception(f"Error reading marker list from {filename}")
+        messagebox.showerror("Error", "Invalid file format.")
+        return
 
     marker_sets[filename] = MarkerSet(df=df)
     refresh_markertable(window, marker_sets)
