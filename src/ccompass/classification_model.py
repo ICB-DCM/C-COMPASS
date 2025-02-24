@@ -27,7 +27,18 @@ optimizer_classes = {
 
 
 class FNN_Classifier(kt.HyperModel):
-    """The neural network hypermodel for multi-compartment classification."""
+    """The neural network hypermodel for multi-compartment classification.
+
+    The model consists of two dense layers with a tunable number of units in
+    the first layer. The second layer has a number of units equal to the number
+    of compartments. The output is normalized to sum to 1.
+
+    :param nn_params: Hyperparameters for the neural network model and
+        training.
+    :param fixed_hp: Fixed hyperparameter values for the model.
+    :param set_shapes: The shapes of the input and output sets (number of
+        fractions and compartments).
+    """
 
     def __init__(
         self,

@@ -246,10 +246,12 @@ class TrainingRound_Model(BaseModel):
     #: Summary of the best neural network mode
     FNN_summary: str = ""
     #: Class labels for the upsampled training data
+    #  (protein (index), 'class')
     W_train_up_df: pd.Series = pd.Series()
     #: W_train_up_df as list
     W_train_up: list = []
     #: Features for the upsampled full dataset
+    #  (protein x fraction)
     x_full_up_df: pd.DataFrame = pd.DataFrame()
     #: x_full_up_df as numpy array
     x_full_up: np.ndarray = np.array([])
@@ -264,6 +266,7 @@ class TrainingRound_Model(BaseModel):
     #: x_train_mixed_up_df as numpy
     x_train_mixed_up: np.ndarray = np.array([])
     #: Class probabilities for mixed profiles (mixing ratios)
+    #  (protein x compartment)
     Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
     #: Z_train_mixed_up_df as numpy array
     Z_train_mixed_up: np.ndarray = np.array([])

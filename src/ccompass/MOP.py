@@ -495,7 +495,9 @@ def multi_predictions(
 
     y_train_mixed_up = subround_data.y_train_mixed_up
     Z_train_mixed_up = round_data.Z_train_mixed_up
-    set_shapes = [np.shape(y_train_mixed_up)[1], np.shape(Z_train_mixed_up)[1]]
+    num_compartments = np.shape(Z_train_mixed_up)[1]
+    num_fractions = np.shape(y_train_mixed_up)[1]
+    set_shapes = [num_fractions, num_compartments]
 
     # Set up hyperparameter tuning
     classifier_directory = get_ccmps_data_directory()
