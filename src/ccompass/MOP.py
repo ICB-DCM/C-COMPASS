@@ -282,17 +282,22 @@ def multi_organelle_prediction(
         if progress_queue:
             progress_queue.put((condition, round_id))
 
-    ctx = get_mp_ctx()
-    with ctx.Pool(processes=max_processes) as pool:
-        results = [
-            pool.apply_async(
-                execute_round_wrapper, (args,), callback=on_task_done
-            )
-            for args in args_list
-        ]
+    if max_processes > 1:
+        ctx = get_mp_ctx()
+        with ctx.Pool(processes=max_processes) as pool:
+            results = [
+                pool.apply_async(
+                    execute_round_wrapper, (args,), callback=on_task_done
+                )
+                for args in args_list
+            ]
 
-        for result in results:
-            result.get()
+            for result in results:
+                result.get()
+    else:
+        for args in args_list:
+            result = execute_round_wrapper(args)
+            on_task_done(result)
 
     if result_queue:
         result_queue.put(learning_xyz)
