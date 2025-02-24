@@ -4,7 +4,7 @@ import os
 import tempfile
 
 
-def do_test_run():
+def do_test_run(max_procs: int = None):
     """Perform a test run of most functionality based on a small
     synthetic dataset.
 
@@ -38,7 +38,7 @@ def do_test_run():
         tp_col_id_to_row,
     )
 
-    max_procs = os.cpu_count()
+    max_procs = max_procs or os.cpu_count()
 
     # generate synthetic data
     c = SyntheticDataConfig(
