@@ -450,7 +450,7 @@ def global_comparisons(
         if con_1 != con_2
     ]
 
-    if max_processes >= 1:
+    if max_processes > 1:
         ctx = get_mp_ctx()
         with ctx.Pool(processes=max_processes) as pool:
             comparisons = dict(pool.map(_global_comparison_entry, arg_lists))
