@@ -207,6 +207,10 @@ computer:
 1. Graphical User Interface (GUI)
 =================================
 
+.. image:: gfx/ccompass_gui_sample_data_screenshot.png
+   :width: 100%
+   :alt: C-COMPASS GUI
+
 C-COMPASS allows you to save and load your sessions via the main menu
 (:menuselection:`File --> Save As`).
 Saving after each significant step is recommended to avoid data loss.
