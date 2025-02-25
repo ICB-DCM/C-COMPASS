@@ -1278,9 +1278,6 @@ class MainController:
             elif event == "-class_heatmap-":
                 RP.RP_class_heatmap(self.model.results)
 
-            elif event == "-class_reorganization-":
-                RP.RP_class_reorganization(self.model.comparison)
-
             elif event == "-global_run-":
                 with wait_cursor(self.main_window):
                     self.model.comparison = MOA.global_comparisons(
