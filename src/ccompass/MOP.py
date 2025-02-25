@@ -27,8 +27,8 @@ from ._utils import (
 )
 from .core import (
     NeuralNetworkParametersModel,
-    TrainingRound_Model,
-    TrainingSubRound_Model,
+    TrainingRoundModel,
+    TrainingSubRoundModel,
     XYZ_Model,
 )
 
@@ -350,10 +350,10 @@ def execute_round(
     logger: logging.Logger,
     round_id: str,
     keras_proj_id: str,
-) -> TrainingRound_Model:
+) -> TrainingRoundModel:
     """Perform a single round of training and prediction."""
 
-    result = TrainingRound_Model()
+    result = TrainingRoundModel()
 
     # upsample fractionation data
     if nn_params.upsampling:
@@ -426,15 +426,11 @@ def execute_round(
     result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
     result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
 
-    # TODO(performance): We can avoid the extra copying here.
-    #   The data is constant across subrounds
-    for i_subround in range(0, nn_params.subrounds + 1):
-        sr = result.subround_results[f"{round_id}_{i_subround}"] = (
-            TrainingSubRound_Model()
-        )
-        sr.y_full_df = xyz.x_full_df
-        sr.y_train_df = xyz.x_train_df
-        sr.y_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
+    # Initialize subround results
+    result.subround_results = {
+        f"{round_id}_{i_subround}": TrainingSubRoundModel()
+        for i_subround in range(0, nn_params.subrounds + 1)
+    }
 
     with stdout_to_logger(logger, logging.DEBUG):
         multi_predictions(
@@ -451,7 +447,7 @@ def execute_round(
 
 def multi_predictions(
     learning_xyz: XYZ_Model,
-    round_data: TrainingRound_Model,
+    round_data: TrainingRoundModel,
     nn_params: NeuralNetworkParametersModel,
     logger: logging.Logger,
     round_id: str,
@@ -468,7 +464,7 @@ def multi_predictions(
     subround_id = f"{round_id}_0"
     subround_data = round_data.subround_results[subround_id]
 
-    y_train_mixed_up = subround_data.y_train_mixed_up
+    y_train_mixed_up = round_data.x_train_mixed_up_df.to_numpy(dtype=float)
     Z_train_mixed_up = round_data.Z_train_mixed_up_df.to_numpy(dtype=float)
     num_compartments = np.shape(Z_train_mixed_up)[1]
     num_fractions = np.shape(y_train_mixed_up)[1]
@@ -509,8 +505,8 @@ def multi_predictions(
     best_model.summary(print_fn=lambda x: stringlist.append(x))
     round_data.FNN_summary = "\n".join(stringlist)
 
-    z_full = best_model.predict(subround_data.y_full_df.values)
-    z_train = best_model.predict(subround_data.y_train_df.values)
+    z_full = best_model.predict(learning_xyz.x_full_df.values)
+    z_train = best_model.predict(learning_xyz.x_train_df.values)
 
     add_Z(
         learning_xyz,
@@ -531,15 +527,15 @@ def multi_predictions(
             fixed_hp=best_hp, set_shapes=set_shapes, nn_params=nn_params
         ).build(None)
         fixed_model.fit(
-            subround_data.y_train_mixed_up,
+            y_train_mixed_up,
             Z_train_mixed_up,
             epochs=nn_params.NN_epochs,
             validation_split=0.2,
             callbacks=[stop_early],
         )
 
-        z_full = fixed_model.predict(subround_data.y_full_df.values)
-        z_train = fixed_model.predict(subround_data.y_train_df.values)
+        z_full = fixed_model.predict(learning_xyz.x_full_df.values)
+        z_train = fixed_model.predict(learning_xyz.x_train_df.values)
 
         add_Z(
             learning_xyz,
@@ -551,18 +547,18 @@ def multi_predictions(
 
 def add_Z(
     xyz: XYZ_Model,
-    subround_data: TrainingSubRound_Model,
-    z_full,
-    z_train,
-):
+    subround_data: TrainingSubRoundModel,
+    z_full: np.ndarray,
+    z_train: np.ndarray,
+) -> None:
     subround_data.z_full_df = pd.DataFrame(
         z_full,
-        index=subround_data.y_full_df.index,
+        index=xyz.x_full_df.index,
         columns=xyz.classes,
     )
     subround_data.z_train_df = pd.DataFrame(
         z_train,
-        index=subround_data.y_train_df.index,
+        index=xyz.x_train_df.index,
         columns=xyz.classes,
     )
 
@@ -662,7 +658,7 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz: XYZ_Model,
-    round_result: TrainingRound_Model,
+    round_result: TrainingRoundModel,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
