@@ -168,6 +168,7 @@ def stats_proteome(
             )
 
         result = results[condition] = ResultsModel()
+        result.subcons = subcons
         result.metrics = pd.DataFrame(index=combined_index)
 
         ## add marker:

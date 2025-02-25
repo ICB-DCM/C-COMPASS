@@ -341,7 +341,10 @@ class ResultsModel(BaseModel):
     #  * `fNN_winner`: the class/compartment with the highest fCC value
     metrics: pd.DataFrame = pd.DataFrame()
     class_abundance: dict[str, dict[str, float | int]] = {}
+    # Unique list of class names
     classnames: list[str] = []
+    # List of "subcondition" IDs ("{condition}_Rep.{replicate}")
+    subcons: list[str] = []
     #: SVM results
     #  (the combined results of the different replicates and SVM rounds)
     #  * winner_combined: DataFrame
