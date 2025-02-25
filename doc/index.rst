@@ -16,6 +16,9 @@ The software is powered by a machine learning model trained on established marke
 
 With C-COMPASS, users can perform comprehensive quantitative analyses of compartmental proteomics data, facilitating discoveries in cellular biology and proteomics research.
 
+.. image:: gfx/ccompass_gui_sample_data_screenshot.png
+   :width: 100%
+   :alt: C-COMPASS GUI
 
 .. toctree::
    :maxdepth: 3
