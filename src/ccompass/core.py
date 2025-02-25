@@ -317,8 +317,6 @@ class TrainingSubRound_Model(BaseModel):
     #: Neural network classification results for y_full
     #  (i.e. probabilities for the different classes for each protein)
     z_full_df: pd.DataFrame = pd.DataFrame()
-    #: z_full_df, but as numpy array
-    z_full: np.ndarray = np.array([])
 
 
 class ResultsModel(BaseModel):

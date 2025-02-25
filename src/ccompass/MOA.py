@@ -211,9 +211,10 @@ def stats_proteome(
         ## add CClist:
         for subcon in subcons:
             #: TODO(performance): unnecessary conversions
+            # average NN outputs from different rounds and subrounds
             stacked_arrays = np.stack(
                 list(
-                    sr.z_full
+                    sr.z_full_df.values
                     for rr in learning_xyz[subcon].round_results.values()
                     for sr in rr.subround_results.values()
                 )
@@ -260,7 +261,10 @@ def stats_proteome(
                 ~result.metrics.index.duplicated(keep="first")
             ]
 
-        ## add CC:
+        # TODO: replace CC (currently the NN output) by CC0 or similar,
+        #    and fCC by CC to match the naming in the paper
+
+        # add CC:
         for classname in result.classnames:
             result.metrics["CC_" + classname] = result.metrics[
                 "CClist_" + classname

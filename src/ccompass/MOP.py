@@ -579,7 +579,6 @@ def add_Z(
     z_full,
     z_train,
 ):
-    subround_data.z_full = z_full
     subround_data.z_full_df = pd.DataFrame(
         z_full,
         index=subround_data.y_full_df.index,
