@@ -3,7 +3,6 @@ at https://zenodo.org/records/13901167."""
 
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from ccompass.core import (
@@ -14,6 +13,9 @@ from ccompass.core import (
     MarkerSet,
     SessionModel,
     TotalProtDataset,
+    read_fract_table,
+    read_marker_table,
+    read_tp_table,
 )
 from ccompass.FDP import start_fract_data_processing
 
@@ -25,8 +27,7 @@ if not sample_data_dir.exists():
 
 def get_fract_data() -> FractDataset:
     data_file = sample_data_dir / "C-COMPASS_ProteomeInput.tsv"
-    # TODO use same options as gui
-    df = pd.read_csv(data_file, sep="\t")
+    df = read_fract_table(data_file)
     assert df.shape == (8841, 156)
     infix = "_DH_SA_60minDIA1cvFAIMS_Regeneron_MouseLiver_Gradient_"
     suffix = ".htrms.PG.Quantity"
@@ -182,8 +183,7 @@ def get_fract_data() -> FractDataset:
 
 def get_tp_data() -> TotalProtDataset:
     data_file = sample_data_dir / "C-COMPASS_ProteomeInput.tsv"
-    # TODO use same options as gui
-    df = pd.read_csv(data_file, sep="\t")
+    df = read_tp_table(data_file)
     assert df.shape == (8841, 156)
     infix = (
         " 20220406_DH_SA_60minDIA1cvFAIMS_Regeneron_MouseLiver_TotalProteome_"
@@ -208,7 +208,7 @@ def get_tp_data() -> TotalProtDataset:
 
 def get_markerlist() -> MarkerSet:
     file = sample_data_dir / "C-COMPASS_MarkerList.txt"
-    df = pd.read_csv(file, sep="\t")
+    df = read_marker_table(file)
     assert df.shape == (2789, 2)
     return MarkerSet(
         df=df, identifier_col="Genename", class_col="MarkerCompartment"
@@ -218,8 +218,8 @@ def get_markerlist() -> MarkerSet:
 def get_sample_session_input() -> SessionModel:
     sess = SessionModel()
     sess.fract_input = {"C-COMPASS_ProteomeInput.tsv": get_fract_data()}
-    sess.tp_input = {"todo": get_tp_data()}
-    sess.marker_sets = {"todo": get_markerlist()}
+    sess.tp_input = {"C-COMPASS_ProteomeInput.tsv": get_tp_data()}
+    sess.marker_sets = {"C-COMPASS_MarkerList.txt": get_markerlist()}
     sess.marker_fractkey = "PG.Genes"
     return sess
 

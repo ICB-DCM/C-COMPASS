@@ -1105,3 +1105,51 @@ def create_fullprofiles(
             [fract_test[condition], fract_marker[condition]]
         )
     return fract_full
+
+
+def read_marker_table(
+    filepath: Path | str,
+) -> pd.DataFrame:
+    """Read a marker table in tsv format."""
+    df = pd.read_csv(filepath, sep="\t", header=0).apply(
+        lambda x: x.astype(str).str.upper()
+    )
+    return df
+
+
+def read_fract_table(
+    filepath: Path | str,
+) -> pd.DataFrame:
+    """Read a fractionation table in tsv format."""
+    df = pd.read_csv(filepath, sep="\t", header=0)
+    df = df.replace("NaN", np.nan)
+    df = df.replace("Filtered", np.nan)
+    return df
+
+
+def read_tp_table(
+    filepath: Path | str,
+) -> pd.DataFrame:
+    """Read a total proteome table in tsv format."""
+    df = pd.read_csv(filepath, sep="\t", header=0)
+    df = df.replace("NaN", np.nan)
+    df = df.replace("Filtered", np.nan)
+    df = df.map(convert_to_float)
+    rows_with_float = df.map(is_float).any(axis=1)
+    df = df[rows_with_float]
+    return df
+
+
+def is_float(element):
+    try:
+        float(element)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def convert_to_float(x):
+    try:
+        return float(x)
+    except ValueError:
+        return x

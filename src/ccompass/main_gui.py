@@ -10,7 +10,6 @@ from tkinter import messagebox, simpledialog
 from typing import Any, Literal
 
 import FreeSimpleGUI as sg
-import numpy as np
 import pandas as pd
 
 from . import MOA, RP
@@ -30,6 +29,9 @@ from .core import (
     create_identity_conversion,
     create_marker_profiles,
     create_markerlist,
+    read_fract_table,
+    read_marker_table,
+    read_tp_table,
     readthedocs_url,
     repository_url,
     write_class_changes_reports,
@@ -1842,12 +1844,8 @@ def fract_add(
     if not filename:
         return
 
-    window["-fractionation_path-"].update(
-        values=model.fract_paths, value=filename
-    )
-
     try:
-        df = pd.read_csv(filename, sep="\t", header=0)
+        df = read_fract_table(filename)
     except Exception:
         logger.exception(
             f"Error reading fractionation dataset from {filename}"
@@ -1855,11 +1853,12 @@ def fract_add(
         messagebox.showerror("Error", "Invalid file format.")
         return
 
-    df = df.replace("NaN", np.nan)
-    df = df.replace("Filtered", np.nan)
-
     table = [[name, "", "", ""] for name in df.columns]
     model.fract_input[filename] = FractDataset(df=df, table=table)
+
+    window["-fractionation_path-"].update(
+        values=model.fract_paths, value=filename
+    )
 
     fract_refreshtable(window, table)
 
@@ -1978,21 +1977,6 @@ def fract_handle_set_identifier(
     window["-fractionation_table-"].update(values=dataset.table)
 
 
-def is_float(element):
-    try:
-        float(element)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def convert_to_float(x):
-    try:
-        return float(x)
-    except ValueError:
-        return x
-
-
 def tp_add_dataset(
     window: sg.Window,
     tp_input: dict[str, TotalProtDataset],
@@ -2011,19 +1995,13 @@ def tp_add_dataset(
 
     # read file
     try:
-        df = pd.read_csv(filename, sep="\t", header=0)
+        df = read_tp_table(filename)
     except Exception:
         logger.exception(
             f"Error reading total proteome dataset from {filename}"
         )
         messagebox.showerror("Error", "Invalid file format.")
         return
-
-    df = df.replace("NaN", np.nan)
-    df = df.replace("Filtered", np.nan)
-    df = df.map(convert_to_float)
-    rows_with_float = df.map(is_float).any(axis=1)
-    df = df[rows_with_float]
 
     table = [[name, ""] for name in df.columns]
     tp_input[filename] = TotalProtDataset(df=df, table=table)
@@ -2236,9 +2214,7 @@ def marker_add(window, marker_sets: dict[str, MarkerSet]):
         return
 
     try:
-        df = pd.read_csv(filename, sep="\t", header=0).apply(
-            lambda x: x.astype(str).str.upper()
-        )
+        df = read_marker_table(filename)
     except Exception:
         logger.exception(f"Error reading marker list from {filename}")
         messagebox.showerror("Error", "Invalid file format.")
