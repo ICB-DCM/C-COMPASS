@@ -1583,7 +1583,10 @@ class MainController:
             "Open Session",
             initial_folder=str(self.app_settings.last_session_dir),
             no_window=True,
-            file_types=(("Numpy", "*.npy"),),
+            file_types=(
+                ("Numpy", "*.npy"),
+                ("C-COMPASS zip", "*.ccompass"),
+            ),
         )
         if not filename:
             return
@@ -1621,7 +1624,10 @@ class MainController:
         filename = sg.popup_get_file(
             "Save Session",
             no_window=True,
-            file_types=(("Numpy", "*.npy"),),
+            file_types=(
+                ("Numpy", "*.npy"),
+                ("C-COMPASS zip", "*.ccompass"),
+            ),
             save_as=True,
             initial_folder=str(self.app_settings.last_session_dir),
         )
@@ -1633,7 +1639,10 @@ class MainController:
         self.app_settings.save()
 
         with wait_cursor(self.main_window):
-            self.model.to_numpy(filename)
+            if filename.endswith(".ccompass"):
+                self.model.to_zip(filename)
+            else:
+                self.model.to_numpy(filename)
 
         self._update_recent_files()
 
@@ -2250,7 +2259,10 @@ def marker_setclass(values, marker_sets):
 def session_open(window: sg.Window, filename: str, model: SessionModel):
     """Read session data from file and update the window."""
     # Update session data
-    tmp_session = SessionModel.from_numpy(filename)
+    if filename.endswith(".ccompass"):
+        tmp_session = SessionModel.from_zip(filename)
+    else:
+        tmp_session = SessionModel.from_numpy(filename)
     model.reset(tmp_session)
 
     # update GUI
