@@ -472,7 +472,9 @@ def global_comparison(
     logger: logging.Logger = logger,
 ) -> ComparisonModel:
     """Perform a single global comparison."""
-    classnames = list(set(result1.classnames) & set(result2.classnames))
+    classnames = sorted(
+        list(set(result1.classnames) & set(result2.classnames))
+    )
     comparison = ComparisonModel()
 
     metrics_own = result1.metrics
