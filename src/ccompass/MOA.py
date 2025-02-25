@@ -226,10 +226,12 @@ def stats_proteome(
             )
 
         result.classnames = list(
-            set(
-                classname
-                for subcon in subcons
-                for classname in learning_xyz[subcon].classes
+            sorted(
+                set(
+                    classname
+                    for subcon in subcons
+                    for classname in learning_xyz[subcon].classes
+                )
             )
         )
 
