@@ -482,8 +482,6 @@ class SessionModel(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # TODO: consider grouping data by condition
-
     ## User input fractionation data
 
     #: User-provided fractionation data tables
