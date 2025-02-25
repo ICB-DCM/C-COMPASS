@@ -52,7 +52,7 @@ def is_all_nan(list_):
     )
 
 
-def perform_mann_whitney_t_tests_per_cell(
+def perform_mann_whitney_t_tests(
     df1: pd.DataFrame,
     df2: pd.DataFrame,
     subcons1: list[str],
@@ -66,59 +66,71 @@ def perform_mann_whitney_t_tests_per_cell(
     and df2["CC_{class}_{subcon}"] for each class in class_names
     and each subcon in subcons1 and subcons2.
     """
-    common_indices = df1.index.intersection(df2.index)
-
-    # Columns for Mann-Whitney U results, t-test results, and Cohen's d
-    result_columns = [
-        f"{prefix}_{cls}"
-        for prefix in ["U", "T", "D", "P(U)", "P(T)"]
-        for cls in class_names
-    ]
-    results_df = pd.DataFrame(
-        index=common_indices, columns=result_columns, dtype=float
+    merged = pd.merge(
+        df1[
+            [
+                f"CC_{cls}_{subcon}"
+                for subcon in subcons1
+                for cls in class_names
+            ]
+        ],
+        df2[
+            [
+                f"CC_{cls}_{subcon}"
+                for subcon in subcons2
+                for cls in class_names
+            ]
+        ],
+        left_index=True,
+        right_index=True,
+        how="inner",
+        suffixes=("#1", "#2"),
     )
 
-    for cls in class_names:
-        cols1 = [f"CC_{cls}_{subcon}" for subcon in subcons1]
-        cols2 = [f"CC_{cls}_{subcon}" for subcon in subcons2]
-        for idx in common_indices:
-            list_df1 = df1.loc[idx, cols1].values.astype(float)
-            list_df2 = df2.loc[idx, cols2].values.astype(float)
-
-            if (
-                np.isnan(list_df1).all()
-                or np.isnan(list_df2).all()
-                or len(set(list_df1)) == 1
-                or len(set(list_df2)) == 1
-            ):
+    def get_stats(row):
+        # Columns for Mann-Whitney U results, t-test results, and Cohen's d
+        res = {
+            f"{prefix}_{cls}": np.nan
+            for prefix in ["U", "T", "D", "P(U)", "P(T)"]
+            for cls in class_names
+        }
+        for cls in class_names:
+            cols1 = [f"CC_{cls}_{subcon}" for subcon in subcons1]
+            group1 = row[cols1]
+            if group1.nunique() == 1:
                 continue
+            cols2 = [f"CC_{cls}_{subcon}" for subcon in subcons2]
+            group2 = row[cols2]
+            if group2.nunique() == 1:
+                continue
+
             # Perform Mann-Whitney U test
             u_stat, p_value_u = stats.mannwhitneyu(
-                list_df1, list_df2, alternative="two-sided"
+                group1, group2, alternative="two-sided"
             )
 
             # Perform t-test
             t_stat, p_value_t = stats.ttest_ind(
-                list_df1, list_df2, equal_var=False, nan_policy="omit"
+                group1, group2, equal_var=False, nan_policy="omit"
             )
 
             # Calculating Cohen's d
             diff = [
-                value_1 - value_2
-                for value_1 in list_df1
-                for value_2 in list_df2
+                value_1 - value_2 for value_1 in group1 for value_2 in group2
             ]
             mean_diff = np.mean(diff)
             std_diff = np.std(diff, ddof=1)
-
             cohen_d = mean_diff / std_diff if std_diff != 0 else np.nan
 
             # Storing results
-            results_df.loc[idx, f"U_{cls}"] = u_stat
-            results_df.loc[idx, f"P(U)_{cls}"] = p_value_u
-            results_df.loc[idx, f"D_{cls}"] = cohen_d
-            results_df.loc[idx, f"T_{cls}"] = t_stat
-            results_df.loc[idx, f"P(T)_{cls}"] = p_value_t
+            res[f"U_{cls}"] = u_stat
+            res[f"P(U)_{cls}"] = p_value_u
+            res[f"D_{cls}"] = cohen_d
+            res[f"T_{cls}"] = t_stat
+            res[f"P(T)_{cls}"] = p_value_t
+        return pd.Series(res)
+
+    results_df = merged.apply(get_stats, axis=1)
     return results_df
 
 
@@ -515,7 +527,7 @@ def global_comparison(
     comparison.metrics["fRLS"] = comparison.metrics[frl_cols].abs().sum(axis=1)
 
     # add statistics
-    test_df = perform_mann_whitney_t_tests_per_cell(
+    test_df = perform_mann_whitney_t_tests(
         metrics_own,
         metrics_other,
         result1.subcons,
