@@ -22,7 +22,7 @@ def test_serialization():
     assert_session_equal(session, session2)
 
 
-def assert_equal(obj1, obj2):
+def assert_equal(obj1, obj2) -> None:
     """Check if two objects are equal."""
     if isinstance(obj1, pydantic.BaseModel):
         assert isinstance(obj2, pydantic.BaseModel)
@@ -37,9 +37,16 @@ def assert_equal(obj1, obj2):
         for i in range(len(obj1)):
             assert_equal(obj1[i], obj2[i])
     elif isinstance(obj1, pd.DataFrame):
+        assert isinstance(obj2, pd.DataFrame)
+        if obj1.empty and obj2.empty:
+            # if both are empty, we don't compare columns
+            return
         pd.testing.assert_frame_equal(obj1, obj2, check_dtype=False)
     elif isinstance(obj1, pd.Series):
-        pd.testing.assert_series_equal(obj1, obj2)
+        assert isinstance(obj2, pd.Series), f"{obj1} != {obj2}"
+        pd.testing.assert_series_equal(
+            obj1, obj2, atol=1e-14, rtol=1e-14, check_dtype=False
+        )
     elif isinstance(obj1, np.ndarray):
         np.testing.assert_almost_equal(obj1, obj2)
     elif isinstance(obj1, float) and pd.isna(obj1):

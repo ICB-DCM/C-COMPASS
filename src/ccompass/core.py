@@ -826,7 +826,6 @@ class SessionModel(BaseModel):
             def series_constructor(loader, node):
                 """Custom YAML constructor for pandas Series."""
                 file_path = temp_dir / loader.construct_scalar(node)
-                print(file_path, type(file_path))
                 df = pd.read_csv(
                     file_path,
                     sep="\t",
@@ -835,7 +834,6 @@ class SessionModel(BaseModel):
                     float_precision="round_trip",
                 )
                 assert df.shape[1] == 1
-                print(df.iloc[:, 0], type(df.iloc[:, 0]))
                 return df.iloc[:, 0]
 
             def tuple_constructor(loader, node):
