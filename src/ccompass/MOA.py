@@ -53,77 +53,72 @@ def is_all_nan(list_):
 
 
 def perform_mann_whitney_t_tests_per_cell(
-    df1: pd.DataFrame, df2: pd.DataFrame, prefix: str
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
+    subcons1: list[str],
+    subcons2: list[str],
+    class_names: list[str],
 ) -> pd.DataFrame:
     """Perform Mann-Whitney U tests, t-tests, and compute Cohen's d.
 
-    Groups are compared for each cell in the given DataFrames'
-    columns starting with `prefix`. Those columns are assumed to
-    contain lists of values for each group.
+    Compute statistics for each class and protein.
+    The samples are expected in df1["CC_{class}_{subcon}"]
+    and df2["CC_{class}_{subcon}"] for each class in class_names
+    and each subcon in subcons1 and subcons2.
     """
-    cc_columns = [
-        col
-        for col in df1.columns
-        if col.startswith(prefix) and col in df2.columns
-    ]
     common_indices = df1.index.intersection(df2.index)
 
     # Columns for Mann-Whitney U results, t-test results, and Cohen's d
-    result_columns = (
-        [f"{col}_U" for col in cc_columns]
-        + [f"{col}_P_U" for col in cc_columns]
-        + [f"{col}_D" for col in cc_columns]
-        + [f"{col}_T" for col in cc_columns]
-        + [f"{col}_P_T" for col in cc_columns]
+    result_columns = [
+        f"{prefix}_{cls}"
+        for prefix in ["U", "T", "D", "P(U)", "P(T)"]
+        for cls in class_names
+    ]
+    results_df = pd.DataFrame(
+        index=common_indices, columns=result_columns, dtype=float
     )
-    results_df = pd.DataFrame(index=common_indices, columns=result_columns)
 
-    for col in cc_columns:
+    for cls in class_names:
+        cols1 = [f"CC_{cls}_{subcon}" for subcon in subcons1]
+        cols2 = [f"CC_{cls}_{subcon}" for subcon in subcons2]
         for idx in common_indices:
-            list_df1 = df1.loc[idx, col]
-            list_df2 = df2.loc[idx, col]
+            list_df1 = df1.loc[idx, cols1].values.astype(float)
+            list_df2 = df2.loc[idx, cols2].values.astype(float)
 
             if (
-                is_all_nan(list_df1)
-                or is_all_nan(list_df2)
+                np.isnan(list_df1).all()
+                or np.isnan(list_df2).all()
                 or len(set(list_df1)) == 1
                 or len(set(list_df2)) == 1
             ):
-                # Handling cases where one or both groups are all NaNs or have no variability
-                results_df.loc[idx, f"{col}_U"] = np.nan
-                results_df.loc[idx, f"{col}_P_U"] = np.nan
-                results_df.loc[idx, f"{col}_D"] = np.nan
-                results_df.loc[idx, f"{col}_T"] = np.nan
-                results_df.loc[idx, f"{col}_P_T"] = np.nan
-            else:
-                # Perform Mann-Whitney U test
-                u_stat, p_value_u = stats.mannwhitneyu(
-                    list_df1, list_df2, alternative="two-sided"
-                )
+                continue
+            # Perform Mann-Whitney U test
+            u_stat, p_value_u = stats.mannwhitneyu(
+                list_df1, list_df2, alternative="two-sided"
+            )
 
-                # Perform t-test
-                t_stat, p_value_t = stats.ttest_ind(
-                    list_df1, list_df2, equal_var=False, nan_policy="omit"
-                )
+            # Perform t-test
+            t_stat, p_value_t = stats.ttest_ind(
+                list_df1, list_df2, equal_var=False, nan_policy="omit"
+            )
 
-                # Calculating Cohen's d
-                diff = [
-                    value_1 - value_2
-                    for value_1 in list_df1
-                    for value_2 in list_df2
-                ]
-                mean_diff = np.mean(diff)
-                std_diff = np.std(diff, ddof=1)
+            # Calculating Cohen's d
+            diff = [
+                value_1 - value_2
+                for value_1 in list_df1
+                for value_2 in list_df2
+            ]
+            mean_diff = np.mean(diff)
+            std_diff = np.std(diff, ddof=1)
 
-                cohen_d = mean_diff / std_diff if std_diff != 0 else np.nan
+            cohen_d = mean_diff / std_diff if std_diff != 0 else np.nan
 
-                # Storing results
-                results_df.loc[idx, f"{col}_U"] = u_stat
-                results_df.loc[idx, f"{col}_P(U)"] = p_value_u
-                results_df.loc[idx, f"{col}_D"] = cohen_d
-                results_df.loc[idx, f"{col}_T"] = t_stat
-                results_df.loc[idx, f"{col}_P(T)"] = p_value_t
-
+            # Storing results
+            results_df.loc[idx, f"U_{cls}"] = u_stat
+            results_df.loc[idx, f"P(U)_{cls}"] = p_value_u
+            results_df.loc[idx, f"D_{cls}"] = cohen_d
+            results_df.loc[idx, f"T_{cls}"] = t_stat
+            results_df.loc[idx, f"P(T)_{cls}"] = p_value_t
     return results_df
 
 
@@ -211,7 +206,6 @@ def stats_proteome(
 
         ## add CClist:
         for subcon in subcons:
-            #: TODO(performance): unnecessary conversions
             # average NN outputs from different rounds and subrounds
             stacked_arrays = np.stack(
                 list(
@@ -236,26 +230,24 @@ def stats_proteome(
             )
         )
 
+        # collect the CC0 values from the different replicates
         for classname in result.classnames:
-            CC_list = pd.DataFrame(index=combined_index)
+            cc0_df = pd.DataFrame(index=combined_index)
             for subcon in subcons:
-                CC_list = pd.merge(
-                    CC_list,
+                cc0_df = pd.merge(
+                    cc0_df,
                     learning_xyz[subcon]
                     .z_full_mean_df[classname]
-                    .rename(f"{classname}_{subcon}"),
+                    .rename(f"CC_{classname}_{subcon}"),
                     left_index=True,
                     right_index=True,
                     how="left",
                 )
-
-            CC_list["CClist_" + classname] = CC_list.apply(
-                lambda row: row.tolist(), axis=1
-            )
+            cc0_df[f"CC_{classname}"] = cc0_df.mean(axis=1, skipna=True)
 
             result.metrics = pd.merge(
                 result.metrics,
-                CC_list["CClist_" + classname],
+                cc0_df,
                 left_index=True,
                 right_index=True,
                 how="left",
@@ -267,14 +259,8 @@ def stats_proteome(
         # TODO: replace CC (currently the NN output) by CC0 or similar,
         #    and fCC by CC to match the naming in the paper
 
-        # add CC:
-        for classname in result.classnames:
-            result.metrics["CC_" + classname] = result.metrics[
-                "CClist_" + classname
-            ].apply(lambda x: np.nanmean(x) if x else np.nan)
-        cc_cols = [
-            col for col in result.metrics.columns if col.startswith("CC_")
-        ]
+        # normalize CC values to sum to 1
+        cc_cols = [f"CC_{classname}" for classname in result.classnames]
         cc_sums = result.metrics[cc_cols].sum(axis=1, skipna=True)
         result.metrics[cc_cols] = result.metrics[cc_cols].div(cc_sums, axis=0)
 
@@ -528,20 +514,14 @@ def global_comparison(
 
     # add statistics
     test_df = perform_mann_whitney_t_tests_per_cell(
-        metrics_own, metrics_other, "CClist_"
+        metrics_own,
+        metrics_other,
+        result1.subcons,
+        result2.subcons,
+        class_names=classnames,
     )
     common_indices = test_df.index
-    for classname in classnames:
-        test_df.rename(
-            columns={
-                "CClist_" + classname + "_U": "U_" + classname,
-                "CClist_" + classname + "_T": "T_" + classname,
-                "CClist_" + classname + "_D": "D_" + classname,
-                "CClist_" + classname + "_P(U)": "P(U)_" + classname,
-                "CClist_" + classname + "_P(T)": "P(T)_" + classname,
-            },
-            inplace=True,
-        )
+
     # calculate DS:
     d_columns = [col for col in test_df.columns if col.startswith("D_")]
     test_df["DS"] = test_df[d_columns].abs().sum(axis=1)
@@ -559,15 +539,21 @@ def global_comparison(
     RLS_results = {}
     RLS_null = {}
     for ID in common_indices:
+        # [[CC_class1_rep1, CC_class1_rep2, ...], [CC_class2_rep1, ...], ...]
         cclists_own = [
-            metrics_own.loc[ID, "CClist_" + classname]
+            metrics_own.loc[
+                ID, [f"CC_{classname}_{subcon}" for subcon in result1.subcons]
+            ].tolist()
             for classname in classnames
         ]
         cclists_other = [
-            metrics_other.loc[ID, "CClist_" + classname]
+            metrics_other.loc[
+                ID, [f"CC_{classname}_{subcon}" for subcon in result2.subcons]
+            ].tolist()
             for classname in classnames
         ]
 
+        # [[CC_class1_rep1, CC_class2_rep1, ...], [CC_class1_rep2, ...], ...]
         cclists_own_transposed = [list(values) for values in zip(*cclists_own)]
         cclists_other_transposed = [
             list(values) for values in zip(*cclists_other)
@@ -696,16 +682,11 @@ def compute_class_centric_changes(
     ## add nCClist:
     logger.info("adding nCClist...")
     for classname in result.classnames:
-        result.metrics["nCClist_" + classname] = result.metrics[
-            "CClist_" + classname
-        ].apply(
-            lambda lst: [
-                x * result.class_abundance[classname]["CA"]
-                if not np.isnan(x)
-                else np.nan
-                for x in lst
-            ]
-        )
+        ca = result.class_abundance[classname]["CA"]
+        for subcon in result.subcons:
+            result.metrics[f"nCC_{classname}_{subcon}"] = (
+                result.metrics[f"CC_{classname}_{subcon}"] * ca
+            )
 
     ## add normalized class contributions:
     logger.info("adding normalized class contributions...")
@@ -715,7 +696,7 @@ def compute_class_centric_changes(
             * result.class_abundance[classname]["CA"]
         )
     # normalize:
-    nCC_cols = [col for col in result.metrics if col.startswith("nCC_")]
+    nCC_cols = [f"nCC_{classname}" for classname in result.classnames]
     nCC_sums = result.metrics[nCC_cols].sum(axis=1)
     nCC_sums[nCC_sums == 0] = 1
     result.metrics[nCC_cols] = result.metrics[nCC_cols].div(nCC_sums, axis=0)
@@ -768,11 +749,15 @@ def class_centric_comparison(
     nRLS_null = {}
     for ID in common_indices:
         ncclists_own = [
-            metrics_own.loc[ID, "nCClist_" + classname]
+            metrics_own.loc[
+                ID, [f"nCC_{classname}_{subcon}" for subcon in result1.subcons]
+            ].tolist()
             for classname in result1.classnames
         ]
         ncclists_other = [
-            metrics_other.loc[ID, "nCClist_" + classname]
+            metrics_other.loc[
+                ID, [f"nCC_{classname}_{subcon}" for subcon in result2.subcons]
+            ].tolist()
             for classname in result2.classnames
         ]
 
