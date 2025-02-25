@@ -317,15 +317,6 @@ class ComparisonModel(BaseModel):
     intersection_data: pd.DataFrame = pd.DataFrame()
     metrics: pd.DataFrame = pd.DataFrame()
 
-    # global comparison results
-    #: Relocalization scores
-    RLS_results: pd.Series = pd.Series()
-    RLS_null: pd.Series = pd.Series()
-
-    # class-centric comparison results
-    nRLS_results: pd.Series = pd.Series()
-    nRLS_null: pd.Series = pd.Series()
-
 
 class MarkerSet(BaseModel):
     """A single marker table with some ID and class annotations as provided by
@@ -656,8 +647,6 @@ class SessionModel(BaseModel):
             comparison.metrics.drop(
                 ["nRLS", "P(t)_nRLS", "P(u)_nRLS"], axis=1, inplace=True
             )
-            comparison.nRLS_null = pd.Series()
-            comparison.nRLS_results = pd.Series()
 
             for classname in results[comb[0]].classnames:
                 comparison.metrics.drop(

@@ -594,8 +594,8 @@ def global_comparison(
             for other_list in cclists_other_transposed:
                 comparison_result = compare_lists(own_list, other_list)
                 RLS_results[ID].append(comparison_result)
-    comparison.RLS_results = pd.Series(RLS_results)
-    comparison.RLS_null = pd.Series(RLS_null)
+    RLS_results = pd.Series(RLS_results)
+    RLS_null = pd.Series(RLS_null)
 
     comparison.metrics["P(t)_RLS"] = np.nan
     comparison.metrics["P(u)_RLS"] = np.nan
@@ -603,22 +603,22 @@ def global_comparison(
         if index in common_indices:
             # Perform the t-test
             stat, p_value = ttest_ind(
-                comparison.RLS_results.loc[index],
-                comparison.RLS_null.loc[index],
+                RLS_results.loc[index],
+                RLS_null.loc[index],
                 nan_policy="omit",
             )
             comparison.metrics.loc[index, "P(t)_RLS"] = p_value
             if (
-                is_all_nan(comparison.RLS_results.loc[index])
-                or is_all_nan(comparison.RLS_null.loc[index])
-                or len(set(comparison.RLS_results.loc[index])) == 1
-                or len(set(comparison.RLS_null.loc[index])) == 1
+                is_all_nan(RLS_results.loc[index])
+                or is_all_nan(RLS_null.loc[index])
+                or len(set(RLS_results.loc[index])) == 1
+                or len(set(RLS_null.loc[index])) == 1
             ):
                 comparison.metrics.loc[index, "P(u)_RLS"] = pd.NA
             else:
                 stat_u, p_value_u = stats.mannwhitneyu(
-                    comparison.RLS_results.loc[index],
-                    comparison.RLS_null.loc[index],
+                    RLS_results.loc[index],
+                    RLS_null.loc[index],
                     alternative="two-sided",
                 )
                 comparison.metrics.loc[index, "P(u)_RLS"] = p_value_u
@@ -803,8 +803,8 @@ def class_centric_comparison(
             for other_list in ncclists_other_transposed:
                 comparison_result = compare_lists(own_list, other_list)
                 nRLS_results[ID].append(comparison_result)
-    comparison.nRLS_results = pd.Series(nRLS_results)
-    comparison.nRLS_null = pd.Series(nRLS_null)
+    nRLS_results = pd.Series(nRLS_results)
+    nRLS_null = pd.Series(nRLS_null)
 
     comparison.metrics["P(t)_nRLS"] = np.nan
     comparison.metrics["P(u)_nRLS"] = np.nan
@@ -813,22 +813,22 @@ def class_centric_comparison(
         if index in common_indices:
             # Perform the t-test
             stat, p_value = ttest_ind(
-                comparison.nRLS_results.loc[index],
-                comparison.nRLS_null.loc[index],
+                nRLS_results.loc[index],
+                nRLS_null.loc[index],
                 nan_policy="omit",
             )
             comparison.metrics.loc[index, "P(t)_nRLS"] = p_value
             if (
-                is_all_nan(comparison.nRLS_results.loc[index])
-                or is_all_nan(comparison.nRLS_null.loc[index])
-                or len(set(comparison.nRLS_results.loc[index])) == 1
-                or len(set(comparison.nRLS_null.loc[index])) == 1
+                is_all_nan(nRLS_results.loc[index])
+                or is_all_nan(nRLS_null.loc[index])
+                or len(set(nRLS_results.loc[index])) == 1
+                or len(set(nRLS_null.loc[index])) == 1
             ):
                 comparison.metrics.loc[index, "P(u)_nRLS"] = pd.NA
             else:
                 stat_u, p_value_u = stats.mannwhitneyu(
-                    comparison.nRLS_results.loc[index],
-                    comparison.nRLS_null.loc[index],
+                    nRLS_results.loc[index],
+                    nRLS_null.loc[index],
                     alternative="two-sided",
                 )
                 comparison.metrics.loc[index, "P(u)_nRLS"] = p_value_u
