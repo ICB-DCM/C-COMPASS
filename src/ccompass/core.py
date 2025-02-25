@@ -197,8 +197,6 @@ class XYZ_Model(BaseModel):
     classes: list[str] = []
     #: class labels for the markers
     W_train_df: pd.Series = pd.Series()
-    #: class labels for the markers as list
-    W_train: list = []
     #: Class labels for all proteins (NaN for non-marker proteins)
     W_full_df: pd.Series = pd.Series()
 
@@ -211,17 +209,11 @@ class XYZ_Model(BaseModel):
     #: features (protein levels in the different fractions for one replicate,
     #  for proteins with known and unknown class labels)
     x_full_df: pd.DataFrame = pd.DataFrame()
-    #: x_full_df, but as numpy array
-    x_full: np.ndarray = np.array([])
 
     #: Features for the proteins with known class labels
     x_test_df: pd.DataFrame = pd.DataFrame()
-    #: x_test_df as numpy array
-    x_test: np.ndarray = np.array([])
     #: Features for the training data (marker profiles)
     x_train_df: pd.DataFrame = pd.DataFrame()
-    #: x_train_df as numpy array
-    x_train: np.ndarray = np.array([])
 
     #: One-hot encoded labels for marker profiles
     Z_train_df: pd.DataFrame = pd.DataFrame()
@@ -251,23 +243,15 @@ class TrainingRound_Model(BaseModel):
     #: Features for the upsampled full dataset
     #  (protein x fraction)
     x_full_up_df: pd.DataFrame = pd.DataFrame()
-    #: x_full_up_df as numpy array
-    x_full_up: np.ndarray = np.array([])
     #: Features of the upsampled training data
     x_train_up_df: pd.DataFrame = pd.DataFrame()
-    #: x_train_up_df as numpy array
-    x_train_up: np.ndarray = np.array([])
     #: same as x_full_up
     V_full_up: np.ndarray = np.array([])
     #: Features for the training data (marker profiles) after maxing
     x_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
-    #: x_train_mixed_up_df as numpy
-    x_train_mixed_up: np.ndarray = np.array([])
     #: Class probabilities for mixed profiles (mixing ratios)
     #  (protein x compartment)
     Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
-    #: Z_train_mixed_up_df as numpy array
-    Z_train_mixed_up: np.ndarray = np.array([])
 
     #: SVM-predicted class labels for x_full for each round
     # TODO: never read
@@ -296,14 +280,10 @@ class TrainingSubRound_Model(BaseModel):
 
     #: Class labels for the mixed profiles
     y_full_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_full
-    y_full: np.ndarray = np.array([])
     #: same as x_full_up
     y_full_up: np.ndarray = np.array([])
     #: same as x_train_df
     y_train_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_train
-    y_train: np.ndarray = np.array([])
     #: same as x_train_up
     y_train_up: np.ndarray = np.array([])
     #: same as x_train_mixed_up
