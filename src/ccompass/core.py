@@ -270,16 +270,10 @@ class TrainingSubRound_Model(BaseModel):
 
     #: Class labels for the mixed profiles
     y_full_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_full_up
-    y_full_up: np.ndarray = np.array([])
     #: same as x_train_df
     y_train_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_train_up
-    y_train_up: np.ndarray = np.array([])
     #: same as x_train_mixed_up
     y_train_mixed_up: np.ndarray = np.array([])
-    #: same as x_test
-    y_test: np.ndarray = np.array([])
 
     #: Neural network classification results for y_train
     #  (i.e. probabilities for the different classes for each protein)

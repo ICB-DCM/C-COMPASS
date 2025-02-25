@@ -426,19 +426,15 @@ def execute_round(
     result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
     result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
 
-    # TODO(performance): Is there anything happening here?
-    #  Just needless copying?
-
+    # TODO(performance): We can avoid the extra copying here.
+    #   The data is constant across subrounds
     for i_subround in range(0, nn_params.subrounds + 1):
         sr = result.subround_results[f"{round_id}_{i_subround}"] = (
             TrainingSubRound_Model()
         )
         sr.y_full_df = xyz.x_full_df
-        sr.y_full_up = result.x_full_up_df.to_numpy(dtype=float)
         sr.y_train_df = xyz.x_train_df
-        sr.y_train_up = result.x_train_up_df.values
         sr.y_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
-        sr.y_test = xyz.x_test_df.to_numpy(dtype=float)
 
     with stdout_to_logger(logger, logging.DEBUG):
         multi_predictions(
