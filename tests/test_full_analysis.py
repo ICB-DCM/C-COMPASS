@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from test_session_model import assert_session_equal
 
 from ccompass._testing.synthetic_data import (
     SyntheticDataConfig,
@@ -201,3 +202,13 @@ def test_full():
 
     ...
     sess.to_numpy(Path(__file__).parent / "session_test_full.npy")
+    sess.to_zip(Path(__file__).parent / "session_test_full.ccompass")
+
+    sess2 = SessionModel.from_numpy(
+        Path(__file__).parent / "session_test_full.npy"
+    )
+    assert_session_equal(sess, sess2)
+    sess2 = SessionModel.from_zip(
+        Path(__file__).parent / "session_test_full.ccompass"
+    )
+    assert_session_equal(sess, sess2)

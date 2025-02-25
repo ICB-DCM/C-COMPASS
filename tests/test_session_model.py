@@ -3,7 +3,9 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import pandas as pd
+import pydantic
 
 from ccompass.main_gui import SessionModel
 
@@ -22,6 +24,11 @@ def test_serialization():
 
 def assert_equal(obj1, obj2):
     """Check if two objects are equal."""
+    if isinstance(obj1, pydantic.BaseModel):
+        assert isinstance(obj2, pydantic.BaseModel)
+        assert_equal(obj1.model_dump(), obj2.model_dump())
+        return
+
     if isinstance(obj1, dict):
         for key in obj1:
             assert key in obj2
@@ -33,6 +40,8 @@ def assert_equal(obj1, obj2):
         pd.testing.assert_frame_equal(obj1, obj2, check_dtype=False)
     elif isinstance(obj1, pd.Series):
         pd.testing.assert_series_equal(obj1, obj2)
+    elif isinstance(obj1, np.ndarray):
+        np.testing.assert_almost_equal(obj1, obj2)
     elif isinstance(obj1, float) and pd.isna(obj1):
         assert pd.isna(obj2)
     else:

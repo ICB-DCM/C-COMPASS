@@ -770,6 +770,9 @@ class SessionModel(BaseModel):
             def float64_representer(dumper, data):
                 return dumper.represent_float(float(data))
 
+            def tuple_representer(dumper, data):
+                return dumper.represent_sequence("!tuple", data)
+
             yaml.add_representer(
                 np.float64, float64_representer, Dumper=yaml.SafeDumper
             )
@@ -781,6 +784,9 @@ class SessionModel(BaseModel):
             )
             yaml.add_representer(
                 pd.Series, series_representer, Dumper=yaml.SafeDumper
+            )
+            yaml.add_representer(
+                tuple, tuple_representer, Dumper=yaml.SafeDumper
             )
 
             with open(temp_dir / "session.yaml", "w") as f:
@@ -820,6 +826,7 @@ class SessionModel(BaseModel):
             def series_constructor(loader, node):
                 """Custom YAML constructor for pandas Series."""
                 file_path = temp_dir / loader.construct_scalar(node)
+                print(file_path, type(file_path))
                 df = pd.read_csv(
                     file_path,
                     sep="\t",
@@ -828,7 +835,11 @@ class SessionModel(BaseModel):
                     float_precision="round_trip",
                 )
                 assert df.shape[1] == 1
+                print(df.iloc[:, 0], type(df.iloc[:, 0]))
                 return df.iloc[:, 0]
+
+            def tuple_constructor(loader, node):
+                return tuple(loader.construct_sequence(node))
 
             yaml.add_constructor(
                 "!pandas.DataFrame",
@@ -840,6 +851,9 @@ class SessionModel(BaseModel):
             )
             yaml.add_constructor(
                 "!pandas.Series", series_constructor, Loader=yaml.SafeLoader
+            )
+            yaml.add_constructor(
+                "!tuple", tuple_constructor, Loader=yaml.SafeLoader
             )
 
             with open(temp_dir / "session.yaml") as f:
