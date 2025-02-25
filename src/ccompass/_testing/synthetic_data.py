@@ -158,7 +158,7 @@ def create_profiles(c: SyntheticDataConfig):
                     f"Con{cond + 1}_Rep{rep + 1}_Fr{str(fract + 1).zfill(2)}"
                 )
         for comp in comp_specs[cond]:
-            data_columns.append(f"Amount_{comp}")
+            data_columns.append(f"Amount_{cond}_{comp}")
     data_columns.append(c.class_id_col)
 
     # CREATE MARKER PROFILES:
