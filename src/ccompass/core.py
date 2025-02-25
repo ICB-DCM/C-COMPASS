@@ -214,10 +214,10 @@ class XYZ_Model(BaseModel):
 
     #: Results / intermediate data for the different training rounds
     #  round_id => TrainingRound_Model
-    round_results: dict[str, TrainingRound_Model] = {}
+    round_results: dict[str, TrainingRoundModel] = {}
 
 
-class TrainingRound_Model(BaseModel):
+class TrainingRoundModel(BaseModel):
     """Data for a single round of model training.
 
     A upsamling/mixing/training/prediction round for a single condition."""
@@ -255,7 +255,7 @@ class TrainingRound_Model(BaseModel):
 
     #: Data for the different rounds of neural network training after the
     #  hyperparameter search. Basis for ensemble prediction.
-    subround_results: dict[str, TrainingSubRound_Model] = {}
+    subround_results: dict[str, TrainingSubRoundModel] = {}
 
     @field_validator("w_full_prob", mode="before")
     def convert_list_to_array(cls, v):
@@ -263,17 +263,10 @@ class TrainingRound_Model(BaseModel):
         return np.asarray(v)
 
 
-class TrainingSubRound_Model(BaseModel):
+class TrainingSubRoundModel(BaseModel):
     """Data for a single round of neural network model training and prediction."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    #: Class labels for the mixed profiles
-    y_full_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_train_df
-    y_train_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_train_mixed_up
-    y_train_mixed_up: np.ndarray = np.array([])
 
     #: Neural network classification results for y_train
     #  (i.e. probabilities for the different classes for each protein)
