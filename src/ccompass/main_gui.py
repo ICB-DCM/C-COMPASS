@@ -1639,7 +1639,7 @@ class MainController:
         self.app_settings.save()
 
         with wait_cursor(self.main_window):
-            if filename.endswith(".ccompass"):
+            if str(filename).endswith(".ccompass"):
                 self.model.to_zip(filename)
             else:
                 self.model.to_numpy(filename)
