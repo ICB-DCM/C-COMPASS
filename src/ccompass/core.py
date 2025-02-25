@@ -122,14 +122,6 @@ class NeuralNetworkParametersModel(BaseModel):
     ] = "noisedaverage"
     #: Noise level for upsampling (standard deviations)
     upsampling_noise: float = 2
-    #: Auto-encoder type
-    AE: Literal["none", "lite", "full", "full_lite"] = "none"
-    # FIXME: unused
-    AE_activation: Literal["relu", "leakyrelu"] = "leakyrelu"
-    # FIXME: unused
-    AE_out: Literal["sigmoid", "relu", "softmax", "leakyrelu"] = "sigmoid"
-    # FIXME: unused
-    AE_epochs: int = 20
     #: Perform SVM filtering?
     svm_filter: bool = False
     #: The number of different ratios for pairwise mixing,
@@ -245,8 +237,6 @@ class TrainingRound_Model(BaseModel):
     x_full_up_df: pd.DataFrame = pd.DataFrame()
     #: Features of the upsampled training data
     x_train_up_df: pd.DataFrame = pd.DataFrame()
-    #: same as x_full_up
-    V_full_up: np.ndarray = np.array([])
     #: Features for the training data (marker profiles) after maxing
     x_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
     #: Class probabilities for mixed profiles (mixing ratios)

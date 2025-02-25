@@ -373,7 +373,6 @@ def execute_round(
     result.W_train_up_df = fract_marker_up["class"]
     result.x_full_up_df = fract_full_up.drop(columns=["class"])
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
-    result.V_full_up = result.x_full_up_df.to_numpy(dtype=float)
 
     logger.info("Performing single prediction ...")
     _, svm_marker, _ = single_prediction(
@@ -427,32 +426,19 @@ def execute_round(
     result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
     result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
 
-    # autoencoder ?!
-    result.V_full_up = result.x_full_up_df.to_numpy(dtype=float)
+    # TODO(performance): Is there anything happening here?
+    #  Just needless copying?
 
-    if nn_params.AE == "none":
-        # TODO(performance): Is there anything happening here?
-        #  Just needless copying?
-        y_full = xyz.x_full_df
-        y_full_up = result.x_full_up_df.to_numpy(dtype=float)
-        y_train = xyz.x_train_df.to_numpy(dtype=float)
-        y_train_up = result.x_train_up_df.values
-        y_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
-        y_test = xyz.x_test_df.to_numpy(dtype=float)
-
-        for i_subround in range(0, nn_params.subrounds + 1):
-            sr = result.subround_results[f"{round_id}_{i_subround}"] = (
-                TrainingSubRound_Model()
-            )
-            sr.y_full_df = pd.DataFrame(y_full, index=xyz.x_full_df.index)
-            sr.y_full_up = y_full_up
-            sr.y_train_df = pd.DataFrame(y_train, index=xyz.x_train_df.index)
-            sr.y_train_up = y_train_up
-            sr.y_train_mixed_up = y_train_mixed_up
-            sr.y_test = y_test
-    else:
-        # TODO ADD AUTOENCODER HERE
-        raise NotImplementedError("Autoencoder not implemented yet.")
+    for i_subround in range(0, nn_params.subrounds + 1):
+        sr = result.subround_results[f"{round_id}_{i_subround}"] = (
+            TrainingSubRound_Model()
+        )
+        sr.y_full_df = xyz.x_full_df
+        sr.y_full_up = result.x_full_up_df.to_numpy(dtype=float)
+        sr.y_train_df = xyz.x_train_df
+        sr.y_train_up = result.x_train_up_df.values
+        sr.y_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
+        sr.y_test = xyz.x_test_df.to_numpy(dtype=float)
 
     with stdout_to_logger(logger, logging.DEBUG):
         multi_predictions(
