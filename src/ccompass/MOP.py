@@ -372,10 +372,8 @@ def execute_round(
 
     result.W_train_up_df = fract_marker_up["class"]
     result.x_full_up_df = fract_full_up.drop(columns=["class"])
-    result.x_full_up = result.x_full_up_df.to_numpy(dtype=float)
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
-    result.x_train_up = result.x_train_up_df.to_numpy(dtype=float)
-    result.V_full_up = result.x_full_up
+    result.V_full_up = result.x_full_up_df.to_numpy(dtype=float)
 
     logger.info("Performing single prediction ...")
     _, svm_marker, _ = single_prediction(
@@ -427,32 +425,28 @@ def execute_round(
         logger.info("mixing done!")
 
     result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
-    result.x_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
     result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
-    result.Z_train_mixed_up = result.Z_train_mixed_up_df.to_numpy(dtype=float)
 
     # autoencoder ?!
-    result.V_full_up = result.x_full_up
+    result.V_full_up = result.x_full_up_df.to_numpy(dtype=float)
 
     if nn_params.AE == "none":
         # TODO(performance): Is there anything happening here?
         #  Just needless copying?
-        y_full = xyz.x_full
-        y_full_up = result.x_full_up
-        y_train = xyz.x_train
-        y_train_up = result.x_train_up
-        y_train_mixed_up = result.x_train_mixed_up
-        y_test = xyz.x_test
+        y_full = xyz.x_full_df
+        y_full_up = result.x_full_up_df.to_numpy(dtype=float)
+        y_train = xyz.x_train_df.to_numpy(dtype=float)
+        y_train_up = result.x_train_up_df.values
+        y_train_mixed_up = result.x_train_mixed_up_df.to_numpy(dtype=float)
+        y_test = xyz.x_test_df.to_numpy(dtype=float)
 
         for i_subround in range(0, nn_params.subrounds + 1):
             sr = result.subround_results[f"{round_id}_{i_subround}"] = (
                 TrainingSubRound_Model()
             )
             sr.y_full_df = pd.DataFrame(y_full, index=xyz.x_full_df.index)
-            sr.y_full = y_full
             sr.y_full_up = y_full_up
             sr.y_train_df = pd.DataFrame(y_train, index=xyz.x_train_df.index)
-            sr.y_train = y_train
             sr.y_train_up = y_train_up
             sr.y_train_mixed_up = y_train_mixed_up
             sr.y_test = y_test
@@ -493,7 +487,7 @@ def multi_predictions(
     subround_data = round_data.subround_results[subround_id]
 
     y_train_mixed_up = subround_data.y_train_mixed_up
-    Z_train_mixed_up = round_data.Z_train_mixed_up
+    Z_train_mixed_up = round_data.Z_train_mixed_up_df.to_numpy(dtype=float)
     num_compartments = np.shape(Z_train_mixed_up)[1]
     num_fractions = np.shape(y_train_mixed_up)[1]
     set_shapes = [num_fractions, num_compartments]
@@ -533,8 +527,8 @@ def multi_predictions(
     best_model.summary(print_fn=lambda x: stringlist.append(x))
     round_data.FNN_summary = "\n".join(stringlist)
 
-    z_full = best_model.predict(subround_data.y_full)
-    z_train = best_model.predict(subround_data.y_train)
+    z_full = best_model.predict(subround_data.y_full_df.values)
+    z_train = best_model.predict(subround_data.y_train_df.values)
 
     add_Z(
         learning_xyz,
@@ -562,8 +556,8 @@ def multi_predictions(
             callbacks=[stop_early],
         )
 
-        z_full = fixed_model.predict(subround_data.y_full)
-        z_train = fixed_model.predict(subround_data.y_train)
+        z_full = fixed_model.predict(subround_data.y_full_df.values)
+        z_train = fixed_model.predict(subround_data.y_train_df.values)
 
         add_Z(
             learning_xyz,
@@ -599,18 +593,12 @@ def update_learninglist_const(
 ) -> None:
     """Populate `learning_xyz` with the learning data that is constant across
     rounds."""
-    # TODO(performance): not all of those need to be stored or be converted
-    #  to lists
     learning_xyz.classes = fract_marker["class"].unique().tolist()
     learning_xyz.W_full_df = fract_full["class"]
     learning_xyz.W_train_df = fract_marker["class"]
-    learning_xyz.W_train = list(learning_xyz.W_train_df)
     learning_xyz.x_full_df = fract_full.drop(columns=["class"])
-    learning_xyz.x_full = learning_xyz.x_full_df.to_numpy(dtype=float)
     learning_xyz.x_train_df = fract_marker.drop(columns=["class"])
-    learning_xyz.x_train = learning_xyz.x_train_df.to_numpy(dtype=float)
     learning_xyz.x_test_df = fract_test.drop(columns=["class"])
-    learning_xyz.x_test = learning_xyz.x_test_df.to_numpy(dtype=float)
     learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
         learning_xyz.classes
     ]
@@ -703,11 +691,11 @@ def single_prediction(
     :param learning_xyz: The learning data.
     :param round_result: Input and results. This will be updated in place.
     """
-    x_full = learning_xyz.x_full
-    x_train = learning_xyz.x_train
-    x_train_up = round_result.x_train_up
-    x_test = learning_xyz.x_test
-    W_train = learning_xyz.W_train
+    x_full = learning_xyz.x_full_df
+    x_train = learning_xyz.x_train_df
+    x_train_up = round_result.x_train_up_df
+    x_test = learning_xyz.x_test_df
+    W_train = learning_xyz.W_train_df
     W_train_up = round_result.W_train_up_df
 
     # train classifier on the upsampled data
