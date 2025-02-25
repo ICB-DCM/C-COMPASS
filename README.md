@@ -9,6 +9,8 @@
 
 The data analyzed by C-COMPASS typically derives from proteomics fractionation samples that result in compartment-specific protein profiles. Our tool can be used to analyze datasets derived from various experimental techniques.
 
+![C-COMPASS Overview](doc/gfx/ccompass_gui_sample_data_screenshot.png)
+
 ## Key Features
 
 - **Protein Localization Prediction**: Use a neural network to predict the spatial distribution of proteins within cellular compartments.
