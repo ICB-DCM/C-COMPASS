@@ -207,11 +207,22 @@ computer:
 1. Graphical User Interface (GUI)
 =================================
 
-C-COMPASS allows you to save and load your sessions via the main toolbar.
+C-COMPASS allows you to save and load your sessions via the main menu
+(:menuselection:`File --> Save As`).
+Saving after each significant step is recommended to avoid data loss.
+The session file, which includes all datasets, marker lists, settings,
+analyses, trainings, and statistics. These will be fully restored upon loading
+(:menuselection:`File --> Open`).
 
-A session can be saved as a NumPy (``.npy``) file, which includes all datasets,
-marker lists, settings, analyses, trainings, and statistics. These will be
-fully restored upon loading.
+There are currently two options for saving your session:
+
+* A **NumPy/pickly** (``.npy``) file. This is the fastest option.
+  However, those files will not necessarily work across different versions
+  of Python, C-COMPASS, numpy, or pandas.
+* A **zip** (``.ccompass``) file. This is significantly slower but more
+  reliable across different versions.
+
+The format can be chosen in the save dialog.
 
 2. Before training
 ==================
