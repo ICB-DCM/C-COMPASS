@@ -786,7 +786,9 @@ class SessionModel(BaseModel):
             with open(temp_dir / "session.yaml", "w") as f:
                 yaml.safe_dump(self.model_dump(), f)
 
-            with zipfile.ZipFile(filepath, "w") as zipf:
+            with zipfile.ZipFile(
+                filepath, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zipf:
                 for item in temp_dir.iterdir():
                     zipf.write(item, item.name)
 
