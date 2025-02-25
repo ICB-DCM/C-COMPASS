@@ -1586,6 +1586,8 @@ class MainController:
         if not filename:
             return
 
+        self.open_session(filename)
+
     def open_session(self, filename: str):
         try:
             with wait_cursor(self.main_window):
