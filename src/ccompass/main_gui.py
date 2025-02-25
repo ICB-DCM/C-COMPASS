@@ -1303,7 +1303,7 @@ class MainController:
                 self._handle_export_statistics()
             elif event == "-export_comparison-":
                 self._handle_export_comparison()
-            elif event == "Save...":
+            elif event == "Save As...":
                 self._handle_session_save()
             elif event == "Open...":
                 self._handle_session_open()
