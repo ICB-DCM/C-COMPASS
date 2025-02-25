@@ -295,9 +295,9 @@ class ResultsModel(BaseModel):
     #  * `SVM_prob`: the probability of the SVM-predicted compartment
     #  * `SVM_subwinner`: the compartment that was most often predicted
     #     by the different SVM rounds, NA in case of a tie
-    #  * `CClist_$class`: the multi-class predictions for the different
-    #       replicates as a list
-    #  * `CC_$class`: the mean of `CClist_$class`
+    #  * `CC_$class_$replicateId`: the multi-class predictions for the
+    #       individual replicates
+    #  * `CC_$class`: the mean across `CC_$class_$replicateId`
     #  * `NN_winner`: the class/compartment with the highest CC value
     #       according to the neural network predictions
     #  * `fCC_$class`: the false-positive filtered and renormalized
@@ -643,7 +643,10 @@ class SessionModel(BaseModel):
             for classname in result.classnames:
                 result.metrics.drop(
                     [
-                        "nCClist_" + classname,
+                        *[
+                            f"nCC_{classname}_{subcon}"
+                            for subcon in result.subcons
+                        ],
                         "nCC_" + classname,
                         "CPA_" + classname,
                         "CPA_log_" + classname,

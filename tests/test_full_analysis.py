@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import numpy as np
+
 from ccompass._testing.synthetic_data import (
     SyntheticDataConfig,
     create_profiles,
@@ -152,6 +154,27 @@ def test_full():
         sess.fract_conditions,
         sess.NN_params.reliability,
     )
+    for condition, result in sess.results.items():
+        ccols = [f"CC_{cls}" for cls in result.classnames]
+        assert np.isclose(result.metrics.loc[:, ccols].sum(axis=1), 1).all()
+
+        for cls in result.classnames:
+            assert (result.metrics[f"CC_{cls}"] >= 0).all()
+            assert (result.metrics[f"CC_{cls}"] <= 1).all()
+            assert (result.metrics[f"fCC_{cls}"] >= 0).all()
+            assert (result.metrics[f"fCC_{cls}"] <= 1).all()
+            assert (
+                (result.metrics[f"fCC_{cls}"] >= result.metrics[f"CC_{cls}"])
+                | (result.metrics[f"fCC_{cls}"] == 0.0)
+            ).all(), result.metrics[[f"fCC_{cls}", f"CC_{cls}"]][
+                ~(
+                    (
+                        result.metrics[f"fCC_{cls}"]
+                        >= result.metrics[f"CC_{cls}"]
+                    )
+                    | (result.metrics[f"fCC_{cls}"] == 0.0)
+                )
+            ]
 
     # "global changes"
     sess.comparison = global_comparisons(
