@@ -215,9 +215,15 @@ jobs:
           && mv ccompass_bundle_onefile_macos/ccompass_bundle_onefile release_assets/ccompass_bundle_onefile_macos
 
     - name: Upload release asset
+      # Attach the built binaries to the release
+      #
+      # This step occasionally fails with different errors, such as:
+      # * `Error: Validation Failed: {"resource":"ReleaseAsset","code":"already_exists","field":"name"}`
+      # * `Error: Not Found`
+      # but the asset is still uploaded.
+      # See also https://github.com/AButler/upload-release-assets/issues/43
       uses: AButler/upload-release-assets@v3.0
       if: github.event_name == 'release' && (github.event.action == 'created' || github.event.action == 'published')
-
       with:
         files: "release_assets/*"
         repo-token: ${{ secrets.GITHUB_TOKEN }}
