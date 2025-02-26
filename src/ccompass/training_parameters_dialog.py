@@ -30,7 +30,7 @@ def _create_window(nn_params: NeuralNetworkParametersModel) -> sg.Window:
                 enable_events=True,
             ),
             sg.Combo(
-                ["noised", "average", "noisedaverage"],
+                ["average", "noisedaverage"],
                 default_value=nn_params.upsampling_method,
                 key="--upsampling_method--",
                 size=(23, 1),
