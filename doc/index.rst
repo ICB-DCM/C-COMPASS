@@ -32,6 +32,9 @@ With C-COMPASS, users can perform comprehensive quantitative analyses of
 compartmental proteomics data, facilitating discoveries in cellular
 biology and proteomics research.
 
+More background on C-COMPASS and thorough evaluation can be found in the
+accompanying `preprint <https://doi.org/10.1101/2024.08.05.606647>`_.
+
 .. image:: gfx/ccompass_gui_sample_data_screenshot.png
    :width: 100%
    :alt: C-COMPASS GUI
