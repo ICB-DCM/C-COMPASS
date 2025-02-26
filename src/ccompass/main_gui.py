@@ -2256,7 +2256,7 @@ def marker_setclass(values, marker_sets):
 def session_open(window: sg.Window, filename: str, model: SessionModel):
     """Read session data from file and update the window."""
     # Update session data
-    if filename.endswith(".ccompass"):
+    if str(filename).endswith(".ccompass"):
         tmp_session = SessionModel.from_zip(filename)
     else:
         tmp_session = SessionModel.from_numpy(filename)
