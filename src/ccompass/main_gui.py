@@ -1443,24 +1443,6 @@ class MainController:
 
     def _handle_training(self, key: str):
         """Handle click on "Train C-COMPASS!" button."""
-        # FIXME: `stds` is not in the format expected for upsampling
-        if key == IDENTIFIER:
-            stds = self.model.fract_std
-        else:
-            # Add the required column and set as index
-            conditions_std = [
-                x for x in self.model.fract_conditions if x != KEEP
-            ]
-            stds = {}
-            for condition in conditions_std:
-                stds[condition] = pd.merge(
-                    self.model.fract_std["class"][condition],
-                    self.model.fract_info[key],
-                    left_index=True,
-                    right_index=True,
-                    how="left",
-                ).set_index(key)
-
         with wait_cursor(self.main_window):
             from .MOP import MOP_exec
 
@@ -1468,7 +1450,6 @@ class MainController:
                 self.model.fract_full,
                 self.model.fract_marker,
                 self.model.fract_test,
-                stds,
                 self.model.NN_params,
                 max_processes=self.app_settings.max_processes,
             )

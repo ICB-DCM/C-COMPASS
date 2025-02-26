@@ -146,7 +146,6 @@ def do_test_run(max_procs: int = None):
         sess.fract_full,
         sess.fract_marker,
         sess.fract_test,
-        sess.fract_std,
         sess.NN_params,
         max_procs,
     )

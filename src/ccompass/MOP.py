@@ -37,10 +37,9 @@ logger = logging.getLogger(__package__)
 
 
 def upsample_condition(
-    stds: pd.DataFrame,
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
-    method: Literal["none", "noised", "average", "noisedaverage"],
+    method: Literal["none", "average", "noisedaverage"],
     noise_stds: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Perform upsampling for the given condition.
@@ -67,30 +66,7 @@ def upsample_condition(
         class_std_flat = class_std.values.flatten()
 
         for i in range(class_difference):
-            if method == "noised":
-                sample = data_class.sample(n=1)
-                id_rnd = sample.index[0]
-                name_up = f"up_{k}_{id_rnd}"
-                k += 1
-
-                profile_rnd_flat = sample.values.flatten()
-                std_rnd = stds.loc[[id_rnd]]
-                std_rnd = std_rnd[~std_rnd.index.duplicated(keep="first")]
-                std_rnd_flat = std_rnd.values.flatten()
-                std_rnd_flat = np.tile(
-                    std_rnd_flat,
-                    int(profile_rnd_flat.size / std_rnd_flat.size),
-                )
-
-                nv = np.random.normal(
-                    profile_rnd_flat,
-                    noise_stds * std_rnd_flat,
-                    size=sample.shape,
-                )
-                nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-                profile_up = pd.DataFrame(nv, columns=sample.columns)
-
-            elif method == "average":
+            if method == "average":
                 sample = data_class.sample(n=3, replace=True)
                 name_up = f"up_{k}_{'_'.join(sample.index)}"
                 k += 1
@@ -147,7 +123,6 @@ def MOP_exec(
     fract_full: dict[str, pd.DataFrame],
     fract_marker: dict[str, pd.DataFrame],
     fract_test: dict[str, pd.DataFrame],
-    stds: dict[str, pd.DataFrame],
     nn_params: NeuralNetworkParametersModel,
     max_processes: int = 1,
 ) -> dict[str, XYZ_Model]:
@@ -211,7 +186,6 @@ def MOP_exec(
             fract_full,
             fract_marker,
             fract_test,
-            stds,
             nn_params,
             max_processes,
             progress_queue,
@@ -243,7 +217,6 @@ def multi_organelle_prediction(
     fract_full: dict[str, pd.DataFrame],
     fract_marker: dict[str, pd.DataFrame],
     fract_test: dict[str, pd.DataFrame],
-    stds: dict[str, pd.DataFrame],
     nn_params: NeuralNetworkParametersModel,
     max_processes: int = 1,
     progress_queue: mp.Queue = None,
@@ -282,7 +255,6 @@ def multi_organelle_prediction(
             fract_full[condition],
             fract_marker[condition],
             fract_test[condition],
-            stds.get(condition),
             nn_params,
             logger,
             progress_queue,
@@ -327,7 +299,6 @@ def execute_round_wrapper(args):
         fract_full,
         fract_marker,
         fract_test,
-        stds,
         nn_params,
         logger,
         progress_queue,
@@ -345,7 +316,6 @@ def execute_round_wrapper(args):
         fract_full,
         fract_marker,
         fract_test,
-        stds,
         nn_params,
         sub_logger,
         round_id,
@@ -360,7 +330,6 @@ def execute_round(
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
-    stds: pd.DataFrame,
     nn_params: NeuralNetworkParametersModel,
     logger: logging.Logger,
     round_id: str,
@@ -378,7 +347,6 @@ def execute_round(
     if nn_params.upsampling:
         logger.info("Upsampling")
         fract_marker_up, fract_full_up = upsample_condition(
-            stds,
             fract_full,
             fract_marker,
             method=nn_params.upsampling_method,
@@ -415,7 +383,6 @@ def execute_round(
         ]
         logger.info("Upsampling after SVM-filtering...")
         fract_marker_up, fract_full_up = upsample_condition(
-            stds,
             fract_full,
             fract_marker_filtered,
             method=nn_params.upsampling_method,

@@ -121,9 +121,9 @@ class NeuralNetworkParametersModel(BaseModel):
     #: Perform upsampling?
     upsampling: bool = True
     #: Method for upsampling
-    upsampling_method: Literal[
-        "none", "noised", "average", "noisedaverage"
-    ] = "noisedaverage"
+    upsampling_method: Literal["none", "average", "noisedaverage"] = (
+        "noisedaverage"
+    )
     #: Noise level for upsampling (standard deviations)
     upsampling_noise: float = 2
     #: Perform SVM filtering?
