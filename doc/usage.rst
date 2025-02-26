@@ -22,13 +22,11 @@ fractions. This dataset is typically derived from a spectral search software,
 such as MaxQuant, Spectronaut, DIANN, or others.
 The data must be reported as a **pivot report table**, meaning that your table
 includes one row per protein and one column per sample
-(e.g., 'Condition1_Replicate1_Fraction1', 'Condition1_Replicate1_Fraction2',
-and so on...).
+(e.g., ``Condition1_Replicate1_Fraction1``,
+``Condition1_Replicate1_Fraction2``, and so on...).
 The data is expected to be in a tab-delimited format (``.txt`` or ``.tsv``).
 
-Example:
-
-  .. list-table:: Fractionation data example table
+  .. list-table:: Fractionation data example table.
    :header-rows: 1
 
    * - ProteinGroups
@@ -65,10 +63,10 @@ The table may also contain additional columns.
 You can remove them in C-COMPASS.
 
 There are no restrictions on the column names or order. However, assigning the
-condition, replicate, and fraction IDs/numbers in C-COMPASS will be easier
+condition, replicate, and fractions metadata in C-COMPASS will be easier
 if the columns for the different fractions of a given condition/replicate are
 grouped together, and the order of the columns is consistent across replicates
-and conditions.
+and conditions. The number of fractions may differ across replicates.
 
 .. note::
 
@@ -85,13 +83,14 @@ and conditions.
       conditions is ok as long as the integrity of the profiles per replicate
       are conserved.
 
-C-COMPASS was optimized on LFQ values but other quantities like TMT can
-also be used.
+C-COMPASS was optimized on
+`LFQ <https://en.wikipedia.org/wiki/Label-free_quantification>`_ values
+but other quantities like
+`TMT <https://en.wikipedia.org/wiki/Tandem_mass_tag>`_ can also be used.
 Different conditions or different replicates can derive from several
-experiments/runs as long as the identifier is compatible, but each replicate
+experiments/runs as long as the identifiers are compatible, but each replicate
 fractionation must derive from the same analysis file.
 
-The number of fractions can differ across replicates.
 
 .. _input_marker:
 
@@ -133,17 +132,15 @@ Total Proteome Data (optional)
 
 Total proteome data is only necessary for normalization of relocalization
 events to study the abundance change inside compartments across conditions
-(referred to as *class-centric analysis* in the GUI).
+(referred to as :guilabel:`class-centric changes` in the GUI).
 
 The data is expected to be in a tab-delimited format (``.txt`` or ``.tsv``).
 Data must be presented as a 'pivot report table' That means, you need one
-column for each of your samples (e.g. 'TP_Condition1_Replicate1',
-'TP_Condition1_Replicate2', and so on...).
+column for each of your samples (e.g. ``TP_Condition1_Replicate1``,
+``TP_Condition1_Replicate2``, and so on...).
 
 Table must contain the same unique identifier column that was used for the
 fractionation file (ProteinGroups, UniProtID or similar).
-
-Example:
 
   .. list-table:: Total Proteome data example table
    :header-rows: 1
@@ -164,14 +161,19 @@ Example:
      - 0.12
      - 0.91
 
-
-You can apply normalizations like batch-corrections or median-normalization,
-but do not apply log-transformations.
-Total proteome analysis was also optimized on LFQ intensities but other
-quantities like TMT can be used.
 The table can also contain additional columns that are not necessary.
 You can remove them in C-COMPASS.
 Total Proteome data should derive from the same experiment to be comparable.
+
+.. note::
+
+    You can apply normalizations like batch-corrections or
+    median-normalization, but do not apply log-transformations.
+
+    Total proteome analysis was optimized on
+    `LFQ <https://en.wikipedia.org/wiki/Label-free_quantification>`_ values
+    but other quantities like
+    `TMT <https://en.wikipedia.org/wiki/Tandem_mass_tag>`_ can also be used.
 
 
 
@@ -241,7 +243,8 @@ The format can be chosen in the save dialog.
 
    #. Use the :guilabel:`Add file...` button to import datasets.
       Multiple datasets can be imported and will appear in the dropdown menu.
-      To remove a dataset, select it from the dropdown and click `Remove.`
+      To remove a dataset, select it from the dropdown and click
+      :guilabel:`Remove.`
 
    #. The table will display all column names found in the selected dataset.
 
@@ -255,22 +258,22 @@ The format can be chosen in the save dialog.
       using consistent condition names.
 
    #. Set the identifier column (e.g., `ProteinGroups`) for both Fractionation and
-      TotalProteome datasets using the "Set Identifier" button.
+      TotalProteome datasets using the :guilabel:`Set Identifier` button.
       Ensure compatibility between these columns.
 
-   #. For other columns, either remove them or mark them as `Keep.`
-      Data marked as `Keep` will not be used in the analysis but will be
-      available for export.
+   #. For other columns, either remove them or mark them as :guilabel:`Keep.`
+      Data marked as :guilabel:`Keep` will not be used in the analysis but will
+      be available for export.
 
-   #. **IMPORTANT**: Ensure that the column matching the marker list's naming
+      **IMPORTANT**: Ensure that the column matching the marker list's naming
       (usually the gene name column) is kept.
 
 #. **Pre-Processing**
 
-   #. Once columns are annotated, click :guilabel:`Process Fract.`
-      or :guilabel:`Process TP` to import the data.
+   Once columns are annotated, click :guilabel:`Process Fract.`
+   or :guilabel:`Process TP` to import the data.
 
-   #. Fractionation and TotalProteome data can be processed independently.
+   Fractionation and TotalProteome data can be processed independently.
 
 #. **Marker List Import**
 
@@ -279,7 +282,7 @@ The format can be chosen in the save dialog.
       Multiple marker lists can be imported, and individual lists can
       be removed using the :guilabel:`Remove` button.
 
-   #. Imported marker lists will be displayed in the box.
+      Imported marker lists will be displayed in the box.
 
    #. For each marker list, specify the key column (e.g., gene names)
       and the class column (e.g., compartment).
@@ -295,7 +298,7 @@ The format can be chosen in the save dialog.
       marker lists.
       Unselect any classes you do not want in the analysis or rename them.
 
-   #. Classes with different nomenclatures
+      Classes with different nomenclatures
       (e.g., ``ER`` vs. ``Endoplasmic Reticulum``) can be merged by giving them
       the same name.
 
@@ -308,45 +311,54 @@ The format can be chosen in the save dialog.
 3. Training
 ===========
 
-#. Start the training process by clicking :guilabel:`Train C-COMPASS`.
+Start the training process by clicking :guilabel:`Train C-COMPASS`.
 
-#. Various network architectures will be trained and evaluated for optimal
-   results. This process may take over an hour, depending on dataset size.
+Various network architectures will be trained and evaluated for optimal
+results. This process may take over an hour, depending on dataset size.
+By default, training is performed on a single core,
+but you can change this via :menuselection:`Settings --> Settings`.
 
-#. Progress will be shown in the background console window.
+Progress will be shown in the progress dialog and more details are shown
+on the background console window.
 
-#. **Hint**: Save your session after training to avoid repeating the process.
-
-#. **Note**: Future versions will optimize training time while maintaining calculation accuracy.
+**Hint**: Save your session after training to avoid repeating the process.
 
 4. After training
 =================
 
 #. **Statistics**
 
-   #. After training, create `Static Statistics` via
-      :guilabel:`Predict Proteome`
-      to generate quantitative classifications for each condition.
+   After training, create `Static Statistics` via
+   :guilabel:`Predict Proteome`
+   to generate quantitative classifications for each condition.
 
-   #. Predictions can be exported or imported for comparison across sessions,
-      ensuring compatible identifiers.
+   Predictions can be exported or imported for comparison across sessions,
+   ensuring compatible identifiers.
 
-   #. Use the :guilabel:`Report` button to export results.
+   Use the :guilabel:`Report` button to export results.
 
-   #. Create simple plots and export them, along with the corresponding data tables.
+   Create simple plots and export them, along with the corresponding data tables.
 
 #. **Conditional Comparison - Global Changes**
 
-   #. :guilabel:`Calculate Global Changes` compares localization across
+   :guilabel:`Calculate Global Changes` compares localization across
       conditions, providing relocalization results.
 
-   #. Results can be displayed and exported similarly to the statistics.
+   Results can be displayed and exported similarly to the statistics.
 
 #. **Conditional Comparison - Class-centric Changes**
 
-   #. **CPA (Class-centric Protein Amount)**: The amount of protein within a compartment, normalized by total proteome data. This is a relative value that requires comparison across conditions.
+   :guilabel:`Calculate Class-Centric Changes` provides detailed statistics
+   on protein relocalization within compartments across conditions:
 
-   #. **CFC (Class-centric Fold-Change)**: The fold change of proteins across conditions within a compartment, based on CPA values. Only proteins with valid fractionation and total proteome data for both conditions will have CFC values.
+   * **CPA (Class-centric Protein Amount)**:
+     The amount of protein within a compartment, normalized by total proteome
+     data. This is a relative value that requires comparison across conditions.
+
+   * **CFC (Class-centric Fold-Change)**: The fold change of proteins across
+     conditions within a compartment, based on CPA values. Only proteins with
+     valid fractionation and total proteome data for both conditions will have
+     CFC values.
 
 5. Spatial Lipidomics
 ======================
