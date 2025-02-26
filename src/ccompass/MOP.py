@@ -5,6 +5,7 @@ import logging
 import multiprocessing as mp
 import queue
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
 
@@ -162,22 +163,28 @@ def MOP_exec(
         """Update the progress bars based on the progress queue."""
         while True:
             try:
-                condition_id, _ = progress_queue.get_nowait()
-                finished[condition_id] += 1
-                progress_bars[condition_id].update_bar(finished[condition_id])
+                condition_id, round_id, percent, task = (
+                    progress_queue.get_nowait()
+                )
+                finished[condition_id][round_id] = percent
+                progress_bars[condition_id].update_bar(
+                    int(sum(finished[condition_id].values()))
+                )
+                status_labels[condition_id].update(task)
             except queue.Empty:
                 break
 
     # condition_id -> progress bar
     progress_bars = {}
-    # condition_id -> finished rounds
-    finished = {condition_id: 0 for condition_id in fract_full}
+    status_labels = {}
+    # condition_id -> round_id -> percentage
+    finished = {condition_id: {} for condition_id in fract_full}
     # maximum length of condition_ids for text box alignment
     text_maxlen = max(map(len, fract_full))
     layout = []
     for condition_id in fract_full:
         progress_bar = sg.ProgressBar(
-            max_value=nn_params.rounds,
+            max_value=nn_params.rounds * 100,
             orientation="h",
             size=(20, 10),
             key=condition_id,
@@ -186,6 +193,8 @@ def MOP_exec(
         )
         layout.append([sg.Text(condition_id, s=text_maxlen), progress_bar])
         progress_bars[condition_id] = progress_bar
+        status_labels[condition_id] = sg.Text("")
+        layout.append([status_labels[condition_id]])
 
     window = sg.Window(
         "Progress", layout, finalize=True, resizable=True, modal=True
@@ -193,7 +202,8 @@ def MOP_exec(
     window.set_cursor("watch")
 
     # run actual prediction in a separate thread to allow for progress updates
-    progress_queue = mp.Queue()
+    manager = mp.Manager()
+    progress_queue = manager.Queue()
     result_queue = mp.Queue()
     worker_thread = threading.Thread(
         target=multi_organelle_prediction,
@@ -244,7 +254,8 @@ def multi_organelle_prediction(
     :param fract_full: dictionary of full profiles
     :param max_processes: The maximum number of processes to use.
     :param progress_queue: A queue to report progress
-        `tuple[condition_id: str, round_id: str]`.
+        `tuple[condition_id: str, round_id: str, percent_done: int|float,
+        task: str]`.
     :param result_queue: A queue to report the result.
     """
 
@@ -274,6 +285,7 @@ def multi_organelle_prediction(
             stds.get(condition),
             nn_params,
             logger,
+            progress_queue,
         )
         for condition in conditions
         for i_round in range(1, nn_params.rounds + 1)
@@ -282,8 +294,6 @@ def multi_organelle_prediction(
     def on_task_done(result):
         condition, round_id, round_data = result
         learning_xyz[condition].round_results[round_id] = round_data
-        if progress_queue:
-            progress_queue.put((condition, round_id))
 
     if max_processes > 1:
         ctx = get_mp_ctx()
@@ -320,6 +330,7 @@ def execute_round_wrapper(args):
         stds,
         nn_params,
         logger,
+        progress_queue,
     ) = args
     logger.info(
         f"Executing round {i_round}/{nn_params.rounds} "
@@ -339,6 +350,7 @@ def execute_round_wrapper(args):
         sub_logger,
         round_id,
         keras_proj_id=f"Classifier_{condition}_{i_round}",
+        progress_queue=progress_queue,
     )
     return condition, round_id, round_data
 
@@ -353,10 +365,14 @@ def execute_round(
     logger: logging.Logger,
     round_id: str,
     keras_proj_id: str,
+    progress_queue: mp.Queue = None,
 ) -> TrainingRoundModel:
     """Perform a single round of training and prediction."""
 
     result = TrainingRoundModel()
+
+    if progress_queue:
+        progress_queue.put((xyz.condition_id, round_id, 0, "Upsampling..."))
 
     # upsample fractionation data
     if nn_params.upsampling:
@@ -376,6 +392,11 @@ def execute_round(
     result.W_train_up_df = fract_marker_up["class"]
     result.x_full_up_df = fract_full_up.drop(columns=["class"])
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
+
+    if progress_queue:
+        progress_queue.put(
+            (xyz.condition_id, round_id, 1, "SVM prediction...")
+        )
 
     logger.info("Performing single prediction ...")
     _, svm_marker, _ = single_prediction(
@@ -411,6 +432,11 @@ def execute_round(
         axis=1,
     )
 
+    if progress_queue:
+        progress_queue.put(
+            (xyz.condition_id, round_id, 5, "Mixing profiles...")
+        )
+
     if nn_params.mixed_part == "none":
         fract_mixed_up = copy.deepcopy(fract_unmixed_up)
     else:
@@ -429,11 +455,22 @@ def execute_round(
     result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
     result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
 
+    if progress_queue:
+        progress_queue.put((xyz.condition_id, round_id, 10, "Training..."))
+
     # Initialize subround results
     result.subround_results = {
         f"{round_id}_{i_subround}": TrainingSubRoundModel()
         for i_subround in range(0, nn_params.subrounds + 1)
     }
+
+    def status_callback(percent_done: float, task: str):
+        if progress_queue:
+            # renormalize
+            percent_done = percent_done / 100 * 90 + 10
+            progress_queue.put(
+                (xyz.condition_id, round_id, percent_done, task)
+            )
 
     with stdout_to_logger(logger, logging.DEBUG):
         multi_predictions(
@@ -443,7 +480,11 @@ def execute_round(
             logger,
             round_id,
             keras_proj_id=keras_proj_id,
+            status_callback=status_callback,
         )
+
+    if progress_queue:
+        progress_queue.put((xyz.condition_id, round_id, 100, "done"))
 
     return result
 
@@ -455,6 +496,8 @@ def multi_predictions(
     logger: logging.Logger,
     round_id: str,
     keras_proj_id: str,
+    status_callback: Callable[[float, str], None] = lambda *args,
+    **kwargs: None,
 ):
     """Perform multi organelle predictions."""
     logger.info("Training classifier...")
@@ -489,6 +532,7 @@ def multi_predictions(
     )
 
     # Tune the hyperparameters
+    status_callback(0, "Hyperparameter tuning...")
     # noinspection PyUnresolvedReferences
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=5
@@ -518,8 +562,11 @@ def multi_predictions(
         z_train,
     )
 
-    # TODO(performance): parallelize this
     for i_subround in range(1, nn_params.subrounds + 1):
+        status_callback(
+            50 + i_subround / nn_params.subrounds * 50,
+            f"Training round {i_subround}...",
+        )
         logger.info(
             f"Training classifier for {i_subround}/{nn_params.subrounds}..."
         )
