@@ -222,7 +222,7 @@ analyses, trainings, and statistics. These will be fully restored upon loading
 
 There are currently two options for saving your session:
 
-* A **NumPy/pickly** (``.npy``) file. This is the fastest option.
+* A **NumPy/pickle** (``.npy``) file. This is the fastest option.
   However, those files will not necessarily work across different versions
   of Python, C-COMPASS, numpy, or pandas.
 * A **zip** (``.ccompass``) file. This is significantly slower but more
