@@ -250,7 +250,10 @@ def multi_organelle_prediction(
 
     # prepare data structures for each round / condition
     conditions = list(fract_full.keys())
-    learning_xyz = {condition: XYZ_Model() for condition in conditions}
+    learning_xyz = {
+        condition: XYZ_Model(condition_id=condition)
+        for condition in conditions
+    }
     for condition in conditions:
         update_learninglist_const(
             learning_xyz[condition],

@@ -188,6 +188,7 @@ class XYZ_Model(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    condition_id: str = ""
     # TODO(performance): get rid of duplicate data in different formats
     #: List of unique classes for which there are marker measurements
     classes: list[str] = []
