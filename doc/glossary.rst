@@ -12,7 +12,7 @@ of C-COMPASS.
     class contribution
         The relative fraction of a protein or other molecule type that is
         located in a specific compartment after filtering out false positives
-        and re-normalizing the :term:`profile`. :math:`CC \in [0, 1]`.
+        and re-normalizing the :term:`profile`.
         :math:`CC \in [0, 1]`.
 
     profile : B
