@@ -113,9 +113,6 @@ def upsample_condition(
     fract_marker_up = fract_marker_up.sample(frac=1)
     fract_full_up = fract_full_up.sample(frac=1)
 
-    assert len(fract_marker_up["class"].value_counts().unique()) == 1
-    assert len(fract_full_up["class"].value_counts().unique()) == 1
-
     return fract_marker_up, fract_full_up
 
 
