@@ -789,6 +789,7 @@ def create_marker_selection_frame() -> sg.Frame:
                                 size=(18, 1),
                                 readonly=True,
                                 tooltip=tt_fract_key,
+                                enable_events=True,
                             ),
                         ],
                         [sg.HSep()],
@@ -1192,14 +1193,12 @@ class MainController:
                 self.model.marker_conv = marker_setclass(
                     values, self.model.marker_sets
                 )
-
             elif event == "-marker_parameters-":
                 from .marker_parameters_dialog import show_dialog
 
                 self.model.marker_params = show_dialog(
                     self.model.marker_params
                 )
-
             elif event == "-marker_manage-":
                 from .class_manager_dialog import show_class_manager_dialog
 
@@ -1211,11 +1210,12 @@ class MainController:
                     messagebox.showerror(
                         "Error", "Please define key and class column."
                     )
-
+            elif event == "-marker_fractkey-":
+                self.model.marker_fractkey = values["-marker_fractkey-"]
             elif event == "-marker_test-":
-                self._open_marker_correlations(values["-marker_fractkey-"])
+                self._open_marker_correlations()
             elif event == "-marker_profiles-":
-                self._open_marker_profiles(values["-marker_fractkey-"])
+                self._open_marker_profiles()
             elif event == "-marker_accept-":
                 self._handle_match_markers(values)
             elif event == "-marker_reset-":
@@ -1226,7 +1226,7 @@ class MainController:
                 self.model.NN_params = show_dialog(self.model.NN_params)
 
             elif event == "-classification_MOP-":
-                self._handle_training(key=values["-marker_fractkey-"])
+                self._handle_training()
             elif event == "-classification_reset-":
                 self.model.reset_classification()
 
@@ -1331,7 +1331,7 @@ class MainController:
 
         self.main_window.close()
 
-    def _open_marker_correlations(self, key: str):
+    def _open_marker_correlations(self):
         """Open the marker correlation window."""
         if check_markers(self.model.marker_sets):
             from .marker_correlation_dialog import (
@@ -1348,7 +1348,7 @@ class MainController:
                     self.model.fract_data,
                     self.model.fract_info,
                     self.model.marker_list,
-                    key,
+                    self.model.marker_fractkey,
                 )
             except Exception:
                 logger.exception("Error")
@@ -1361,7 +1361,7 @@ class MainController:
                 "Error", "Please define key and class column."
             )
 
-    def _open_marker_profiles(self, key: str):
+    def _open_marker_profiles(self):
         """Open the marker profiles window."""
         if not check_markers(self.model.marker_sets):
             messagebox.showerror(
@@ -1381,7 +1381,7 @@ class MainController:
                 self.model.fract_data,
                 self.model.fract_info,
                 self.model.marker_list,
-                key,
+                self.model.marker_fractkey,
             )
         except Exception:
             logger.exception("Error")
@@ -1441,7 +1441,7 @@ class MainController:
             messagebox.showerror("Error", "Incompatible Fractionation Key!")
             self.model.reset_marker()
 
-    def _handle_training(self, key: str):
+    def _handle_training(self):
         """Handle click on "Train C-COMPASS!" button."""
         with wait_cursor(self.main_window):
             from .MOP import MOP_exec

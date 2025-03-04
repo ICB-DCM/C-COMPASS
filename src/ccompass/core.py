@@ -1097,7 +1097,10 @@ def create_markerlist(
 
 
 def create_marker_profiles(
-    fract_data, key: str, fract_info, marker_list
+    fract_data,
+    key: str,
+    fract_info: dict[str, pd.DataFrame],
+    marker_list: pd.DataFrame,
 ) -> tuple[
     dict[str, pd.DataFrame], dict[str, pd.DataFrame], dict[str, pd.DataFrame]
 ]:
@@ -1114,6 +1117,7 @@ def create_marker_profiles(
 
     for condition in profiles:
         if key == IDENTIFIER:
+            # match on index
             profile_full = pd.merge(
                 profiles[condition],
                 marker_list,
@@ -1122,6 +1126,7 @@ def create_marker_profiles(
                 how="left",
             )
         else:
+            # match on some [KEEP] column from fract_info
             # add identifier column
             profiles[condition] = pd.merge(
                 profiles[condition],
@@ -1138,7 +1143,12 @@ def create_marker_profiles(
             ).drop(key, axis=1)
         fract_marker[condition] = profile_full.dropna(subset=["class"])
         fract_test[condition] = profile_full[profile_full["class"].isna()]
-
+        if fract_marker[condition].empty:
+            raise ValueError(
+                f"No markers found for condition {condition}. "
+                "Please check the marker list, the selected keys, "
+                "and the fractionation data."
+            )
     # create marker profiles for visualization
     profiles_vis = {}
     for condition in fract_data["vis"]:
@@ -1171,6 +1181,7 @@ def create_marker_profiles(
                 .drop(key, axis=1)
                 .dropna(subset=["class"])
             )
+
     return fract_marker, fract_marker_vis, fract_test
 
 
@@ -1196,6 +1207,7 @@ def read_marker_table(
     df = pd.read_csv(filepath, sep="\t", header=0).apply(
         lambda x: x.astype(str).str.upper()
     )
+    logger.debug(f"Read marker table from {filepath} ({df.shape})")
     return df
 
 
@@ -1206,6 +1218,7 @@ def read_fract_table(
     df = pd.read_csv(filepath, sep="\t", header=0)
     df = df.replace("NaN", np.nan)
     df = df.replace("Filtered", np.nan)
+    logger.debug(f"Read fractionation data from {filepath} ({df.shape})")
     return df
 
 
@@ -1219,6 +1232,7 @@ def read_tp_table(
     df = df.map(convert_to_float)
     rows_with_float = df.map(is_float).any(axis=1)
     df = df[rows_with_float]
+    logger.debug(f"Read total proteome data from {filepath} ({df.shape})")
     return df
 
 
