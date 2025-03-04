@@ -293,7 +293,7 @@ def start_total_proteome_processing(
         tp_data[condition] = np.log2(tp_data[condition])
 
     # ---------------------------------------------------------------------
-    logger.info("imputing MissingValues...")
+    logger.info("imputing missing values...")
     progress = 30
     if window:
         window["--status1--"].update(value="imputing missing values...")
