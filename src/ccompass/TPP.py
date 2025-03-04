@@ -146,6 +146,8 @@ def impute_data(
             data[sample] = data[sample].apply(
                 lambda x: 0 if math.isnan(x) else x
             )
+    else:
+        raise ValueError(f"Invalid imputation mode: {mode}")
     return data
 
 
