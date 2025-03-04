@@ -429,18 +429,13 @@ def RP_global_heatmap(comparison):
     def plot_heatmap(
         dataframe, comparison_name, save_as_pdf=False, folder_path=None
     ):
-        # Drop rows with NaN values
         df_cleaned = dataframe.dropna()
-
-        # Extract the column labels (the part after 'RL_')
         x_labels = dataframe.columns
 
         # Perform hierarchical clustering on the rows
         linkage_matrix = linkage(df_cleaned, method="ward")
-        clustered_rows = leaves_list(
-            linkage_matrix
-        )  # Order of rows after clustering
-
+        # Order of rows after clustering
+        clustered_rows = leaves_list(linkage_matrix)
         # Reorder the DataFrame rows based on hierarchical clustering
         df_clustered = df_cleaned.iloc[clustered_rows, :]
 
@@ -468,8 +463,8 @@ def RP_global_heatmap(comparison):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-    # Function to export filtered and renamed dataframes to Excel and heatmaps to PDFs
     def export_heatmaps(comparison, folder_path):
+        """Export filtered and renamed dataframes to Excel and heatmaps to PDFs"""
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
         # Create an Excel writer to save all filtered data into one file
@@ -551,7 +546,6 @@ def RP_global_distance(comparison):
         [sg.Image(key="-SCATTERPLOT-")],
     ]
 
-    # Create the window with a static size
     window = sg.Window(
         "Global Distance Scatter Plot (Comparisons)",
         layout,
@@ -560,18 +554,18 @@ def RP_global_distance(comparison):
         modal=True,
     )
 
-    # Function to filter the data before plotting
     def filter_data(dataframe):
+        """Filter the data before plotting"""
         # Filter out rows where DS is 0 and where fRLS < 1
         filtered_df = dataframe[
             (dataframe["DS"] != 0) & (dataframe["fRLS"] >= 1)
         ]
         return filtered_df
 
-    # Function to create a scatter plot and return it as a PIL image
     def plot_scatter(
         dataframe, comparison_name, save_as_pdf=False, folder_path=None
     ):
+        """Create a scatter plot and return it as a PIL image"""
         # Filter the data
         filtered_df = filter_data(dataframe)
 
@@ -612,8 +606,8 @@ def RP_global_distance(comparison):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-    # Function to export scatter plot data and save to Excel and PDFs
     def export_scatter_data(comparison, folder_path):
+        """Export scatter plot data and save to Excel and PDFs"""
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
         # Create an Excel writer to save all data into one file
@@ -709,13 +703,13 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
         modal=True,
     )
 
-    # Function to compute row-wise z-score
     def compute_rowwise_zscore(df):
+        """Compute row-wise z-score."""
         # Ensure that rows with NaN values are removed before applying z-score
         return df.dropna(how="any").apply(zscore, axis=1)
 
-    # Function to ensure only numeric values are passed to clustering
     def ensure_numeric(df):
+        """Ensure only numeric values are passed to clustering."""
         # Flatten any lists or arrays and ensure numeric values, forcing invalid parsing to NaN
         df_numeric = pd.DataFrame(df.tolist())  # Flatten lists into DataFrame
         df_numeric = df_numeric.apply(pd.to_numeric, errors="coerce")
@@ -723,24 +717,22 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
         df_cleaned = df_numeric.dropna()
         return df_cleaned
 
-    # Function to filter rows that are present across all conditions (i.e., no NaNs across conditions)
     def filter_common_rows(df):
+        """Filter rows that are present across all conditions (i.e., no NaNs across conditions)."""
         return df.dropna(how="any")
 
-    # Function to plot heatmap and return as a PIL image
     def plot_heatmap(
         dataframe, classname, conditions, save_as_pdf=False, folder_path=None
     ):
+        """Plot heatmap and return as a PIL image."""
         # Ensure the DataFrame contains only numeric values
         df_cleaned = ensure_numeric(dataframe)
 
         # Perform hierarchical clustering on the rows
         try:
             linkage_matrix = linkage(df_cleaned, method="ward")
-            clustered_rows = leaves_list(
-                linkage_matrix
-            )  # Order of rows after clustering
-
+            # Order of rows after clustering
+            clustered_rows = leaves_list(linkage_matrix)
             # Reorder the DataFrame rows based on hierarchical clustering
             df_clustered = df_cleaned.iloc[clustered_rows, :]
 
@@ -770,12 +762,12 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
             logger.exception("Error during clustering")
             return None
 
-    # Function to export heatmaps and data to PDF and Excel
     def export_heatmaps(
         results: dict[str, ResultsModel],
         common_classnames: list[str],
         folder_path,
     ):
+        """Export heatmaps and data to PDF and Excel."""
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
         excel_filename = os.path.join(folder_path, "class_heatmap_data.xlsx")
