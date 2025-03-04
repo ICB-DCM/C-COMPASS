@@ -49,6 +49,9 @@ def upsample_condition(
         Only used for the "noised" and "noisedaverage" methods.
     :return: The upsampled marker and full profiles
     """
+    if fract_marker.empty:
+        raise ValueError("Empty marker profile")
+
     fract_full_up = fract_full
     fract_marker_up = fract_marker.copy()
 
@@ -113,8 +116,8 @@ def upsample_condition(
     fract_marker_up = fract_marker_up.sample(frac=1)
     fract_full_up = fract_full_up.sample(frac=1)
 
-    assert len(fract_marker_up["class"].value_counts().unique()) == 1
-    assert len(fract_full_up["class"].value_counts().unique()) == 1
+    assert fract_marker_up["class"].value_counts().nunique() == 1
+    assert fract_full_up["class"].value_counts().nunique() == 1
 
     return fract_marker_up, fract_full_up
 

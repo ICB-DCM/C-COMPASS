@@ -545,6 +545,14 @@ def start_fract_data_processing(
         "class": copy.deepcopy(dataset),
         "vis": copy.deepcopy(dataset),
     }
+    shapes = ", ".join(
+        [
+            f"{cond_id}/{rep_id}: {df.shape}"
+            for cond_id, cond_dict in dataset.items()
+            for rep_id, df in cond_dict.items()
+        ]
+    )
+    logger.debug(f"Fractionation dataset shapes are {shapes}")
 
     # ---------------------------------------------------------------------
     logger.info("converting dataset...")
