@@ -143,8 +143,6 @@ class NeuralNetworkParametersModel(BaseModel):
     class_loss: Literal["binary_crossentropy", "mean_squared_error"] = (
         "mean_squared_error"
     )
-    #: FIXME: unused
-    regularization: Literal["none", "l1", "l2", "elastic"] = "none"
     #: Optimizers to include in the hyperparameter search
     optimizers: list[Literal["adam", "rmsprop", "sgd"]] = [
         "adam",
@@ -229,6 +227,7 @@ class TrainingRoundModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     #: features and SVM classification results
+    # TODO: contains an unnecessary copy of x_full_df
     w_full_prob_df: pd.DataFrame = pd.DataFrame()
 
     #: Summary of the best neural network mode
