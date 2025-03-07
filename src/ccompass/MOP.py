@@ -1,6 +1,7 @@
 """Multiple organelle prediction."""
 
 import copy
+import gc
 import logging
 import multiprocessing as mp
 import queue
@@ -500,7 +501,6 @@ def multi_predictions(
         directory=str(classifier_directory),
         project_name=f"{time}_{keras_proj_id}",
     )
-
     # Tune the hyperparameters
     status_callback(0, "Hyperparameter tuning...")
     # noinspection PyUnresolvedReferences
@@ -563,6 +563,10 @@ def multi_predictions(
             z_full,
             z_train,
         )
+
+    # free memory
+    tf.keras.backend.clear_session()
+    gc.collect()
 
 
 def add_Z(

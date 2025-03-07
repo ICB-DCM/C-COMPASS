@@ -1,5 +1,7 @@
 """The neural network model for multi-compartment classification."""
 
+import gc
+
 import keras_tuner as kt
 import tensorflow as tf
 
@@ -145,6 +147,10 @@ class FNN_Classifier(kt.HyperModel):
                 "learning_rate": learning_rate,
                 "dl1_units": dl1_units,
             }
+
+        # free memory
+        tf.keras.backend.clear_session()
+        gc.collect()
 
         return model
 
