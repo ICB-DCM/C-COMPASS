@@ -737,11 +737,8 @@ def single_prediction(
         "f1": f1,
     }
 
-    round_result.w_full = w_full
-    round_result.w_full_prob = w_full_prob
     round_result.w_full_prob_df = copy.deepcopy(learning_xyz.x_full_df)
     round_result.w_full_prob_df["SVM_winner"] = w_full
     round_result.w_full_prob_df["SVM_prob"] = w_full_prob
-    round_result.w_train = w_train
 
     return svm_metrics, svm_marker, svm_test

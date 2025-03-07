@@ -19,7 +19,6 @@ from pydantic import (
     ConfigDict,
     Field,
     field_serializer,
-    field_validator,
 )
 
 from ._utils import get_ccmps_data_directory
@@ -248,24 +247,9 @@ class TrainingRoundModel(BaseModel):
     #  (protein x compartment)
     Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
 
-    #: SVM-predicted class labels for x_full for each round
-    # TODO: never read
-    w_full: list = []
-    #: Probabilities for the SVM-predicted class labels in w_full
-    # TODO: never read
-    w_full_prob: np.ndarray = np.array([])
-    #: SVM-predicted class labels for x_train for each round
-    # TODO: never read
-    w_train: list = []
-
     #: Data for the different rounds of neural network training after the
     #  hyperparameter search. Basis for ensemble prediction.
     subround_results: dict[str, TrainingSubRoundModel] = {}
-
-    @field_validator("w_full_prob", mode="before")
-    def convert_list_to_array(cls, v):
-        # for backward compatibility, convert list to ndarray
-        return np.asarray(v)
 
 
 class TrainingSubRoundModel(BaseModel):
