@@ -43,6 +43,7 @@ def show_settings_dialog(settings: AppSettings) -> None:
 
         if event == "Save":
             settings.max_processes = int(values["-NUM_PROCESSES-"])
+            settings.save()
             break
 
     window.close()
