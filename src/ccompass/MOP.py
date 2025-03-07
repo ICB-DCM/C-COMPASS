@@ -689,6 +689,7 @@ def single_prediction(
     :param learning_xyz: The learning data.
     :param round_result: Input and results. This will be updated in place.
     """
+    x_full = learning_xyz.x_full_df
     x_train = learning_xyz.x_train_df
     x_train_up = round_result.x_train_up_df
     x_test = learning_xyz.x_test_df
@@ -700,9 +701,13 @@ def single_prediction(
     clf.fit(x_train_up, W_train_up)
 
     # predict the classes
+    # TODO(performance): No need to predict x_full,
+    #  since that is x_train + x_test
+    w_full = clf.predict(x_full).tolist()
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
 
+    w_full_prob = clf.predict_proba(x_full).max(axis=1)
     w_train_prob = clf.predict_proba(x_train).max(axis=1)
     w_test_prob = clf.predict_proba(x_test).max(axis=1)
 
@@ -731,5 +736,12 @@ def single_prediction(
         "recall": recall,
         "f1": f1,
     }
+
+    round_result.w_full = w_full
+    round_result.w_full_prob = w_full_prob
+    round_result.w_full_prob_df = copy.deepcopy(learning_xyz.x_full_df)
+    round_result.w_full_prob_df["SVM_winner"] = w_full
+    round_result.w_full_prob_df["SVM_prob"] = w_full_prob
+    round_result.w_train = w_train
 
     return svm_metrics, svm_marker, svm_test
