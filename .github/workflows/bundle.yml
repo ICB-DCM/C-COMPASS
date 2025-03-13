@@ -45,14 +45,7 @@ jobs:
           --onefile -p . $(which ccompass) \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
-          --copy-metadata numpy \
-          --copy-metadata scipy \
-          --copy-metadata matplotlib \
-          --copy-metadata pandas \
-          --copy-metadata tensorflow \
-          --copy-metadata keras \
-          --copy-metadata keras-tuner \
-          --copy-metadata scikit-learn
+          --recursive-copy-metadata ccompass
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
@@ -111,14 +104,7 @@ jobs:
           launcher.py \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
-          --copy-metadata numpy \
-          --copy-metadata scipy \
-          --copy-metadata matplotlib \
-          --copy-metadata pandas \
-          --copy-metadata tensorflow \
-          --copy-metadata keras \
-          --copy-metadata keras-tuner \
-          --copy-metadata scikit-learn
+          --recursive-copy-metadata ccompass
       shell: bash
 
     - name: Verify artifact presence
@@ -170,14 +156,7 @@ jobs:
           --onefile -p . $(which ccompass) \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
-          --copy-metadata numpy \
-          --copy-metadata scipy \
-          --copy-metadata matplotlib \
-          --copy-metadata pandas \
-          --copy-metadata tensorflow \
-          --copy-metadata keras \
-          --copy-metadata keras-tuner \
-          --copy-metadata scikit-learn
+          --recursive-copy-metadata ccompass
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
