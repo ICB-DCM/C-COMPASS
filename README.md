@@ -45,7 +45,7 @@ from the "Artifacts" section. Requires a GitHub account.)
 
 ```bash
 # install
-pip install --pre ccompass
+pip install ccompass
 
 # launch the GUI
 ccompass
@@ -61,10 +61,16 @@ On Ubuntu linux, installing the `python3-tk` package is required:
 sudo apt-get install python3-tk
 ```
 
+To install the latest development version from GitHub, use:
+
+```bash
+pip install 'git+https://github.com/ICB-DCM/C-COMPASS.git@main#egg=ccompass'
+```
+
 ### Troubleshooting
 
 If you encounter any issues during installation, please refer to the
-[troubleshooting guide](https://c-compass.readthedocs.io/en/latest/troubleshooting.html).
+[troubleshooting guide](https://c-compass.readthedocs.io/en/latest/installation.html#troubleshooting).
 
 ## Usage
 
@@ -78,7 +84,6 @@ See also https://c-compass.readthedocs.io/en/latest/usage.html.
 * Standard parameters should fit for the majority of experiments.
   You don't need to change the default settings.
 
-
 ## Contributing
 
 Contributions to C-COMPASS are welcome!
@@ -88,7 +93,7 @@ For further information, please refer to
 
 ## License
 
-C-COMPASS is licensed under the BSD 3-Clause License.
+C-COMPASS is licensed under the [BSD 3-Clause License](LICENSE).
 
 ## Citation
 

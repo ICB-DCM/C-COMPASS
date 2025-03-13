@@ -96,5 +96,8 @@ env_list = ["doc"]
 [tool.tox.env.doc]
 description = "Build the documentation"
 extras = ["doc"]
-commands = [["sphinx-build", "-W", "-b", "html", "doc/", "doc/_build/html"]]
+commands = [
+    ["sphinx-build", "-W", "-b", "html", "doc/", "doc/_build/html"],
+    ["sphinx-build", "-b", "linkcheck", "doc/", "doc/_build/html"]
+]
 working_directory = "doc"

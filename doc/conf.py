@@ -41,6 +41,11 @@ hoverxref_role_types = {
     "term": "tooltip",
 }
 
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-the-linkcheck-builder
+linkcheck_anchors_ignore_for_url = [
+    # https://github.com/sphinx-doc/sphinx/issues/9016
+    r"https://github.com/ICB-DCM/C-COMPASS?",
+]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
