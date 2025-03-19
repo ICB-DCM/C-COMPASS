@@ -193,11 +193,9 @@ class XYZ_Model(BaseModel):
     # TODO: redundant with fract_marker['class']
     W_train_df: pd.Series = pd.Series()
 
-    #: Combined classification results from different SVM rounds
-    #  (w_full_prob_df)
+    #: Combined classification results and probabilities from different
+    #  SVM rounds (TrainingRoundModel.w_full_prob_df)
     w_full_combined: pd.DataFrame = pd.DataFrame()
-    #: Probabilities for the classifications in w_full_combined
-    w_full_prob_combined: pd.DataFrame = pd.DataFrame()
 
     #: features (protein levels in the different fractions for one replicate,
     #  for proteins with known and unknown class labels)
@@ -219,7 +217,7 @@ class TrainingRoundModel(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    #: features and SVM classification results
+    #: SVM predictions and probabilities ["SVM_winner", "SVM_prob"]
     w_full_prob_df: pd.DataFrame = pd.DataFrame()
 
     #: Neural network classification results for y_full

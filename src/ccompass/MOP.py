@@ -360,10 +360,10 @@ def execute_round(
 
     logger.info("Performing single prediction ...")
     _, svm_marker, _ = single_prediction(
-        xyz,
         x_train_up_df=fract_marker_up.drop(columns=["class"]),
         y_train_up_df=fract_marker_up["class"],
         round_result=result,
+        fract_full=fract_full,
         fract_marker=fract_marker,
         fract_test=fract_test,
     )
@@ -636,10 +636,10 @@ def mix_profiles(
 
 
 def single_prediction(
-    learning_xyz: XYZ_Model,
     x_train_up_df: pd.DataFrame,
     y_train_up_df: pd.Series,
     round_result: TrainingRoundModel,
+    fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
@@ -647,14 +647,14 @@ def single_prediction(
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
-    :param learning_xyz: The learning data.
     :param x_train_up_df: The upsampled training profiles.
     :param y_train_up_df: The classes for the training profiles.
     :param round_result: Input and results. This will be updated in place.
+    :param fract_full: Profiles with known and unknown classes.
     :param fract_marker: The marker profiles.
     :param fract_test: The profiles of species with unknown classes.
     """
-    x_full = learning_xyz.x_full_df
+    x_full = fract_full.drop(columns=["class"])
     x_train = fract_marker.drop(columns=["class"])
     x_test = fract_test.drop(columns=["class"])
     W_train = fract_marker["class"]
@@ -664,8 +664,6 @@ def single_prediction(
     clf.fit(x_train_up_df, y_train_up_df)
 
     # predict the classes
-    # TODO(performance): No need to predict x_full,
-    #  since that is x_train + x_test
     w_full = clf.predict(x_full).tolist()
     w_train = clf.predict(x_train).tolist()
     w_test = clf.predict(x_test).tolist()
