@@ -353,9 +353,6 @@ def execute_round(
     else:
         fract_marker_up = copy.deepcopy(fract_marker)
 
-    result.W_train_up_df = fract_marker_up["class"]
-    result.x_train_up_df = fract_marker_up.drop(columns=["class"])
-
     if progress_queue:
         progress_queue.put(
             (xyz.condition_id, round_id, 1, "SVM prediction...")
@@ -364,9 +361,11 @@ def execute_round(
     logger.info("Performing single prediction ...")
     _, svm_marker, _ = single_prediction(
         xyz,
-        result,
-        fract_marker,
-        fract_test,
+        x_train_up_df=fract_marker_up.drop(columns=["class"]),
+        y_train_up_df=fract_marker_up["class"],
+        round_result=result,
+        fract_marker=fract_marker,
+        fract_test=fract_test,
     )
 
     if nn_params.svm_filter:
@@ -638,6 +637,8 @@ def mix_profiles(
 
 def single_prediction(
     learning_xyz: XYZ_Model,
+    x_train_up_df: pd.DataFrame,
+    y_train_up_df: pd.Series,
     round_result: TrainingRoundModel,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
@@ -646,21 +647,21 @@ def single_prediction(
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
+    :param learning_xyz: The learning data.
+    :param x_train_up_df: The upsampled training profiles.
+    :param y_train_up_df: The classes for the training profiles.
+    :param round_result: Input and results. This will be updated in place.
     :param fract_marker: The marker profiles.
     :param fract_test: The profiles of species with unknown classes.
-    :param learning_xyz: The learning data.
-    :param round_result: Input and results. This will be updated in place.
     """
     x_full = learning_xyz.x_full_df
     x_train = fract_marker.drop(columns=["class"])
-    x_train_up = round_result.x_train_up_df
     x_test = fract_test.drop(columns=["class"])
     W_train = learning_xyz.W_train_df
-    W_train_up = round_result.W_train_up_df
 
     # train classifier on the upsampled data
     clf = svm.SVC(kernel="rbf", probability=True)
-    clf.fit(x_train_up, W_train_up)
+    clf.fit(x_train_up_df, y_train_up_df)
 
     # predict the classes
     # TODO(performance): No need to predict x_full,

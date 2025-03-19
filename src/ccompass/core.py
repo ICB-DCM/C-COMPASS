@@ -189,7 +189,8 @@ class XYZ_Model(BaseModel):
     # TODO(performance): get rid of duplicate data in different formats
     #: List of unique classes for which there are marker measurements
     classes: list[str] = []
-    #: class labels for the markers
+
+    #: single-class labels for the markers
     W_train_df: pd.Series = pd.Series()
 
     #: Combined classification results from different SVM rounds
@@ -202,7 +203,8 @@ class XYZ_Model(BaseModel):
     #  for proteins with known and unknown class labels)
     x_full_df: pd.DataFrame = pd.DataFrame()
 
-    #: Means of the z_full values across the different rounds
+    #: Means of the TrainingRoundModel.z_full_df values across the different
+    #  rounds
     z_full_mean_df: pd.DataFrame = pd.DataFrame()
 
     #: Results / intermediate data for the different training rounds
@@ -220,12 +222,6 @@ class TrainingRoundModel(BaseModel):
     #: features and SVM classification results
     # TODO: contains an unnecessary copy of x_full_df
     w_full_prob_df: pd.DataFrame = pd.DataFrame()
-
-    #: Class labels for the upsampled training data
-    #  (protein (index), 'class')
-    W_train_up_df: pd.Series = pd.Series()
-    #: Features of the upsampled training data
-    x_train_up_df: pd.DataFrame = pd.DataFrame()
 
     #: Neural network classification results for y_full
     #  (i.e., "probabilities" for the different classes for each protein,
