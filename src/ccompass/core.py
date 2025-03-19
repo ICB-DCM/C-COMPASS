@@ -186,11 +186,11 @@ class XYZ_Model(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     condition_id: str = ""
-    # TODO(performance): get rid of duplicate data in different formats
     #: List of unique classes for which there are marker measurements
     classes: list[str] = []
 
     #: single-class labels for the markers
+    # TODO: redundant with fract_marker['class']
     W_train_df: pd.Series = pd.Series()
 
     #: Combined classification results from different SVM rounds
@@ -220,7 +220,6 @@ class TrainingRoundModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     #: features and SVM classification results
-    # TODO: contains an unnecessary copy of x_full_df
     w_full_prob_df: pd.DataFrame = pd.DataFrame()
 
     #: Neural network classification results for y_full

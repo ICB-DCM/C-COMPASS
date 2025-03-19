@@ -657,7 +657,7 @@ def single_prediction(
     x_full = learning_xyz.x_full_df
     x_train = fract_marker.drop(columns=["class"])
     x_test = fract_test.drop(columns=["class"])
-    W_train = learning_xyz.W_train_df
+    W_train = fract_marker["class"]
 
     # train classifier on the upsampled data
     clf = svm.SVC(kernel="rbf", probability=True)
@@ -684,14 +684,21 @@ def single_prediction(
     recall = recall_score(W_train, w_train, average="macro")
     f1 = f1_score(W_train, w_train, average="macro")
 
-    svm_marker = copy.deepcopy(fract_marker)
-    svm_marker["svm_prediction"] = w_train
-    svm_marker["svm_probability"] = w_train_prob
+    svm_marker = pd.DataFrame(
+        {
+            "class": W_train,
+            "svm_prediction": w_train,
+            "svm_probability": w_train_prob,
+        },
+        index=x_train.index,
+    )
 
+    # TODO: unused
     svm_test = copy.deepcopy(fract_test)
     svm_test["svm_prediction"] = w_test
     svm_test["svm_probability"] = w_test_prob
 
+    # TODO: unused
     svm_metrics = {
         "confusion": confusion,
         "accuracy": accuracy,
@@ -700,8 +707,12 @@ def single_prediction(
         "f1": f1,
     }
 
-    round_result.w_full_prob_df = copy.deepcopy(learning_xyz.x_full_df)
-    round_result.w_full_prob_df["SVM_winner"] = w_full
-    round_result.w_full_prob_df["SVM_prob"] = w_full_prob
+    round_result.w_full_prob_df = pd.DataFrame(
+        {
+            "SVM_winner": w_full,
+            "SVM_prob": w_full_prob,
+        },
+        index=x_full.index,
+    )
 
     return svm_metrics, svm_marker, svm_test
