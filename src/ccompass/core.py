@@ -235,9 +235,6 @@ class TrainingRoundModel(BaseModel):
     #: Class labels for the upsampled training data
     #  (protein (index), 'class')
     W_train_up_df: pd.Series = pd.Series()
-    #: Features for the upsampled full dataset
-    #  (protein x fraction)
-    x_full_up_df: pd.DataFrame = pd.DataFrame()
     #: Features of the upsampled training data
     x_train_up_df: pd.DataFrame = pd.DataFrame()
     #: Features for the training data (marker profiles) after maxing

@@ -361,7 +361,6 @@ def execute_round(
         fract_full_up = copy.deepcopy(fract_full)
 
     result.W_train_up_df = fract_marker_up["class"]
-    result.x_full_up_df = fract_full_up.drop(columns=["class"])
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
 
     if progress_queue:
