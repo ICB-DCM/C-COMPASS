@@ -221,23 +221,17 @@ class TrainingRoundModel(BaseModel):
     # TODO: contains an unnecessary copy of x_full_df
     w_full_prob_df: pd.DataFrame = pd.DataFrame()
 
-    #: Summary of the best neural network mode
-    FNN_summary: str = ""
     #: Class labels for the upsampled training data
     #  (protein (index), 'class')
     W_train_up_df: pd.Series = pd.Series()
     #: Features of the upsampled training data
     x_train_up_df: pd.DataFrame = pd.DataFrame()
-    #: Features for the training data (marker profiles) after maxing
-    x_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
-    #: Class probabilities for mixed profiles (mixing ratios)
-    #  (protein x compartment)
-    Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
 
     #: Neural network classification results for y_full
-    #  (i.e. probabilities for the different classes for each protein)
-    # The mean across the `NeuralNetworkParametersModel.subrounds` re-training/
-    #  prediction rounds
+    #  (i.e., "probabilities" for the different classes for each protein,
+    #  protein × compartment). This is the mean across the
+    #  `NeuralNetworkParametersModel.subrounds` re-training/prediction rounds
+    #  and is used to calculate the final class contributions.
     z_full_df: pd.DataFrame = pd.DataFrame()
 
 

@@ -413,9 +413,6 @@ def execute_round(
         )
         logger.info("mixing done!")
 
-    result.x_train_mixed_up_df = fract_mixed_up.drop(columns=xyz.classes)
-    result.Z_train_mixed_up_df = fract_mixed_up[xyz.classes]
-
     if progress_queue:
         progress_queue.put((xyz.condition_id, round_id, 10, "Training..."))
 
@@ -428,11 +425,12 @@ def execute_round(
             )
 
     with stdout_to_logger(logger, logging.DEBUG):
-        multi_predictions(
-            xyz,
-            result,
-            nn_params,
-            logger,
+        result.z_full_df = multi_predictions(
+            x_full_df=xyz.x_full_df,
+            x_train_df=fract_mixed_up.drop(columns=xyz.classes),
+            y_train_df=fract_mixed_up[xyz.classes],
+            nn_params=nn_params,
+            logger=logger,
             keras_proj_id=keras_proj_id,
             status_callback=status_callback,
         )
@@ -444,15 +442,33 @@ def execute_round(
 
 
 def multi_predictions(
-    learning_xyz: XYZ_Model,
-    round_data: TrainingRoundModel,
+    x_full_df: pd.DataFrame,
+    x_train_df: pd.DataFrame,
+    y_train_df: pd.DataFrame,
     nn_params: NeuralNetworkParametersModel,
     logger: logging.Logger,
     keras_proj_id: str,
     status_callback: Callable[[float, str], None] = lambda *args,
     **kwargs: None,
-):
-    """Perform multi organelle predictions."""
+) -> pd.DataFrame:
+    """Perform multi organelle predictions.
+
+    1. Perform hyperparameter tuning for the neural network.
+    2. Re-train the neural network with the best hyperparameters and predict
+    the full dataset.
+    3. Return the averaged predictions
+
+    :param x_full_df: The profiles for which to predict the classes
+        (species × fraction).
+    :param x_train_df: The training profiles (species × fraction).
+    :param y_train_df: The classes for the training profiles (species × class).
+    :param nn_params: The neural network parameters.
+    :param logger: A logger.
+    :param keras_proj_id: The project ID for the keras tuner.
+    :param status_callback: A callback to report the status.
+    :return: The predicted classes for the full profiles. The average of the
+        neural network predictions from all re-training/prediction rounds.
+    """
     logger.info("Training classifier...")
 
     import keras_tuner as kt
@@ -460,10 +476,10 @@ def multi_predictions(
 
     from .classification_model import FNN_Classifier
 
-    y_train_mixed_up = round_data.x_train_mixed_up_df.to_numpy(dtype=float)
-    Z_train_mixed_up = round_data.Z_train_mixed_up_df.to_numpy(dtype=float)
-    num_compartments = np.shape(Z_train_mixed_up)[1]
-    num_fractions = np.shape(y_train_mixed_up)[1]
+    x_train = x_train_df.to_numpy(dtype=float)
+    y_train = y_train_df.to_numpy(dtype=float)
+    num_compartments = y_train.shape[1]
+    num_fractions = x_train.shape[1]
     set_shapes = [num_fractions, num_compartments]
 
     # Set up hyperparameter tuning
@@ -487,8 +503,8 @@ def multi_predictions(
         monitor="val_loss", patience=5
     )
     tuner.search(
-        y_train_mixed_up,
-        Z_train_mixed_up,
+        x_train,
+        y_train,
         epochs=nn_params.NN_epochs,
         validation_split=0.2,
         callbacks=[stop_early],
@@ -497,16 +513,12 @@ def multi_predictions(
 
     best_model = tuner.get_best_models(num_models=1)[0]
     best_hp = tuner.get_best_hyperparameters(num_trials=1)[0].values
-    stringlist = []
-    best_model.summary(print_fn=lambda x: stringlist.append(x))
-    round_data.FNN_summary = "\n".join(stringlist)
 
     # Re-train the model with the best hyperparameters and predict the full
     #  dataset.
     #  (For the first subround, we use the results of the hyperparameter tuning
     #  directly).
-    z_full_arrays = []
-    z_full_arrays.append(best_model.predict(learning_xyz.x_full_df.values))
+    z_full_arrays = [best_model.predict(x_full_df.values)]
 
     for i_subround in range(2, nn_params.subrounds + 1):
         status_callback(
@@ -521,27 +533,26 @@ def multi_predictions(
             fixed_hp=best_hp, set_shapes=set_shapes, nn_params=nn_params
         ).build(None)
         fixed_model.fit(
-            y_train_mixed_up,
-            Z_train_mixed_up,
+            x_train,
+            y_train,
             epochs=nn_params.NN_epochs,
             validation_split=0.2,
             callbacks=[stop_early],
         )
 
-        z_full_arrays.append(
-            fixed_model.predict(learning_xyz.x_full_df.values)
-        )
-
-    # average predictions
-    round_data.z_full_df = pd.DataFrame(
-        np.stack(z_full_arrays).mean(axis=0),
-        index=learning_xyz.x_full_df.index,
-        columns=round_data.Z_train_mixed_up_df.columns,
-    )
+        z_full_arrays.append(fixed_model.predict(x_full_df.values))
 
     # free memory
     tf.keras.backend.clear_session()
     gc.collect()
+
+    # average predictions
+    z_full_df = pd.DataFrame(
+        np.stack(z_full_arrays).mean(axis=0),
+        index=x_full_df.index,
+        columns=y_train_df.columns,
+    )
+    return z_full_df
 
 
 def update_learninglist_const(
