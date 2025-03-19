@@ -202,11 +202,6 @@ class XYZ_Model(BaseModel):
     #  for proteins with known and unknown class labels)
     x_full_df: pd.DataFrame = pd.DataFrame()
 
-    #: Features for the proteins with known class labels
-    x_test_df: pd.DataFrame = pd.DataFrame()
-    #: Features for the training data (marker profiles)
-    x_train_df: pd.DataFrame = pd.DataFrame()
-
     #: One-hot encoded labels for marker profiles
     Z_train_df: pd.DataFrame = pd.DataFrame()
     #: Means of the z_full values across the different rounds

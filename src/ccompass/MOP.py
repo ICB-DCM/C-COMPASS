@@ -239,7 +239,6 @@ def multi_organelle_prediction(
             learning_xyz[condition],
             fract_full[condition],
             fract_marker[condition],
-            fract_test[condition],
         )
 
     # parallel execution
@@ -332,7 +331,11 @@ def execute_round(
     keras_proj_id: str,
     progress_queue: mp.Queue = None,
 ) -> TrainingRoundModel:
-    """Perform a single round of training and prediction."""
+    """Perform a single round of training and prediction.
+
+    :param fract_marker: The marker profiles.
+    :param fract_test: The profiles of species with unknown classes.
+    """
 
     result = TrainingRoundModel()
 
@@ -569,15 +572,12 @@ def update_learninglist_const(
     learning_xyz: XYZ_Model,
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
-    fract_test: pd.DataFrame,
 ) -> None:
     """Populate `learning_xyz` with the learning data that is constant across
     rounds."""
     learning_xyz.classes = fract_marker["class"].unique().tolist()
     learning_xyz.W_train_df = fract_marker["class"]
     learning_xyz.x_full_df = fract_full.drop(columns=["class"])
-    learning_xyz.x_train_df = fract_marker.drop(columns=["class"])
-    learning_xyz.x_test_df = fract_test.drop(columns=["class"])
     learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
         learning_xyz.classes
     ]
@@ -662,13 +662,15 @@ def single_prediction(
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
+    :param fract_marker: The marker profiles.
+    :param fract_test: The profiles of species with unknown classes.
     :param learning_xyz: The learning data.
     :param round_result: Input and results. This will be updated in place.
     """
     x_full = learning_xyz.x_full_df
-    x_train = learning_xyz.x_train_df
+    x_train = fract_marker.drop(columns=["class"])
     x_train_up = round_result.x_train_up_df
-    x_test = learning_xyz.x_test_df
+    x_test = fract_test.drop(columns=["class"])
     W_train = learning_xyz.W_train_df
     W_train_up = round_result.W_train_up_df
 
