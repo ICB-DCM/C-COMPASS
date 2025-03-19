@@ -38,11 +38,10 @@ logger = logging.getLogger(__package__)
 
 
 def upsample_condition(
-    fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
     method: Literal["none", "average", "noisedaverage"],
     noise_stds: float,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """Perform upsampling for the given condition.
 
     :param method: The upsampling method to use.
@@ -53,7 +52,6 @@ def upsample_condition(
     if fract_marker.empty:
         raise ValueError("Empty marker profile")
 
-    fract_full_up = fract_full
     fract_marker_up = fract_marker.copy()
 
     class_sizes = fract_marker["class"].value_counts()
@@ -73,6 +71,8 @@ def upsample_condition(
         if method == "noisedaverage":
             class_std = data_class.std(axis=0).to_frame().transpose()
             class_std_flat = class_std.values.flatten()
+        else:
+            class_std_flat = None
 
         for i in range(class_difference):
             if method in ("average", "noisedaverage"):
@@ -107,19 +107,12 @@ def upsample_condition(
             axis=0,
             ignore_index=False,
         )
-        fract_full_up = pd.concat(
-            [fract_full_up, class_up],
-            axis=0,
-            ignore_index=False,
-        )
     # TODO: seems unnecessary?!
     fract_marker_up = fract_marker_up.sample(frac=1)
-    fract_full_up = fract_full_up.sample(frac=1)
 
     assert fract_marker_up["class"].value_counts().nunique() == 1
-    assert fract_full_up["class"].value_counts().nunique() == 1
 
-    return fract_marker_up, fract_full_up
+    return fract_marker_up
 
 
 def MOP_exec(
@@ -349,8 +342,7 @@ def execute_round(
     # upsample fractionation data
     if nn_params.upsampling:
         logger.info("Upsampling")
-        fract_marker_up, fract_full_up = upsample_condition(
-            fract_full,
+        fract_marker_up = upsample_condition(
             fract_marker,
             method=nn_params.upsampling_method,
             noise_stds=nn_params.upsampling_noise,
@@ -358,7 +350,6 @@ def execute_round(
         logger.info("upsampling done!")
     else:
         fract_marker_up = copy.deepcopy(fract_marker)
-        fract_full_up = copy.deepcopy(fract_full)
 
     result.W_train_up_df = fract_marker_up["class"]
     result.x_train_up_df = fract_marker_up.drop(columns=["class"])
@@ -384,8 +375,7 @@ def execute_round(
             svm_marker["class"] == svm_marker["svm_prediction"]
         ]
         logger.info("Upsampling after SVM-filtering...")
-        fract_marker_up, fract_full_up = upsample_condition(
-            fract_full,
+        fract_marker_up = upsample_condition(
             fract_marker_filtered,
             method=nn_params.upsampling_method,
             noise_stds=nn_params.upsampling_noise,
