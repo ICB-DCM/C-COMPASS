@@ -256,9 +256,6 @@ class TrainingSubRoundModel(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    #: Neural network classification results for y_train
-    #  (i.e. probabilities for the different classes for each protein)
-    z_train_df: pd.DataFrame = pd.DataFrame()
     #: Neural network classification results for y_full
     #  (i.e. probabilities for the different classes for each protein)
     z_full_df: pd.DataFrame = pd.DataFrame()

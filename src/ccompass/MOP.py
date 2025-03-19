@@ -527,13 +527,11 @@ def multi_predictions(
     round_data.FNN_summary = "\n".join(stringlist)
 
     z_full = best_model.predict(learning_xyz.x_full_df.values)
-    z_train = best_model.predict(learning_xyz.x_train_df.values)
 
     add_Z(
         learning_xyz,
         subround_data,
         z_full,
-        z_train,
     )
 
     for i_subround in range(1, nn_params.subrounds + 1):
@@ -559,13 +557,11 @@ def multi_predictions(
         )
 
         z_full = fixed_model.predict(learning_xyz.x_full_df.values)
-        z_train = fixed_model.predict(learning_xyz.x_train_df.values)
 
         add_Z(
             learning_xyz,
             subround_data,
             z_full,
-            z_train,
         )
 
     # free memory
@@ -577,16 +573,10 @@ def add_Z(
     xyz: XYZ_Model,
     subround_data: TrainingSubRoundModel,
     z_full: np.ndarray,
-    z_train: np.ndarray,
 ) -> None:
     subround_data.z_full_df = pd.DataFrame(
         z_full,
         index=xyz.x_full_df.index,
-        columns=xyz.classes,
-    )
-    subround_data.z_train_df = pd.DataFrame(
-        z_train,
-        index=xyz.x_train_df.index,
         columns=xyz.classes,
     )
 
