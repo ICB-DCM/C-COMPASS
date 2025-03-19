@@ -58,6 +58,10 @@ def upsample_condition(
 
     class_sizes = fract_marker["class"].value_counts()
     class_maxsize = class_sizes.max()
+    logger.debug(
+        f"Upsampling to N_max = {class_maxsize} "
+        f"(class sizes: {dict(class_sizes)})"
+    )
     k = 1
     for classname, data_class in fract_marker.groupby("class"):
         if not (class_difference := class_maxsize - class_sizes[classname]):
