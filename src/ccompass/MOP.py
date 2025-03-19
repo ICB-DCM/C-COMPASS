@@ -75,26 +75,20 @@ def upsample_condition(
             class_std_flat = class_std.values.flatten()
 
         for i in range(class_difference):
-            if method == "average":
+            if method in ("average", "noisedaverage"):
                 sample = data_class.sample(n=3, replace=True)
                 name_up = f"up_{k}_{'_'.join(sample.index)}"
                 k += 1
                 profile_up = sample.median(axis=0).to_frame().transpose()
 
-            elif method == "noisedaverage":
-                sample = data_class.sample(n=3, replace=True)
-                name_up = f"up_{k}_{'_'.join(sample.index)}"
-                k += 1
-
-                profile_av = sample.median(axis=0).to_frame().transpose()
-                profile_av_flat = profile_av.values.flatten()
-                nv = np.random.normal(
-                    profile_av_flat,
-                    noise_stds * class_std_flat,
-                    size=profile_av.shape,
-                )
-                nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
-                profile_up = pd.DataFrame(nv, columns=profile_av.columns)
+                if method == "noisedaverage":
+                    nv = np.random.normal(
+                        profile_up.values.flatten(),
+                        noise_stds * class_std_flat,
+                        size=profile_up.shape,
+                    )
+                    nv = np.where(nv > 1, 1, np.where(nv < 0, 0, nv))
+                    profile_up = pd.DataFrame(nv, columns=profile_up.columns)
             else:
                 raise ValueError(f"Unknown upsampling method: {method}")
 
