@@ -8,7 +8,7 @@ from scipy import stats
 from scipy.stats import ttest_ind
 
 from ._utils import PrefixFilter, get_mp_ctx
-from .core import KEEP, ComparisonModel, ResultsModel, XYZ_Model
+from .core import KEEP, ComparisonModel, StaticStatisticsModel, XYZ_Model
 
 logger = logging.getLogger(__package__)
 
@@ -159,7 +159,7 @@ def stats_proteome(
     fract_data,
     fract_conditions,
     reliability: float,
-):
+) -> dict[str, StaticStatisticsModel]:
     """Proteome prediction / statistics."""
     logger.info("Performing proteome prediction...")
     conditions = [x for x in fract_conditions if x != KEEP]
@@ -174,7 +174,7 @@ def stats_proteome(
                 fract_data["class"][subcon].index
             )
 
-        result = results[condition] = ResultsModel()
+        result = results[condition] = StaticStatisticsModel()
         result.subcons = subcons
         result.metrics = pd.DataFrame(index=combined_index)
 
@@ -391,7 +391,7 @@ def combine_svm_round_results(xyz: XYZ_Model):
 
 
 def combine_svm_replicate_results(
-    result: ResultsModel,
+    result: StaticStatisticsModel,
     learning_xyz: dict[str, XYZ_Model],
     subcons: list[str],
 ):
@@ -434,7 +434,7 @@ def combine_svm_replicate_results(
 
 
 def global_comparisons(
-    results: dict[str, ResultsModel],
+    results: dict[str, StaticStatisticsModel],
     max_processes: int = 1,
 ) -> dict[tuple[str, str], ComparisonModel]:
     """Compute global changes."""
@@ -478,8 +478,8 @@ def _global_comparison_entry(args):
 
 
 def global_comparison(
-    result1: ResultsModel,
-    result2: ResultsModel,
+    result1: StaticStatisticsModel,
+    result2: StaticStatisticsModel,
     logger: logging.Logger = logger,
 ) -> ComparisonModel:
     """Perform a single global comparison."""
@@ -630,7 +630,7 @@ def global_comparison(
 
 def class_comparisons(
     tp_data: dict[str, pd.DataFrame],
-    results: dict[str, ResultsModel],
+    results: dict[str, StaticStatisticsModel],
     comparisons: dict[tuple[str, str], ComparisonModel],
 ) -> None:
     """Compute class-centric changes.
@@ -664,7 +664,7 @@ def class_comparisons(
 
 
 def compute_class_centric_changes(
-    result: ResultsModel, tp_data: pd.DataFrame
+    result: StaticStatisticsModel, tp_data: pd.DataFrame
 ) -> None:
     """Compute class-centric changes."""
     ## add TPA:
@@ -734,7 +734,9 @@ def compute_class_centric_changes(
 
 
 def class_centric_comparison(
-    result1: ResultsModel, result2: ResultsModel, comparison: ComparisonModel
+    result1: StaticStatisticsModel,
+    result2: StaticStatisticsModel,
+    comparison: ComparisonModel,
 ) -> None:
     """Perform class-centric comparison based on the result for the two given
     conditions."""

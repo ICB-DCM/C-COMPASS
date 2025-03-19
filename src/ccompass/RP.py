@@ -13,7 +13,7 @@ import seaborn as sns
 from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.stats import zscore
 
-from ccompass.core import ResultsModel
+from ccompass.core import StaticStatisticsModel
 from ccompass.visualize import fig_to_bytes, fract_heatmap
 
 logger = logging.getLogger(__package__)
@@ -113,7 +113,7 @@ def RP_gradient_heatmap(fract_data):
     window.close()
 
 
-def RP_stats_heatmap(results: dict[str, ResultsModel]):
+def RP_stats_heatmap(results: dict[str, StaticStatisticsModel]):
     """Create a GUI to display a heatmap with hierarchical clustering for each condition."""
     # Get the list of conditions from results
     conditions = list(results)
@@ -199,7 +199,7 @@ def RP_stats_heatmap(results: dict[str, ResultsModel]):
             )
             plt.savefig(pdf_filename, format="pdf")
 
-    def export_results(results: dict[str, ResultsModel], folder_path):
+    def export_results(results: dict[str, StaticStatisticsModel], folder_path):
         """Export dataframes to Excel and heatmaps to PDFs"""
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
@@ -251,7 +251,7 @@ def RP_stats_heatmap(results: dict[str, ResultsModel]):
     window.close()
 
 
-def RP_stats_distribution(results: dict[str, ResultsModel]):
+def RP_stats_distribution(results: dict[str, StaticStatisticsModel]):
     conditions = list(results)
 
     # Define the layout
@@ -311,7 +311,9 @@ def RP_stats_distribution(results: dict[str, ResultsModel]):
             plt.savefig(pdf_filename, format="pdf")
 
     # Function to export pie charts and summary to Excel and PDFs
-    def export_pie_charts(results: dict[str, ResultsModel], folder_path):
+    def export_pie_charts(
+        results: dict[str, StaticStatisticsModel], folder_path
+    ):
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
         # Create an Excel writer to save summary data
@@ -668,7 +670,7 @@ def RP_global_distance(comparison):
     window.close()
 
 
-def RP_class_heatmap(results: dict[str, ResultsModel]):
+def RP_class_heatmap(results: dict[str, StaticStatisticsModel]):
     # Step 1: Get common classnames that are present in all conditions
     conditions = list(results.keys())
     classnames_lists = [
@@ -763,7 +765,7 @@ def RP_class_heatmap(results: dict[str, ResultsModel]):
             return None
 
     def export_heatmaps(
-        results: dict[str, ResultsModel],
+        results: dict[str, StaticStatisticsModel],
         common_classnames: list[str],
         folder_path,
     ):

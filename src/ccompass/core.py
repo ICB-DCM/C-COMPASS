@@ -228,7 +228,7 @@ class TrainingRoundModel(BaseModel):
     z_full_df: pd.DataFrame = pd.DataFrame()
 
 
-class ResultsModel(BaseModel):
+class StaticStatisticsModel(BaseModel):
     """Results for a single condition (static statistics)."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -531,7 +531,7 @@ class SessionModel(BaseModel):
     learning_xyz: dict[ConditionReplicate, XYZ_Model] = {}
 
     #: `stats_proteome` results for the different conditions
-    results: dict[ConditionId, ResultsModel] = {}
+    results: dict[ConditionId, StaticStatisticsModel] = {}
     #: Pairwise comparisons of conditions
     # (condition1, condition2) => ComparisonModel
     comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel] = {}
