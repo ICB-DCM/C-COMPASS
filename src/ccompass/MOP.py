@@ -610,17 +610,12 @@ def mix_profiles(
 
     cur = 1
     for comb in combinations:
-        # TODO (performance): We can avoid some copying here
-        profiles_own = (
-            fract_marker_up.copy()
-            .loc[fract_marker_up["class"] == comb[0]]
-            .drop(columns=["class"])
-        )
-        profiles_other = (
-            fract_marker_up.copy()
-            .loc[fract_marker_up["class"] == comb[1]]
-            .drop(columns=["class"])
-        )
+        profiles_own = fract_marker_up.loc[
+            fract_marker_up["class"] == comb[0]
+        ].drop(columns=["class"])
+        profiles_other = fract_marker_up.loc[
+            fract_marker_up["class"] == comb[1]
+        ].drop(columns=["class"])
 
         new_index = [
             f"{i}_{j}"
