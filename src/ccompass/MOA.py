@@ -218,17 +218,17 @@ def stats_proteome(
 
         ## add CClist:
         for subcon in subcons:
-            # average NN outputs from different rounds and subrounds
+            # average NN outputs from different rounds
             z_full_dfs = [
-                sr.z_full_df
+                rr.z_full_df
                 for rr in learning_xyz[subcon].round_results.values()
-                for sr in rr.subround_results.values()
             ]
-            for df in z_full_dfs[1:]:
-                if not df.index.equals(z_full_dfs[0].index):
-                    raise ValueError("Indices of z_full_df do not match.")
-                if not df.columns.equals(z_full_dfs[0].columns):
-                    raise ValueError("Columns of z_full_df do not match.")
+            if len(z_full_dfs) > 1:
+                for df in z_full_dfs[1:]:
+                    if not df.index.equals(z_full_dfs[0].index):
+                        raise ValueError("Indices of z_full_df do not match.")
+                    if not df.columns.equals(z_full_dfs[0].columns):
+                        raise ValueError("Columns of z_full_df do not match.")
 
             stacked_arrays = np.stack([df.values for df in z_full_dfs])
             learning_xyz[subcon].z_full_mean_df = pd.DataFrame(

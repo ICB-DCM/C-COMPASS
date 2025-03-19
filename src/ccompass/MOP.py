@@ -30,7 +30,6 @@ from ._utils import (
 from .core import (
     NeuralNetworkParametersModel,
     TrainingRoundModel,
-    TrainingSubRoundModel,
     XYZ_Model,
 )
 
@@ -420,12 +419,6 @@ def execute_round(
     if progress_queue:
         progress_queue.put((xyz.condition_id, round_id, 10, "Training..."))
 
-    # Initialize subround results
-    result.subround_results = {
-        f"{round_id}_{i_subround}": TrainingSubRoundModel()
-        for i_subround in range(1, nn_params.subrounds + 1)
-    }
-
     def status_callback(percent_done: float, task: str):
         if progress_queue:
             # renormalize
@@ -440,7 +433,6 @@ def execute_round(
             result,
             nn_params,
             logger,
-            round_id,
             keras_proj_id=keras_proj_id,
             status_callback=status_callback,
         )
@@ -456,7 +448,6 @@ def multi_predictions(
     round_data: TrainingRoundModel,
     nn_params: NeuralNetworkParametersModel,
     logger: logging.Logger,
-    round_id: str,
     keras_proj_id: str,
     status_callback: Callable[[float, str], None] = lambda *args,
     **kwargs: None,
@@ -514,27 +505,17 @@ def multi_predictions(
     #  dataset.
     #  (For the first subround, we use the results of the hyperparameter tuning
     #  directly).
-    #
-    z_full = best_model.predict(learning_xyz.x_full_df.values)
-    subround_id = f"{round_id}_1"
-    subround_data = round_data.subround_results[subround_id]
-
-    add_Z(
-        learning_xyz,
-        subround_data,
-        z_full,
-    )
+    z_full_arrays = []
+    z_full_arrays.append(best_model.predict(learning_xyz.x_full_df.values))
 
     for i_subround in range(2, nn_params.subrounds + 1):
         status_callback(
             50 + i_subround / nn_params.subrounds * 50,
-            f"Training round {i_subround}...",
+            f"Training round {i_subround}/{nn_params.subrounds}...",
         )
         logger.info(
             f"Training classifier for {i_subround}/{nn_params.subrounds}..."
         )
-        subround_id = f"{round_id}_{i_subround}"
-        subround_data = round_data.subround_results[subround_id]
 
         fixed_model = FNN_Classifier(
             fixed_hp=best_hp, set_shapes=set_shapes, nn_params=nn_params
@@ -547,29 +528,20 @@ def multi_predictions(
             callbacks=[stop_early],
         )
 
-        z_full = fixed_model.predict(learning_xyz.x_full_df.values)
-
-        add_Z(
-            learning_xyz,
-            subround_data,
-            z_full,
+        z_full_arrays.append(
+            fixed_model.predict(learning_xyz.x_full_df.values)
         )
+
+    # average predictions
+    round_data.z_full_df = pd.DataFrame(
+        np.stack(z_full_arrays).mean(axis=0),
+        index=learning_xyz.x_full_df.index,
+        columns=round_data.Z_train_mixed_up_df.columns,
+    )
 
     # free memory
     tf.keras.backend.clear_session()
     gc.collect()
-
-
-def add_Z(
-    xyz: XYZ_Model,
-    subround_data: TrainingSubRoundModel,
-    z_full: np.ndarray,
-) -> None:
-    subround_data.z_full_df = pd.DataFrame(
-        z_full,
-        index=xyz.x_full_df.index,
-        columns=xyz.classes,
-    )
 
 
 def update_learninglist_const(

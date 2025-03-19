@@ -234,18 +234,10 @@ class TrainingRoundModel(BaseModel):
     #  (protein x compartment)
     Z_train_mixed_up_df: pd.DataFrame = pd.DataFrame()
 
-    #: Data for the different rounds of neural network training after the
-    #  hyperparameter search. Basis for ensemble prediction.
-    subround_results: dict[str, TrainingSubRoundModel] = {}
-
-
-class TrainingSubRoundModel(BaseModel):
-    """Data for a single round of neural network model training and prediction."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     #: Neural network classification results for y_full
     #  (i.e. probabilities for the different classes for each protein)
+    # The mean across the `NeuralNetworkParametersModel.subrounds` re-training/
+    #  prediction rounds
     z_full_df: pd.DataFrame = pd.DataFrame()
 
 
