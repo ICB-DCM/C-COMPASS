@@ -574,7 +574,6 @@ def update_learninglist_const(
     """Populate `learning_xyz` with the learning data that is constant across
     rounds."""
     learning_xyz.classes = fract_marker["class"].unique().tolist()
-    learning_xyz.W_full_df = fract_full["class"]
     learning_xyz.W_train_df = fract_marker["class"]
     learning_xyz.x_full_df = fract_full.drop(columns=["class"])
     learning_xyz.x_train_df = fract_marker.drop(columns=["class"])

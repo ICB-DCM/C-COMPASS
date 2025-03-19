@@ -191,8 +191,6 @@ class XYZ_Model(BaseModel):
     classes: list[str] = []
     #: class labels for the markers
     W_train_df: pd.Series = pd.Series()
-    #: Class labels for all proteins (NaN for non-marker proteins)
-    W_full_df: pd.Series = pd.Series()
 
     #: Combined classification results from different SVM rounds
     #  (w_full_prob_df)
