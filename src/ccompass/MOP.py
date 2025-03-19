@@ -423,7 +423,7 @@ def execute_round(
     # Initialize subround results
     result.subround_results = {
         f"{round_id}_{i_subround}": TrainingSubRoundModel()
-        for i_subround in range(0, nn_params.subrounds + 1)
+        for i_subround in range(1, nn_params.subrounds + 1)
     }
 
     def status_callback(percent_done: float, task: str):
@@ -469,9 +469,6 @@ def multi_predictions(
 
     from .classification_model import FNN_Classifier
 
-    subround_id = f"{round_id}_0"
-    subround_data = round_data.subround_results[subround_id]
-
     y_train_mixed_up = round_data.x_train_mixed_up_df.to_numpy(dtype=float)
     Z_train_mixed_up = round_data.Z_train_mixed_up_df.to_numpy(dtype=float)
     num_compartments = np.shape(Z_train_mixed_up)[1]
@@ -513,7 +510,14 @@ def multi_predictions(
     best_model.summary(print_fn=lambda x: stringlist.append(x))
     round_data.FNN_summary = "\n".join(stringlist)
 
+    # Re-train the model with the best hyperparameters and predict the full
+    #  dataset.
+    #  (For the first subround, we use the results of the hyperparameter tuning
+    #  directly).
+    #
     z_full = best_model.predict(learning_xyz.x_full_df.values)
+    subround_id = f"{round_id}_1"
+    subround_data = round_data.subround_results[subround_id]
 
     add_Z(
         learning_xyz,
@@ -521,7 +525,7 @@ def multi_predictions(
         z_full,
     )
 
-    for i_subround in range(1, nn_params.subrounds + 1):
+    for i_subround in range(2, nn_params.subrounds + 1):
         status_callback(
             50 + i_subround / nn_params.subrounds * 50,
             f"Training round {i_subround}...",
