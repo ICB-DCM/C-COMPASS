@@ -69,9 +69,10 @@ def upsample_condition(
 
         data_class = data_class.drop(columns=["class"])
         class_up = pd.DataFrame(columns=data_class.columns)
-        # TODO only compute where necessary
-        class_std = data_class.std(axis=0).to_frame().transpose()
-        class_std_flat = class_std.values.flatten()
+
+        if method == "noisedaverage":
+            class_std = data_class.std(axis=0).to_frame().transpose()
+            class_std_flat = class_std.values.flatten()
 
         for i in range(class_difference):
             if method == "average":
