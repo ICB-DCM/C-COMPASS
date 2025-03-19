@@ -578,9 +578,6 @@ def update_learninglist_const(
     learning_xyz.classes = fract_marker["class"].unique().tolist()
     learning_xyz.W_train_df = fract_marker["class"]
     learning_xyz.x_full_df = fract_full.drop(columns=["class"])
-    learning_xyz.Z_train_df = pd.get_dummies(fract_marker["class"])[
-        learning_xyz.classes
-    ]
 
 
 def mix_profiles(
