@@ -358,10 +358,9 @@ def execute_round(
         )
 
     logger.info("Performing single prediction ...")
-    _, svm_marker, _ = single_prediction(
+    _, svm_marker, _, result.w_full_prob_df = single_prediction(
         x_train_up_df=fract_marker_up.drop(columns=["class"]),
         y_train_up_df=fract_marker_up["class"],
-        round_result=result,
         fract_full=fract_full,
         fract_marker=fract_marker,
         fract_test=fract_test,
@@ -629,50 +628,41 @@ def mix_profiles(
 def single_prediction(
     x_train_up_df: pd.DataFrame,
     y_train_up_df: pd.Series,
-    round_result: TrainingRoundModel,
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
-) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
+) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Perform single-class (single-compartment) prediction.
 
     Train Support Vector Machine (SVM) classifier and predict the classes.
 
     :param x_train_up_df: The upsampled training profiles.
     :param y_train_up_df: The classes for the training profiles.
-    :param round_result: Input and results. This will be updated in place.
     :param fract_full: Profiles with known and unknown classes.
     :param fract_marker: The marker profiles.
     :param fract_test: The profiles of species with unknown classes.
     """
-    x_full = fract_full.drop(columns=["class"])
-    x_train = fract_marker.drop(columns=["class"])
-    x_test = fract_test.drop(columns=["class"])
-    W_train = fract_marker["class"]
-
     # train classifier on the upsampled data
     clf = svm.SVC(kernel="rbf", probability=True)
     clf.fit(x_train_up_df, y_train_up_df)
 
-    # predict the classes
+    # predict for the full dataset
+    x_full = fract_full.drop(columns=["class"])
     w_full = clf.predict(x_full).tolist()
-    w_train = clf.predict(x_train).tolist()
-    w_test = clf.predict(x_test).tolist()
-
     w_full_prob = clf.predict_proba(x_full).max(axis=1)
-    w_train_prob = clf.predict_proba(x_train).max(axis=1)
-    w_test_prob = clf.predict_proba(x_test).max(axis=1)
-
-    confusion = pd.DataFrame(
-        confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
-        index=clf.classes_,
-        columns=clf.classes_,
+    w_full_prob_df = pd.DataFrame(
+        {
+            "SVM_winner": w_full,
+            "SVM_prob": w_full_prob,
+        },
+        index=x_full.index,
     )
-    accuracy = accuracy_score(W_train, w_train)
-    precision = precision_score(W_train, w_train, average="macro")
-    recall = recall_score(W_train, w_train, average="macro")
-    f1 = f1_score(W_train, w_train, average="macro")
 
+    # evaluate on the (non-artificial) marker profiles
+    x_train = fract_marker.drop(columns=["class"])
+    W_train = fract_marker["class"]
+    w_train = clf.predict(x_train).tolist()
+    w_train_prob = clf.predict_proba(x_train).max(axis=1)
     svm_marker = pd.DataFrame(
         {
             "class": W_train,
@@ -682,12 +672,17 @@ def single_prediction(
         index=x_train.index,
     )
 
+    # compute stats on the marker classification
     # TODO: unused
-    svm_test = copy.deepcopy(fract_test)
-    svm_test["svm_prediction"] = w_test
-    svm_test["svm_probability"] = w_test_prob
-
-    # TODO: unused
+    confusion = pd.DataFrame(
+        confusion_matrix(W_train, w_train, labels=list(clf.classes_)),
+        index=clf.classes_,
+        columns=clf.classes_,
+    )
+    accuracy = accuracy_score(W_train, w_train)
+    precision = precision_score(W_train, w_train, average="macro")
+    recall = recall_score(W_train, w_train, average="macro")
+    f1 = f1_score(W_train, w_train, average="macro")
     svm_metrics = {
         "confusion": confusion,
         "accuracy": accuracy,
@@ -696,12 +691,17 @@ def single_prediction(
         "f1": f1,
     }
 
-    round_result.w_full_prob_df = pd.DataFrame(
+    # predict species with unknown localization
+    # TODO: unused
+    x_test = fract_test.drop(columns=["class"])
+    w_test = clf.predict(x_test).tolist()
+    w_test_prob = clf.predict_proba(x_test).max(axis=1)
+    svm_test = pd.DataFrame(
         {
-            "SVM_winner": w_full,
-            "SVM_prob": w_full_prob,
+            "svm_prediction": w_test,
+            "svm_probability": w_test_prob,
         },
-        index=x_full.index,
+        index=x_test.index,
     )
 
-    return svm_metrics, svm_marker, svm_test
+    return svm_metrics, svm_marker, svm_test, w_full_prob_df
