@@ -176,8 +176,8 @@ class SessionStatusModel(BaseModel):
     comparison_class: bool = False
 
 
-class XYZ_Model(BaseModel):
-    """`learning_xyz` for a specific condition in `SessionModel`."""
+class ConditionPredictionModel(BaseModel):
+    """Class prediction results for a single condition."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -525,7 +525,7 @@ class SessionModel(BaseModel):
     # "{condition}_Rep.{replicate}" => dict(
     #  {w,W,x,X,y,Y,z,Z}_... => ...
     # )
-    learning_xyz: dict[ConditionReplicate, XYZ_Model] = {}
+    class_predictions: dict[ConditionReplicate, ConditionPredictionModel] = {}
 
     #: `stats_proteome` results for the different conditions
     static_stats: dict[ConditionId, StaticStatisticsModel] = {}
@@ -543,7 +543,7 @@ class SessionModel(BaseModel):
             lipidome_total=False,
             marker_file=bool(self.marker_sets),
             marker_matched=bool(self.fract_full),
-            training=bool(self.learning_xyz),
+            training=bool(self.class_predictions),
             proteome_prediction=bool(self.static_stats),
             lipidome_prediction=False,
             comparison_global=bool(self.comparison),
@@ -639,7 +639,7 @@ class SessionModel(BaseModel):
     def reset_classification(self):
         self.reset_static_statistics()
         self.reset_global_changes()
-        self.learning_xyz = {}
+        self.class_predictions = {}
 
     def reset_marker(self):
         self.marker_list = pd.DataFrame()

@@ -1233,7 +1233,7 @@ class MainController:
             elif event == "-statistic_predict-":
                 with wait_cursor(self.main_window):
                     self.model.static_stats = MOA.stats_proteome(
-                        self.model.learning_xyz,
+                        self.model.class_predictions,
                         self.model.fract_data,
                         self.model.fract_marker,
                         self.model.fract_conditions,
@@ -1447,7 +1447,7 @@ class MainController:
         with wait_cursor(self.main_window):
             from .MOP import MOP_exec
 
-            self.model.learning_xyz = MOP_exec(
+            self.model.class_predictions = MOP_exec(
                 self.model.fract_full,
                 self.model.fract_marker,
                 self.model.fract_test,

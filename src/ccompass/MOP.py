@@ -28,9 +28,9 @@ from ._utils import (
     stdout_to_logger,
 )
 from .core import (
+    ConditionPredictionModel,
     NeuralNetworkParametersModel,
     TrainingRoundModel,
-    XYZ_Model,
 )
 
 logger = logging.getLogger(__package__)
@@ -120,7 +120,7 @@ def MOP_exec(
     fract_test: dict[str, pd.DataFrame],
     nn_params: NeuralNetworkParametersModel,
     max_processes: int = 1,
-) -> dict[str, XYZ_Model]:
+) -> dict[str, ConditionPredictionModel]:
     """Perform multi-organelle prediction while showing a progress dialog.
 
     :param fract_full: dictionary of full profiles
@@ -216,7 +216,7 @@ def multi_organelle_prediction(
     max_processes: int = 1,
     progress_queue: mp.Queue = None,
     result_queue: mp.Queue = None,
-) -> dict[str, XYZ_Model]:
+) -> dict[str, ConditionPredictionModel]:
     """Perform multi-organelle prediction.
 
     :param fract_full: dictionary of full profiles
@@ -229,21 +229,20 @@ def multi_organelle_prediction(
 
     # prepare data structures for each round / condition
     conditions = list(fract_full.keys())
-    learning_xyz = {
-        condition: XYZ_Model(condition_id=condition)
+    class_predictions = {
+        condition: ConditionPredictionModel(
+            condition_id=condition,
+            classes=fract_marker[condition]["class"].unique().tolist(),
+        )
         for condition in conditions
     }
-    for condition in conditions:
-        learning_xyz[condition].classes = (
-            fract_marker[condition]["class"].unique().tolist()
-        )
 
     # parallel execution
     args_list = [
         (
             condition,
             i_round,
-            learning_xyz[condition],
+            class_predictions[condition],
             fract_full[condition],
             fract_marker[condition],
             fract_test[condition],
@@ -257,7 +256,7 @@ def multi_organelle_prediction(
 
     def on_task_done(result):
         condition, round_id, round_data = result
-        learning_xyz[condition].round_results[round_id] = round_data
+        class_predictions[condition].round_results[round_id] = round_data
 
     if max_processes > 1:
         ctx = get_mp_ctx()
@@ -277,9 +276,9 @@ def multi_organelle_prediction(
             on_task_done(result)
 
     if result_queue:
-        result_queue.put(learning_xyz)
+        result_queue.put(class_predictions)
 
-    return learning_xyz
+    return class_predictions
 
 
 def execute_round_wrapper(args):
@@ -287,7 +286,7 @@ def execute_round_wrapper(args):
     (
         condition,
         i_round,
-        learning_xyz,
+        class_predictions,
         fract_full,
         fract_marker,
         fract_test,
@@ -304,7 +303,7 @@ def execute_round_wrapper(args):
     sub_logger = logger.getChild(log_prefix)
     sub_logger.addFilter(PrefixFilter(log_prefix))
     round_data = execute_round(
-        learning_xyz,
+        class_predictions,
         fract_full,
         fract_marker,
         fract_test,
@@ -318,7 +317,7 @@ def execute_round_wrapper(args):
 
 
 def execute_round(
-    xyz: XYZ_Model,
+    class_predictions: ConditionPredictionModel,
     fract_full: pd.DataFrame,
     fract_marker: pd.DataFrame,
     fract_test: pd.DataFrame,
@@ -337,7 +336,9 @@ def execute_round(
     result = TrainingRoundModel()
 
     if progress_queue:
-        progress_queue.put((xyz.condition_id, round_id, 0, "Upsampling..."))
+        progress_queue.put(
+            (class_predictions.condition_id, round_id, 0, "Upsampling...")
+        )
 
     # upsample fractionation data
     if nn_params.upsampling:
@@ -353,7 +354,7 @@ def execute_round(
 
     if progress_queue:
         progress_queue.put(
-            (xyz.condition_id, round_id, 1, "SVM prediction...")
+            (class_predictions.condition_id, round_id, 1, "SVM prediction...")
         )
 
     logger.info("Performing single prediction ...")
@@ -392,7 +393,7 @@ def execute_round(
 
     if progress_queue:
         progress_queue.put(
-            (xyz.condition_id, round_id, 5, "Mixing profiles...")
+            (class_predictions.condition_id, round_id, 5, "Mixing profiles...")
         )
 
     if nn_params.mixed_part == "none":
@@ -411,21 +412,23 @@ def execute_round(
         logger.info("mixing done!")
 
     if progress_queue:
-        progress_queue.put((xyz.condition_id, round_id, 10, "Training..."))
+        progress_queue.put(
+            (class_predictions.condition_id, round_id, 10, "Training...")
+        )
 
     def status_callback(percent_done: float, task: str):
         if progress_queue:
             # renormalize
             percent_done = percent_done / 100 * 90 + 10
             progress_queue.put(
-                (xyz.condition_id, round_id, percent_done, task)
+                (class_predictions.condition_id, round_id, percent_done, task)
             )
 
     with stdout_to_logger(logger, logging.DEBUG):
         result.z_full_df = multi_predictions(
             x_full_df=fract_full.drop(columns=["class"]),
-            x_train_df=fract_mixed_up.drop(columns=xyz.classes),
-            y_train_df=fract_mixed_up[xyz.classes],
+            x_train_df=fract_mixed_up.drop(columns=class_predictions.classes),
+            y_train_df=fract_mixed_up[class_predictions.classes],
             nn_params=nn_params,
             logger=logger,
             keras_proj_id=keras_proj_id,
@@ -433,7 +436,9 @@ def execute_round(
         )
 
     if progress_queue:
-        progress_queue.put((xyz.condition_id, round_id, 100, "done"))
+        progress_queue.put(
+            (class_predictions.condition_id, round_id, 100, "done")
+        )
 
     return result
 

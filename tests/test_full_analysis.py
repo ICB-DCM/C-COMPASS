@@ -139,7 +139,7 @@ def test_full():
         NN_epochs=10,
         NN_optimization="short",
     )
-    sess.learning_xyz = multi_organelle_prediction(
+    sess.class_predictions = multi_organelle_prediction(
         sess.fract_full,
         sess.fract_marker,
         sess.fract_test,
@@ -149,7 +149,7 @@ def test_full():
 
     # "static statistics"
     sess.static_stats = stats_proteome(
-        sess.learning_xyz,
+        sess.class_predictions,
         sess.fract_data,
         sess.fract_marker,
         sess.fract_conditions,

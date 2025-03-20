@@ -11,9 +11,9 @@ from ._utils import PrefixFilter, get_mp_ctx
 from .core import (
     KEEP,
     ComparisonModel,
+    ConditionPredictionModel,
     ConditionReplicate,
     StaticStatisticsModel,
-    XYZ_Model,
 )
 
 logger = logging.getLogger(__package__)
@@ -161,7 +161,7 @@ def impute_data(x: pd.Series, s: float = 1.8, w: float = 0.3) -> pd.Series:
 
 
 def stats_proteome(
-    learning_xyz: dict[str, XYZ_Model],
+    class_predictions: dict[str, ConditionPredictionModel],
     fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]],
     fract_marker: dict[ConditionReplicate, pd.DataFrame],
     fract_conditions: list[str],
@@ -174,7 +174,9 @@ def stats_proteome(
 
     for condition in conditions:
         # condition x replicate
-        subcons = [x for x in learning_xyz if x.startswith(condition + "_")]
+        subcons = [
+            x for x in class_predictions if x.startswith(condition + "_")
+        ]
 
         combined_index = pd.DataFrame(index=[]).index
         for subcon in subcons:
@@ -194,7 +196,7 @@ def stats_proteome(
             )
 
         ## add SVM results:
-        combine_svm_replicate_results(result, learning_xyz, subcons)
+        combine_svm_replicate_results(result, class_predictions, subcons)
         svm_equal = result.SVM["winner_combined"].apply(
             lambda row: row.nunique() == 1, axis=1
         )
@@ -226,7 +228,7 @@ def stats_proteome(
             # average NN outputs from different rounds
             z_full_dfs = [
                 rr.z_full_df
-                for rr in learning_xyz[subcon].round_results.values()
+                for rr in class_predictions[subcon].round_results.values()
             ]
             if len(z_full_dfs) > 1:
                 for df in z_full_dfs[1:]:
@@ -236,7 +238,7 @@ def stats_proteome(
                         raise ValueError("Columns of z_full_df do not match.")
 
             stacked_arrays = np.stack([df.values for df in z_full_dfs])
-            learning_xyz[subcon].z_full_mean_df = pd.DataFrame(
+            class_predictions[subcon].z_full_mean_df = pd.DataFrame(
                 np.mean(stacked_arrays, axis=0),
                 index=z_full_dfs[0].index,
                 columns=z_full_dfs[0].columns,
@@ -247,7 +249,7 @@ def stats_proteome(
                 set(
                     classname
                     for subcon in subcons
-                    for classname in learning_xyz[subcon].classes
+                    for classname in class_predictions[subcon].classes
                 )
             )
         )
@@ -258,7 +260,7 @@ def stats_proteome(
             for subcon in subcons:
                 cc0_df = pd.merge(
                     cc0_df,
-                    learning_xyz[subcon]
+                    class_predictions[subcon]
                     .z_full_mean_df[classname]
                     .rename(f"CC_{classname}_{subcon}"),
                     left_index=True,
@@ -328,7 +330,7 @@ def stats_proteome(
     return results
 
 
-def combine_svm_round_results(xyz: XYZ_Model):
+def combine_svm_round_results(class_predictions: ConditionPredictionModel):
     """Combine SVM result from the different training rounds of a single
     condition.
 
@@ -342,7 +344,7 @@ def combine_svm_round_results(xyz: XYZ_Model):
         round_results.w_full_prob_df["SVM_winner"].rename(
             f"{round_id}_SVM_winner"
         )
-        for round_id, round_results in xyz.round_results.items()
+        for round_id, round_results in class_predictions.round_results.items()
     ]
     w_full_combined = pd.concat(series, axis=1, ignore_index=False)
 
@@ -356,7 +358,7 @@ def combine_svm_round_results(xyz: XYZ_Model):
     # combine probabilities and compute mean
     series = [
         round_results.w_full_prob_df["SVM_prob"].rename(f"{round_id}_SVM_prob")
-        for round_id, round_results in xyz.round_results.items()
+        for round_id, round_results in class_predictions.round_results.items()
     ]
     w_full_prob_combined = pd.concat(series, axis=1, ignore_index=False)
     w_full_prob_combined["SVM_prob"] = w_full_prob_combined.mean(axis=1)
@@ -373,12 +375,12 @@ def combine_svm_round_results(xyz: XYZ_Model):
         "SVM_prob",
     ] = np.nan
 
-    xyz.w_full_combined = w_full_combined
+    class_predictions.w_full_combined = w_full_combined
 
 
 def combine_svm_replicate_results(
     result: StaticStatisticsModel,
-    learning_xyz: dict[str, XYZ_Model],
+    class_predictions: dict[str, ConditionPredictionModel],
     subcons: list[str],
 ):
     """Combine SVM results from the different replicates.
@@ -392,14 +394,14 @@ def combine_svm_replicate_results(
     result.SVM["winner_combined"] = pd.DataFrame(index=result.metrics.index)
     result.SVM["prob_combined"] = pd.DataFrame(index=result.metrics.index)
     for subcon in subcons:
-        xyz = learning_xyz[subcon]
         logger.info(f"Processing {subcon}...")
 
-        combine_svm_round_results(xyz)
+        combine_svm_round_results(class_predictions[subcon])
+        w_full_combined = class_predictions[subcon].w_full_combined
 
         result.SVM["winner_combined"] = pd.merge(
             result.SVM["winner_combined"],
-            xyz.w_full_combined["SVM_winner"].rename(f"SVM_winner_{subcon}"),
+            w_full_combined["SVM_winner"].rename(f"SVM_winner_{subcon}"),
             left_index=True,
             right_index=True,
             how="left",
@@ -409,7 +411,7 @@ def combine_svm_replicate_results(
         ]
         result.SVM["prob_combined"] = pd.merge(
             result.SVM["prob_combined"],
-            xyz.w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
+            w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
             left_index=True,
             right_index=True,
             how="left",
