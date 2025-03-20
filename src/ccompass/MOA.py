@@ -331,7 +331,8 @@ def stats_proteome(
 
 
 def combine_svm_round_results(xyz: XYZ_Model):
-    """Combine SVM result from the different training rounds.
+    """Combine SVM result from the different training rounds of a single
+    condition.
 
     Combine the SVM predictions and probabilities from the different training
     rounds of a single replicate into a single DataFrame and compute the
@@ -339,21 +340,13 @@ def combine_svm_round_results(xyz: XYZ_Model):
     """
 
     # combine predictions
-    w_full_combined = pd.DataFrame(index=xyz.x_full_df.index)
-
-    for round_id, round_results in xyz.round_results.items():
-        w_full_combined = pd.merge(
-            w_full_combined,
-            round_results.w_full_prob_df["SVM_winner"].rename(
-                f"{round_id}_SVM_winner"
-            ),
-            left_index=True,
-            right_index=True,
-            how="left",
+    series = [
+        round_results.w_full_prob_df["SVM_winner"].rename(
+            f"{round_id}_SVM_winner"
         )
-        w_full_combined = w_full_combined.loc[
-            ~w_full_combined.index.duplicated(keep="first")
-        ]
+        for round_id, round_results in xyz.round_results.items()
+    ]
+    w_full_combined = pd.concat(series, axis=1, ignore_index=False)
 
     svm_equal = w_full_combined.apply(lambda row: row.nunique() == 1, axis=1)
     w_full_combined["SVM_winner"] = np.where(
@@ -361,40 +354,28 @@ def combine_svm_round_results(xyz: XYZ_Model):
         w_full_combined.iloc[:, 0],
         np.nan,
     )
-    w_full_combined = w_full_combined.loc[
-        ~w_full_combined.index.duplicated(keep="first")
+
+    # combine probabilities and compute mean
+    series = [
+        round_results.w_full_prob_df["SVM_prob"].rename(f"{round_id}_SVM_prob")
+        for round_id, round_results in xyz.round_results.items()
     ]
-
-    # combine probabilities
-    w_full_prob_combined = pd.DataFrame(index=xyz.x_full_df.index)
-
-    for round_id, round_results in xyz.round_results.items():
-        w_full_prob_combined = pd.merge(
-            w_full_prob_combined,
-            round_results.w_full_prob_df["SVM_prob"].rename(
-                f"{round_id}_SVM_prob"
-            ),
-            left_index=True,
-            right_index=True,
-            how="left",
-        )
-        w_full_prob_combined = w_full_prob_combined.loc[
-            ~w_full_prob_combined.index.duplicated(keep="first")
-        ]
-
+    w_full_prob_combined = pd.concat(series, axis=1, ignore_index=False)
     w_full_prob_combined["SVM_prob"] = w_full_prob_combined.mean(axis=1)
 
-    xyz.w_full_combined = pd.merge(
+    w_full_combined = pd.merge(
         w_full_combined,
         w_full_prob_combined[["SVM_prob"]],
         left_index=True,
         right_index=True,
         how="left",
     )
-    xyz.w_full_combined.loc[
-        xyz.w_full_combined["SVM_winner"].isna(),
+    w_full_combined.loc[
+        w_full_combined["SVM_winner"].isna(),
         "SVM_prob",
     ] = np.nan
+
+    xyz.w_full_combined = w_full_combined
 
 
 def combine_svm_replicate_results(
