@@ -247,11 +247,6 @@ class StaticStatisticsModel(BaseModel):
     classnames: list[str] = []
     # List of "subcondition" IDs ("{condition}_Rep.{replicate}")
     subcons: list[str] = []
-    #: SVM results
-    #  (the combined results of the different replicates and SVM rounds)
-    #  * winner_combined: DataFrame
-    #  * prob_combined: DataFrame
-    SVM: dict[str, pd.DataFrame] = {}
 
 
 class ComparisonModel(BaseModel):

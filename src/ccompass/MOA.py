@@ -198,32 +198,16 @@ def stats_proteome(
             )
 
         ## add SVM results:
-        combine_svm_replicate_results(result, class_predictions, subcons)
-        svm_equal = result.SVM["winner_combined"].apply(
-            lambda row: row.nunique() == 1, axis=1
-        )
-        svm_major = (
-            result.SVM["winner_combined"]
-            .apply(most_frequent_or_nan, axis=1)
-            .rename("SVM_subwinner")
-        )
+        svm_results = combine_svm_replicate_results(class_predictions, subcons)
 
-        result.metrics["SVM_winner"] = np.where(
-            svm_equal,
-            result.SVM["winner_combined"].iloc[:, 0],
-            np.nan,
-        )
-        result.metrics = pd.merge(
-            result.metrics,
-            svm_major,
-            left_index=True,
-            right_index=True,
-            how="left",
-        )
-        result.metrics["SVM_prob"] = np.nan
-        result.metrics.loc[
-            result.metrics["SVM_winner"].notna(), "SVM_prob"
-        ] = result.SVM["prob_combined"].mean(axis=1)
+        for col in ["SVM_subwinner", "SVM_winner", "SVM_prob"]:
+            result.metrics = pd.merge(
+                result.metrics,
+                svm_results[col],
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
 
         ## add CClist:
         for subcon in subcons:
@@ -354,6 +338,7 @@ def combine_svm_round_results(
     ]
     w_full_combined = pd.concat(series, axis=1, ignore_index=False)
 
+    # set SVM_winner (same label predicted in all rounds)
     svm_equal = w_full_combined.apply(lambda row: row.nunique() == 1, axis=1)
     w_full_combined["SVM_winner"] = np.where(
         svm_equal,
@@ -361,18 +346,17 @@ def combine_svm_round_results(
         np.nan,
     )
 
-    # combine probabilities and compute mean
+    # combine probabilities
     series = [
         round_results.w_full_prob_df["SVM_prob"].rename(f"{round_id}_SVM_prob")
         for round_id, round_results in round_results.items()
     ]
     w_full_prob_combined = pd.concat(series, axis=1, ignore_index=False)
-    w_full_prob_combined["SVM_prob"] = w_full_prob_combined.mean(axis=1)
 
-    # merge combined predictions and probabilities
+    # merge combined predictions and mean probability
     w_full_combined = pd.merge(
         w_full_combined,
-        w_full_prob_combined[["SVM_prob"]],
+        w_full_prob_combined.mean(axis=1).rename("SVM_prob"),
         left_index=True,
         right_index=True,
         how="left",
@@ -386,20 +370,35 @@ def combine_svm_round_results(
 
 
 def combine_svm_replicate_results(
-    result: StaticStatisticsModel,
     class_predictions: dict[str, ConditionPredictionModel],
     subcons: list[str],
-):
+) -> dict[str, pd.DataFrame | pd.Series]:
     """Combine SVM results from the different replicates.
 
     Combine the SVM predictions and probabilities from the different
     replicates of a single condition into a single DataFrame and compute
     the combined winner and mean probability.
 
-    Populates `result.SVM`.
+    Furthermore, get the majority vote and the unanimous winner at the
+    respective mean probability.
+
+    :param class_predictions: The classification results for the different
+        replicates.
+    :param subcons: The indices to `class_predictions` to be combined.
+    :return: A dictionary containing:
+
+        * `winner_combined`:
+          The combined winners across the different replicates
+        * `prob_combined`:
+           The mean probabilities across the different replicates
+        * `SVM_subwinner`: The majority vote
+        * `SVM_winner`: The unanimous winner
+        * `SVM_prob`:
+           The mean probability of the unanimous winner across
+           the different replicates
     """
-    winner_combined = pd.DataFrame(index=result.metrics.index)
-    prob_combined = pd.DataFrame(index=result.metrics.index)
+    winner_combined = None
+    prob_combined = None
 
     for subcon in subcons:
         logger.info(f"Processing {subcon}...")
@@ -407,31 +406,61 @@ def combine_svm_replicate_results(
         w_full_combined = combine_svm_round_results(
             class_predictions[subcon].round_results
         )
-
-        winner_combined = pd.merge(
-            winner_combined,
-            w_full_combined["SVM_winner"].rename(f"SVM_winner_{subcon}"),
-            left_index=True,
-            right_index=True,
-            how="left",
+        cur_svm_winner = w_full_combined["SVM_winner"].rename(
+            f"SVM_winner_{subcon}"
+        )
+        winner_combined = (
+            pd.merge(
+                winner_combined,
+                cur_svm_winner,
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+            if winner_combined is not None
+            else cur_svm_winner
         )
         winner_combined = winner_combined.loc[
             ~winner_combined.index.duplicated(keep="first")
         ]
 
-        prob_combined = pd.merge(
-            prob_combined,
-            w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
-            left_index=True,
-            right_index=True,
-            how="left",
+        cur_svm_prob = w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}")
+        prob_combined = (
+            pd.merge(
+                prob_combined,
+                cur_svm_prob,
+                left_index=True,
+                right_index=True,
+                how="left",
+            )
+            if prob_combined is not None
+            else cur_svm_prob
         )
         prob_combined = prob_combined.loc[
             ~prob_combined.index.duplicated(keep="first")
         ]
 
-    result.SVM["winner_combined"] = winner_combined
-    result.SVM["prob_combined"] = prob_combined
+    result = {
+        "winner_combined": winner_combined,
+        "prob_combined": prob_combined,
+    }
+
+    # majority vote
+    result["SVM_subwinner"] = winner_combined.apply(
+        most_frequent_or_nan, axis=1
+    ).rename("SVM_subwinner")
+
+    # unanimous winner and probability
+    svm_equal = winner_combined.apply(lambda row: row.nunique() == 1, axis=1)
+    result["SVM_winner"] = winner_combined.iloc[:, 0].where(
+        svm_equal,
+        np.nan,
+    )
+    result["SVM_prob"] = (
+        prob_combined.mean(axis=1).where(svm_equal, np.nan).rename("SVM_prob")
+    )
+
+    return result
 
 
 def global_comparisons(
@@ -692,6 +721,9 @@ def compute_class_centric_changes(
             "CA": np.median(results_class["TPA"]),
             "count": len(results_class),
         }
+
+    # TODO: PerformanceWarning: DataFrame is highly fragmented.
+    #  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
 
     ## add nCClist:
     logger.info("adding nCClist...")
