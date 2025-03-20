@@ -1232,7 +1232,7 @@ class MainController:
 
             elif event == "-statistic_predict-":
                 with wait_cursor(self.main_window):
-                    self.model.results = MOA.stats_proteome(
+                    self.model.static_stats = MOA.stats_proteome(
                         self.model.learning_xyz,
                         self.model.fract_data,
                         self.model.fract_conditions,
@@ -1248,7 +1248,7 @@ class MainController:
                 )
                 if filename:
                     with open(filename, "wb") as file:
-                        pickle.dump(self.model.results, file)
+                        pickle.dump(self.model.static_stats, file)
 
             elif event == "-statistic_import-":
                 self._handle_import_prediction()
@@ -1264,10 +1264,10 @@ class MainController:
                 self.model.reset_static_statistics()
 
             elif event == "-statistic_heatmap-":
-                RP.RP_stats_heatmap(self.model.results)
+                RP.RP_stats_heatmap(self.model.static_stats)
 
             elif event == "-statistic_distribution-":
-                RP.RP_stats_distribution(self.model.results)
+                RP.RP_stats_distribution(self.model.static_stats)
 
             elif event == "-global_heatmap-":
                 RP.RP_global_heatmap(self.model.comparison)
@@ -1276,12 +1276,12 @@ class MainController:
                 RP.RP_global_distance(self.model.comparison)
 
             elif event == "-class_heatmap-":
-                RP.RP_class_heatmap(self.model.results)
+                RP.RP_class_heatmap(self.model.static_stats)
 
             elif event == "-global_run-":
                 with wait_cursor(self.main_window):
                     self.model.comparison = MOA.global_comparisons(
-                        results=self.model.results,
+                        results=self.model.static_stats,
                         max_processes=self.app_settings.max_processes,
                     )
             elif event == "-global_reset-":
@@ -1291,7 +1291,7 @@ class MainController:
                 with wait_cursor(self.main_window):
                     MOA.class_comparisons(
                         self.model.tp_data,
-                        self.model.results,
+                        self.model.static_stats,
                         self.model.comparison,
                     )
             elif event == "-class_reset-":
@@ -1467,14 +1467,14 @@ class MainController:
             results_new = pickle.load(file)
         try:
             for condition in results_new:
-                if condition in self.model.results:
+                if condition in self.model.static_stats:
                     messagebox.showerror(
                         "Error",
                         "There are already statistics for "
                         f"{condition} in your current session.",
                     )
                 else:
-                    self.model.results[condition] = copy.deepcopy(
+                    self.model.static_stats[condition] = copy.deepcopy(
                         results_new[condition]
                     )
         except Exception:
@@ -1488,7 +1488,7 @@ class MainController:
 
         Path(export_folder).mkdir(parents=True, exist_ok=True)
 
-        for condition, result in self.model.results.items():
+        for condition, result in self.model.static_stats.items():
             fname = Path(export_folder, f"CCMPS_statistics_{condition}.xlsx")
             selected_columns = [
                 col for col in result.metrics.columns if col.startswith("fCC_")

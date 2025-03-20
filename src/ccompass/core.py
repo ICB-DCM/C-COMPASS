@@ -211,9 +211,12 @@ class XYZ_Model(BaseModel):
 
 
 class TrainingRoundModel(BaseModel):
-    """Data for a single round of model training.
+    """Results from a single round of model training.
 
-    A upsamling/mixing/training/prediction round for a single condition."""
+    A upsamling/mixing/training/prediction round for a single condition.
+
+    Used by `stats_proteome`.
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -249,6 +252,11 @@ class StaticStatisticsModel(BaseModel):
     #       class contribution
     #  * `fNN_winner`: the class/compartment with the highest fCC value
     metrics: pd.DataFrame = pd.DataFrame()
+    # Class abundance for the different classes
+    #  class name => {
+    #   "CA": median of TPA,
+    #   count: number of species with non-null TPA
+    #  }
     class_abundance: dict[str, dict[str, float | int]] = {}
     # Unique list of class names
     classnames: list[str] = []
@@ -531,7 +539,7 @@ class SessionModel(BaseModel):
     learning_xyz: dict[ConditionReplicate, XYZ_Model] = {}
 
     #: `stats_proteome` results for the different conditions
-    results: dict[ConditionId, StaticStatisticsModel] = {}
+    static_stats: dict[ConditionId, StaticStatisticsModel] = {}
     #: Pairwise comparisons of conditions
     # (condition1, condition2) => ComparisonModel
     comparison: dict[tuple[ConditionId, ConditionId], ComparisonModel] = {}
@@ -547,11 +555,11 @@ class SessionModel(BaseModel):
             marker_file=bool(self.marker_sets),
             marker_matched=bool(self.fract_full),
             training=bool(self.learning_xyz),
-            proteome_prediction=bool(self.results),
+            proteome_prediction=bool(self.static_stats),
             lipidome_prediction=False,
             comparison_global=bool(self.comparison),
             comparison_class=bool(
-                all("TPA" in r.metrics for r in self.results.values())
+                all("TPA" in r.metrics for r in self.static_stats.values())
             ),
         )
 
@@ -567,7 +575,7 @@ class SessionModel(BaseModel):
 
     def reset_class_centric_changes(self):
         """Reset class-centric analysis results."""
-        results = self.results
+        results = self.static_stats
         comparisons = self.comparison
 
         for condition, result in results.items():
@@ -614,7 +622,7 @@ class SessionModel(BaseModel):
 
     def reset_static_statistics(self):
         self.reset_global_changes()
-        self.results = {}
+        self.static_stats = {}
 
     def reset_input_tp(self):
         self.tp_input = {}
@@ -844,7 +852,7 @@ def write_class_changes_reports(
     """Create Excel reports for the class changes."""
     Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    for condition, result in model.results.items():
+    for condition, result in model.static_stats.items():
         fname = Path(
             outdir,
             f"CCMPS_ClassComposition_{condition}.xlsx",
@@ -923,7 +931,7 @@ def write_comparison_reports(model: SessionModel, outdir: str | Path) -> None:
 def write_statistics_reports(model: SessionModel, outdir: str | Path) -> None:
     Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    for condition, result in model.results.items():
+    for condition, result in model.static_stats.items():
         fname = Path(outdir, f"CCMPS_statistics_{condition}.tsv")
         df_out = pd.merge(
             model.fract_data["vis"][condition + "_median"],

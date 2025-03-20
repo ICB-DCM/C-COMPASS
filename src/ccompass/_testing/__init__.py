@@ -151,17 +151,17 @@ def do_test_run(max_procs: int = None):
     )
 
     # "static statistics"
-    sess.results = stats_proteome(
+    sess.static_stats = stats_proteome(
         sess.learning_xyz,
         sess.fract_data,
         sess.fract_conditions,
         sess.NN_params.reliability,
     )
-    assert sess.results
+    assert sess.static_stats
 
     # "global changes"
     sess.comparison = global_comparisons(
-        sess.results,
+        sess.static_stats,
         max_procs,
     )
     assert sess.comparison
@@ -169,7 +169,7 @@ def do_test_run(max_procs: int = None):
     # "class-centric changes"
     class_comparisons(
         sess.tp_data,
-        sess.results,
+        sess.static_stats,
         sess.comparison,
     )
 

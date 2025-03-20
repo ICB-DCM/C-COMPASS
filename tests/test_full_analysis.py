@@ -148,13 +148,13 @@ def test_full():
     )
 
     # "static statistics"
-    sess.results = stats_proteome(
+    sess.static_stats = stats_proteome(
         sess.learning_xyz,
         sess.fract_data,
         sess.fract_conditions,
         sess.NN_params.reliability,
     )
-    for condition, result in sess.results.items():
+    for condition, result in sess.static_stats.items():
         ccols = [f"CC_{cls}" for cls in result.classnames]
         assert np.isclose(result.metrics.loc[:, ccols].sum(axis=1), 1).all()
 
@@ -178,14 +178,14 @@ def test_full():
 
     # "global changes"
     sess.comparison = global_comparisons(
-        sess.results,
+        sess.static_stats,
         max_procs,
     )
 
     # "class-centric changes"
     class_comparisons(
         sess.tp_data,
-        sess.results,
+        sess.static_stats,
         sess.comparison,
     )
 
@@ -197,7 +197,7 @@ def test_full():
         for row in next(iter(sess.fract_input.values())).table
         if row[1] not in (IDENTIFIER, KEEP)
     }
-    assert set(sess.results.keys()) == conditions
+    assert set(sess.static_stats.keys()) == conditions
 
     ...
     sess.to_numpy(Path(__file__).parent / "session_test_full.npy")

@@ -8,7 +8,13 @@ from scipy import stats
 from scipy.stats import ttest_ind
 
 from ._utils import PrefixFilter, get_mp_ctx
-from .core import KEEP, ComparisonModel, StaticStatisticsModel, XYZ_Model
+from .core import (
+    KEEP,
+    ComparisonModel,
+    ConditionReplicate,
+    StaticStatisticsModel,
+    XYZ_Model,
+)
 
 logger = logging.getLogger(__package__)
 
@@ -156,8 +162,8 @@ def impute_data(x: pd.Series, s: float = 1.8, w: float = 0.3) -> pd.Series:
 
 def stats_proteome(
     learning_xyz: dict[str, XYZ_Model],
-    fract_data,
-    fract_conditions,
+    fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]],
+    fract_conditions: list[str],
     reliability: float,
 ) -> dict[str, StaticStatisticsModel]:
     """Proteome prediction / statistics."""
@@ -166,6 +172,7 @@ def stats_proteome(
     results = {}
 
     for condition in conditions:
+        # condition x replicate
         subcons = [x for x in learning_xyz if x.startswith(condition + "_")]
 
         combined_index = pd.DataFrame(index=[]).index
@@ -734,22 +741,27 @@ def compute_class_centric_changes(
 
 
 def class_centric_comparison(
-    result1: StaticStatisticsModel,
-    result2: StaticStatisticsModel,
+    stats1: StaticStatisticsModel,
+    stats2: StaticStatisticsModel,
     comparison: ComparisonModel,
 ) -> None:
     """Perform class-centric comparison based on the result for the two given
-    conditions."""
+    conditions.
 
-    metrics_own = result1.metrics
-    metrics_other = result2.metrics
+    :param stats1: Static statistics for the first condition.
+    :param stats2: Static statistics for the second condition.
+    :param comparison: Comparison model to be updated.
+    """
+
+    metrics_own = stats1.metrics
+    metrics_other = stats2.metrics
     common_indices = calculate_common_indices(metrics_own, metrics_other)
 
-    if set(result1.classnames) != set(result2.classnames):
+    if set(stats1.classnames) != set(stats2.classnames):
         # below, the assumption is that the classnames are the same
         raise AssertionError("Classes do not match.")
 
-    for classname in result1.classnames:
+    for classname in stats1.classnames:
         comparison.metrics["nRL_" + classname] = (
             metrics_other["nCC_" + classname] - metrics_own["nCC_" + classname]
         )
@@ -765,15 +777,15 @@ def class_centric_comparison(
     for ID in common_indices:
         ncclists_own = [
             metrics_own.loc[
-                ID, [f"nCC_{classname}_{subcon}" for subcon in result1.subcons]
+                ID, [f"nCC_{classname}_{subcon}" for subcon in stats1.subcons]
             ].tolist()
-            for classname in result1.classnames
+            for classname in stats1.classnames
         ]
         ncclists_other = [
             metrics_other.loc[
-                ID, [f"nCC_{classname}_{subcon}" for subcon in result2.subcons]
+                ID, [f"nCC_{classname}_{subcon}" for subcon in stats2.subcons]
             ].tolist()
-            for classname in result2.classnames
+            for classname in stats2.classnames
         ]
 
         ncclists_own_transposed = [
@@ -839,7 +851,7 @@ def class_centric_comparison(
 
     logger.info("calculating CPA values...")
 
-    for classname in result1.classnames:
+    for classname in stats1.classnames:
         comparison.metrics["CFC_" + classname] = (
             metrics_other["CPA_imp_" + classname]
             - metrics_own["CPA_imp_" + classname]
