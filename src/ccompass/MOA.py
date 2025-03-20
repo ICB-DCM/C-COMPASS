@@ -192,8 +192,9 @@ def stats_proteome(
         ## add marker:
         result.metrics["marker"] = np.nan
         for subcon in subcons:
+            marker = fract_marker[subcon]["class"]
             result.metrics["marker"] = result.metrics["marker"].fillna(
-                fract_marker[subcon]["class"]
+                marker[~marker.index.duplicated(keep="first")]
             )
 
         ## add SVM results:
