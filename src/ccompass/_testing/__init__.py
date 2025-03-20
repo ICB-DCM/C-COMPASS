@@ -154,6 +154,7 @@ def do_test_run(max_procs: int = None):
     sess.static_stats = stats_proteome(
         sess.learning_xyz,
         sess.fract_data,
+        sess.fract_marker,
         sess.fract_conditions,
         sess.NN_params.reliability,
     )

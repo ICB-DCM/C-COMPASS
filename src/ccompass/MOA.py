@@ -163,6 +163,7 @@ def impute_data(x: pd.Series, s: float = 1.8, w: float = 0.3) -> pd.Series:
 def stats_proteome(
     learning_xyz: dict[str, XYZ_Model],
     fract_data: dict[ConditionReplicate, dict[str, pd.DataFrame]],
+    fract_marker: dict[ConditionReplicate, pd.DataFrame],
     fract_conditions: list[str],
     reliability: float,
 ) -> dict[str, StaticStatisticsModel]:
@@ -188,11 +189,8 @@ def stats_proteome(
         ## add marker:
         result.metrics["marker"] = np.nan
         for subcon in subcons:
-            marker_df = learning_xyz[subcon].W_train_df[
-                ~learning_xyz[subcon].W_train_df.index.duplicated(keep="first")
-            ]
             result.metrics["marker"] = result.metrics["marker"].fillna(
-                marker_df
+                fract_marker[subcon]["class"]
             )
 
         ## add SVM results:

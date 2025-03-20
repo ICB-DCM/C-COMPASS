@@ -234,10 +234,8 @@ def multi_organelle_prediction(
         for condition in conditions
     }
     for condition in conditions:
-        update_learninglist_const(
-            learning_xyz[condition],
-            fract_full[condition],
-            fract_marker[condition],
+        learning_xyz[condition].classes = (
+            fract_marker[condition]["class"].unique().tolist()
         )
 
     # parallel execution
@@ -425,7 +423,7 @@ def execute_round(
 
     with stdout_to_logger(logger, logging.DEBUG):
         result.z_full_df = multi_predictions(
-            x_full_df=xyz.x_full_df,
+            x_full_df=fract_full.drop(columns=["class"]),
             x_train_df=fract_mixed_up.drop(columns=xyz.classes),
             y_train_df=fract_mixed_up[xyz.classes],
             nn_params=nn_params,
@@ -552,18 +550,6 @@ def multi_predictions(
         columns=y_train_df.columns,
     )
     return z_full_df
-
-
-def update_learninglist_const(
-    learning_xyz: XYZ_Model,
-    fract_full: pd.DataFrame,
-    fract_marker: pd.DataFrame,
-) -> None:
-    """Populate `learning_xyz` with the learning data that is constant across
-    rounds."""
-    learning_xyz.classes = fract_marker["class"].unique().tolist()
-    learning_xyz.W_train_df = fract_marker["class"]
-    learning_xyz.x_full_df = fract_full.drop(columns=["class"])
 
 
 def mix_profiles(

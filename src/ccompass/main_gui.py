@@ -1235,6 +1235,7 @@ class MainController:
                     self.model.static_stats = MOA.stats_proteome(
                         self.model.learning_xyz,
                         self.model.fract_data,
+                        self.model.fract_marker,
                         self.model.fract_conditions,
                         self.model.NN_params.reliability,
                     )

@@ -177,29 +177,18 @@ class SessionStatusModel(BaseModel):
 
 
 class XYZ_Model(BaseModel):
-    """`learning_xyz` for a specific condition in `SessionModel`.
-
-    W, Y: true labels
-    w, y: predicted labels
-    """
+    """`learning_xyz` for a specific condition in `SessionModel`."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     condition_id: str = ""
+
     #: List of unique classes for which there are marker measurements
     classes: list[str] = []
-
-    #: single-class labels for the markers
-    # TODO: redundant with fract_marker['class']
-    W_train_df: pd.Series = pd.Series()
 
     #: Combined classification results and probabilities from different
     #  SVM rounds (TrainingRoundModel.w_full_prob_df)
     w_full_combined: pd.DataFrame = pd.DataFrame()
-
-    #: features (protein levels in the different fractions for one replicate,
-    #  for proteins with known and unknown class labels)
-    x_full_df: pd.DataFrame = pd.DataFrame()
 
     #: Means of the TrainingRoundModel.z_full_df values across the different
     #  rounds
@@ -1096,6 +1085,7 @@ def create_marker_profiles(
                 right_index=True,
                 how="left",
             ).drop(key, axis=1)
+
         fract_marker[condition] = profile_full.dropna(subset=["class"])
         fract_test[condition] = profile_full[profile_full["class"].isna()]
         if fract_marker[condition].empty:

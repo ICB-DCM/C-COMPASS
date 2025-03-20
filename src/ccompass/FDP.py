@@ -121,6 +121,7 @@ def create_dataset(
                         left_index=True,
                         right_index=True,
                     )
+            data = data[~data.index.duplicated(keep="first")]
             repdata[rep] = data
         combined[condition] = repdata
 
