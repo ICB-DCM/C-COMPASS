@@ -397,8 +397,9 @@ def combine_svm_replicate_results(
 
     Populates `result.SVM`.
     """
-    result.SVM["winner_combined"] = pd.DataFrame(index=result.metrics.index)
-    result.SVM["prob_combined"] = pd.DataFrame(index=result.metrics.index)
+    winner_combined = pd.DataFrame(index=result.metrics.index)
+    prob_combined = pd.DataFrame(index=result.metrics.index)
+
     for subcon in subcons:
         logger.info(f"Processing {subcon}...")
 
@@ -406,26 +407,30 @@ def combine_svm_replicate_results(
             class_predictions[subcon].round_results
         )
 
-        result.SVM["winner_combined"] = pd.merge(
-            result.SVM["winner_combined"],
+        winner_combined = pd.merge(
+            winner_combined,
             w_full_combined["SVM_winner"].rename(f"SVM_winner_{subcon}"),
             left_index=True,
             right_index=True,
             how="left",
         )
-        result.SVM["winner_combined"] = result.SVM["winner_combined"].loc[
-            ~result.SVM["winner_combined"].index.duplicated(keep="first")
+        winner_combined = winner_combined.loc[
+            ~winner_combined.index.duplicated(keep="first")
         ]
-        result.SVM["prob_combined"] = pd.merge(
-            result.SVM["prob_combined"],
+
+        prob_combined = pd.merge(
+            prob_combined,
             w_full_combined["SVM_prob"].rename(f"SVM_prob_{subcon}"),
             left_index=True,
             right_index=True,
             how="left",
         )
-        result.SVM["prob_combined"] = result.SVM["prob_combined"].loc[
-            ~result.SVM["prob_combined"].index.duplicated(keep="first")
+        prob_combined = prob_combined.loc[
+            ~prob_combined.index.duplicated(keep="first")
         ]
+
+    result.SVM["winner_combined"] = winner_combined
+    result.SVM["prob_combined"] = prob_combined
 
 
 def global_comparisons(
