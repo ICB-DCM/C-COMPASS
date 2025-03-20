@@ -14,6 +14,7 @@ from .core import (
     ConditionPredictionModel,
     ConditionReplicate,
     StaticStatisticsModel,
+    TrainingRoundModel,
 )
 
 logger = logging.getLogger(__package__)
@@ -330,13 +331,17 @@ def stats_proteome(
     return results
 
 
-def combine_svm_round_results(class_predictions: ConditionPredictionModel):
+def combine_svm_round_results(
+    round_results: dict[str, TrainingRoundModel],
+) -> pd.DataFrame:
     """Combine SVM result from the different training rounds of a single
     condition.
 
     Combine the SVM predictions and probabilities from the different training
     rounds of a single replicate into a single DataFrame and compute the
     combined winner and mean probability.
+
+    :param round_results: The results from the different training rounds.
     """
 
     # combine predictions
@@ -344,7 +349,7 @@ def combine_svm_round_results(class_predictions: ConditionPredictionModel):
         round_results.w_full_prob_df["SVM_winner"].rename(
             f"{round_id}_SVM_winner"
         )
-        for round_id, round_results in class_predictions.round_results.items()
+        for round_id, round_results in round_results.items()
     ]
     w_full_combined = pd.concat(series, axis=1, ignore_index=False)
 
@@ -358,11 +363,12 @@ def combine_svm_round_results(class_predictions: ConditionPredictionModel):
     # combine probabilities and compute mean
     series = [
         round_results.w_full_prob_df["SVM_prob"].rename(f"{round_id}_SVM_prob")
-        for round_id, round_results in class_predictions.round_results.items()
+        for round_id, round_results in round_results.items()
     ]
     w_full_prob_combined = pd.concat(series, axis=1, ignore_index=False)
     w_full_prob_combined["SVM_prob"] = w_full_prob_combined.mean(axis=1)
 
+    # merge combined predictions and probabilities
     w_full_combined = pd.merge(
         w_full_combined,
         w_full_prob_combined[["SVM_prob"]],
@@ -375,7 +381,7 @@ def combine_svm_round_results(class_predictions: ConditionPredictionModel):
         "SVM_prob",
     ] = np.nan
 
-    class_predictions.w_full_combined = w_full_combined
+    return w_full_combined
 
 
 def combine_svm_replicate_results(
@@ -396,8 +402,9 @@ def combine_svm_replicate_results(
     for subcon in subcons:
         logger.info(f"Processing {subcon}...")
 
-        combine_svm_round_results(class_predictions[subcon])
-        w_full_combined = class_predictions[subcon].w_full_combined
+        w_full_combined = combine_svm_round_results(
+            class_predictions[subcon].round_results
+        )
 
         result.SVM["winner_combined"] = pd.merge(
             result.SVM["winner_combined"],

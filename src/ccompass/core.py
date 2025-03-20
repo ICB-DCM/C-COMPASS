@@ -186,10 +186,6 @@ class ConditionPredictionModel(BaseModel):
     #: List of unique classes for which there are marker measurements
     classes: list[str] = []
 
-    #: Combined classification results and probabilities from different
-    #  SVM rounds (TrainingRoundModel.w_full_prob_df)
-    w_full_combined: pd.DataFrame = pd.DataFrame()
-
     #: Means of the TrainingRoundModel.z_full_df values across the different
     #  rounds
     z_full_mean_df: pd.DataFrame = pd.DataFrame()
