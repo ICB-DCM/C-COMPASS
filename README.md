@@ -91,6 +91,11 @@ Contributions to C-COMPASS are welcome!
 For further information, please refer to
 [https://c-compass.readthedocs.io/en/latest/contributing.html](https://c-compass.readthedocs.io/en/latest/contributing.html).
 
+## Example Data
+
+A simulated dataset and pre-defined sessions for testing purpose are available at
+[https://zenodo.org/records/15223914](https://zenodo.org/records/15223914).
+
 ## License
 
 C-COMPASS is licensed under the [BSD 3-Clause License](LICENSE).
