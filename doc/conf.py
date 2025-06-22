@@ -46,6 +46,10 @@ linkcheck_anchors_ignore_for_url = [
     # https://github.com/sphinx-doc/sphinx/issues/9016
     r"https://github.com/ICB-DCM/C-COMPASS?",
 ]
+linkcheck_ignore = [
+    # 403 from https://www.biorxiv.org/ during linkcheck
+    "https://doi.org/10.1101/2024.08.05.606647",
+]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
