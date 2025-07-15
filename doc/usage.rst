@@ -332,6 +332,9 @@ on the background console window.
    :guilabel:`Predict Proteome`
    to generate quantitative classifications for each condition.
 
+   **Class Contribution (CC)** values represent the proportion of a protein
+   assigned to each compartment.
+
    Predictions can be exported or imported for comparison across sessions,
    ensuring compatible identifiers.
 
@@ -343,6 +346,11 @@ on the background console window.
 
    :guilabel:`Calculate Global Changes` compares localization across
       conditions, providing relocalization results.
+
+   **Relocalization Values (RL)** quantify how the localization of a protein changes
+   in each compartment between two conditions. A positive RL value indicates greater
+   localization in the second condition compared to the first, while negative values
+   indicate reduced localization.
 
    Results can be displayed and exported similarly to the statistics.
 
