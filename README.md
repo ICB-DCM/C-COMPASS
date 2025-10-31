@@ -52,8 +52,7 @@ ccompass
 # or alternatively: `python -m ccompass`
 ```
 
-Note that C-COMPASS currently requires Python>=3.10, and due to its
-`tensorflow` dependency Python<=3.12.
+C-COMPASS currently requires Python>=3.10.
 
 On Ubuntu linux, installing the `python3-tk` package is required:
 
