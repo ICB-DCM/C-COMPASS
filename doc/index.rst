@@ -33,7 +33,7 @@ compartmental proteomics data, facilitating discoveries in cellular
 biology and proteomics research.
 
 More background on C-COMPASS and thorough evaluation can be found in the
-accompanying `preprint <https://doi.org/10.1101/2024.08.05.606647>`_.
+accompanying `publication <https://doi.org/10.1038/s41592-025-02880-3>`_.
 
 .. image:: gfx/ccompass_gui_sample_data_screenshot.png
    :width: 100%
