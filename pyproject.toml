@@ -46,7 +46,7 @@ ccompass = "ccompass.__main__:main"
 
 [project.optional-dependencies]
 dev = ["pre-commit>=3", "pytest", "tox"]
-doc = ["sphinx", "sphinx-rtd-theme", "sphinx-hoverxref", "setuptools-scm"]
+doc = ["sphinx", "sphinx-rtd-theme", "setuptools-scm"]
 test = ["pytest"]
 
 [project.urls]
