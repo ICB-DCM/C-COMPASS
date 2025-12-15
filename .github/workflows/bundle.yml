@@ -61,7 +61,7 @@ jobs:
       timeout-minutes: 5
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ccompass_bundle_onefile_linux
         path: dist/ccompass_bundle_onefile
@@ -122,7 +122,7 @@ jobs:
       timeout-minutes: 5
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ccompass_bundle_onefile_windows
         path: dist/ccompass_bundle_onefile.exe
@@ -172,7 +172,7 @@ jobs:
       timeout-minutes: 5
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ccompass_bundle_onefile_macos
         path: dist/ccompass_bundle_onefile
