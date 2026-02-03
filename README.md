@@ -52,7 +52,7 @@ ccompass
 # or alternatively: `python -m ccompass`
 ```
 
-C-COMPASS currently requires Python>=3.10.
+C-COMPASS currently requires Python>=3.11.
 
 On Ubuntu linux, installing the `python3-tk` package is required:
 

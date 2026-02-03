@@ -26,7 +26,7 @@ dependencies = [
     "seaborn",
     "xlsxwriter",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 readme = "README.md"
 keywords = ["proteomics", "machine learning", "bioinformatics", "mass spectrometry", "fractionation"]
