@@ -188,10 +188,11 @@ Additional Notes
 Sample Data
 -----------
 
-Sample data files are available for download at |sample_data|.
+Sample data files with artificial data are available for download at
+|sample_data|.
 
-.. |sample_data| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.13901167.svg
-  :target: https://doi.org/10.5281/zenodo.13901167
+.. |sample_data| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.15223914.svg
+  :target: https://doi.org/10.5281/zenodo.15223914
 
 Computation time for this dataset using a single core on a standard desktop
 computer:
