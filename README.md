@@ -29,7 +29,7 @@ Further documentation is available at https://c-compass.readthedocs.io/en/latest
 
 Single-file executables that don't require a Python installation are available
 on the [release page](https://github.com/ICB-DCM/C-COMPASS/releases)
-for Linux, Windows, and macOS.
+for Linux, Windows, and macOS (>=Sequoia/15).
 Download the appropriate file for your operating system and run it.
 
 On Windows, make sure to install the Microsoft C and C++ (MSVC) runtime
