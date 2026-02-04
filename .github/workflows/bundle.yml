@@ -59,6 +59,9 @@ jobs:
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
 
+    - name: List shared library dependencies
+      run: ldd dist/ccompass_bundle_onefile
+
     - name: Test --version
       run: dist/ccompass_bundle_onefile --version
 
@@ -181,6 +184,9 @@ jobs:
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
+
+    - name: List shared library dependencies
+      run: otool -L dist/ccompass_bundle_onefile
 
     - name: Test --version
       run: dist/ccompass_bundle_onefile --version
