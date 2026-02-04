@@ -231,6 +231,7 @@ def test_save_sample_data_session():
     """
     sess = get_sample_session_input()
     sess.to_numpy(Path(__file__).parent / "_sample_data_input.npy")
+    sess.to_zip(Path(__file__).parent / "_sample_data_input.ccompass")
 
 
 def test_fdp():
