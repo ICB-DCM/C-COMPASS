@@ -157,11 +157,6 @@ jobs:
         restore-keys: |
           ${{ github.job }}-${{ runner.os }}-pip-
 
-    - name: Install system Tcl\/Tk
-      run: |
-        brew update
-        brew install tcl-tk
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
