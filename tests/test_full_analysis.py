@@ -164,9 +164,14 @@ def test_full():
             assert (result.metrics[f"CC_{cls}"] <= 1).all()
             assert (result.metrics[f"fCC_{cls}"] >= 0).all()
             assert (result.metrics[f"fCC_{cls}"] <= 1).all()
+
+            eps = np.finfo(result.metrics[f"fCC_{cls}"].dtype).eps
             assert (
-                (result.metrics[f"fCC_{cls}"] >= result.metrics[f"CC_{cls}"])
-                | (result.metrics[f"fCC_{cls}"] == 0.0)
+                (
+                    result.metrics[f"fCC_{cls}"] + eps
+                    >= result.metrics[f"CC_{cls}"]
+                )
+                | (result.metrics[f"fCC_{cls}"] < eps)
             ).all(), result.metrics[[f"fCC_{cls}", f"CC_{cls}"]][
                 ~(
                     (
