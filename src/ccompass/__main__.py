@@ -65,6 +65,12 @@ def init_logging() -> logging.Logger:
 
 def launch_gui():
     """Launch the C-COMPASS GUI."""
+    import matplotlib
+
+    # Set the right backend before importing pyplot from various places.
+    # In particular, avoid interference between tkinter and the macosx backend.
+    matplotlib.use("TkAgg")
+
     import FreeSimpleGUI as sg
 
     from .core import SessionModel
