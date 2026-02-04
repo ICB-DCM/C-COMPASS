@@ -48,10 +48,19 @@ jobs:
           --onefile -p . $(which ccompass) \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
+          --hidden-import PIL.ImageTk \
+          --hidden-import PIL._imagingtk \
+          --hidden-import _imagingtk \
+          --hidden-import _tkinter \
+          --hidden-import tkinter \
+          --hidden-import PIL._tkinter_finder \
           --recursive-copy-metadata ccompass
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
+
+    - name: List shared library dependencies
+      run: ldd dist/ccompass_bundle_onefile
 
     - name: Test --version
       run: dist/ccompass_bundle_onefile --version
@@ -107,6 +116,7 @@ jobs:
           launcher.py \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
+          --hidden-import PIL._tkinter_finder \
           --recursive-copy-metadata ccompass
       shell: bash
 
@@ -159,10 +169,19 @@ jobs:
           --onefile -p . $(which ccompass) \
           --hidden-import numpy.core._dtype_ctypes \
           --hidden-import numpy.core.multiarray \
+          --hidden-import PIL.ImageTk \
+          --hidden-import PIL._imagingtk \
+          --hidden-import _imagingtk \
+          --hidden-import _tkinter \
+          --hidden-import tkinter \
+          --hidden-import PIL._tkinter_finder \
           --recursive-copy-metadata ccompass
 
     - name: Verify artifact presence
       run: pwd && ls -alh dist/
+
+    - name: List shared library dependencies
+      run: otool -L dist/ccompass_bundle_onefile
 
     - name: Test --version
       run: dist/ccompass_bundle_onefile --version
@@ -176,6 +195,36 @@ jobs:
       with:
         name: ccompass_bundle_onefile_macos
         path: dist/ccompass_bundle_onefile
+
+    - name: Build onedir
+      run: |
+        pyinstaller --name ccompass_onedir \
+          --onedir -p . $(which ccompass) \
+          --hidden-import numpy.core._dtype_ctypes \
+          --hidden-import numpy.core.multiarray \
+          --hidden-import PIL.ImageTk \
+          --hidden-import PIL._imagingtk \
+          --hidden-import _imagingtk \
+          --hidden-import _tkinter \
+          --hidden-import tkinter \
+          --hidden-import PIL._tkinter_finder \
+          --recursive-copy-metadata ccompass
+
+    - name: List shared library dependencies of bundled app
+      run: |
+        echo Listing binaries in `dist/ccompass_onedir`
+        find dist/ccompass_onedir -type f -print | while IFS= read -r f; do
+          case "$f" in
+            *.so|*.dylib) echo "$f"; otool -L "$f";;
+            *) [ -x "$f" ] && echo "$f" && otool -L "$f";;
+          esac
+        done
+
+    - name: Upload onedir artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: ccompass_onedir_macos
+        path: dist/ccompass_onedir
 
   deploy:
     runs-on: ubuntu-latest
