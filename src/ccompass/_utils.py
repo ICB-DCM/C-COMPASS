@@ -94,7 +94,7 @@ def stdout_to_logger(logger: logging.Logger, log_level=logging.INFO):
 
 def get_mp_ctx() -> multiprocessing.context.BaseContext:
     """Get the multiprocessing context."""
-    if platform.system() == "Windows":
+    if platform.system() in ("Windows", "Darwin"):
         return multiprocessing.get_context("spawn")
     else:
         return multiprocessing.get_context("forkserver")

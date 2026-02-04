@@ -172,9 +172,10 @@ def MOP_exec(
     window.set_cursor("watch")
 
     # run actual prediction in a separate thread to allow for progress updates
-    manager = mp.Manager()
+    ctx = get_mp_ctx()
+    manager = ctx.Manager()
     progress_queue = manager.Queue()
-    result_queue = mp.Queue()
+    result_queue = ctx.Queue()
     worker_thread = threading.Thread(
         target=multi_organelle_prediction,
         args=(
@@ -187,6 +188,9 @@ def MOP_exec(
             result_queue,
         ),
         daemon=True,
+    )
+    logger.info(
+        f"Starting multi-organelle prediction ({max_processes} procs)..."
     )
     worker_thread.start()
 
@@ -204,6 +208,7 @@ def MOP_exec(
 
     worker_thread.join()
     window.close()
+    logger.info("Finished multi-organelle prediction.")
 
     return result
 
