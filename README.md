@@ -95,6 +95,9 @@ For further information, please refer to
 A simulated dataset and pre-defined sessions for testing purpose are available at
 [https://zenodo.org/records/15223914](https://zenodo.org/records/15223914).
 
+A sample session based on a real and larger dataset is available at
+[https://zenodo.org/records/18484676](https://zenodo.org/records/18484676).
+
 ## License
 
 C-COMPASS is licensed under the [BSD 3-Clause License](LICENSE).
