@@ -1,8 +1,20 @@
 Changelog
 =========
 
-Version 2.0.0 (unreleased)
---------------------------
+Version 2.0.1
+-------------
+
+* Requires Python 3.10 or higher
+* Fixes a number of macOS-specific issues that caused crashes
+* Fixes some crashes of the bundled app
+* Fixed a bug that prevented generating the proteome report
+
+Thanks to @LeaSeep and @stephanmg for testing C-COMPASS on macOS.
+
+**Full Changelog**: https://github.com/ICB-DCM/C-COMPASS/compare/v2.0.0...v2.0.1
+
+Version 2.0.0
+-------------
 
 * Major refactoring since v1.0.0
 * Proper Python packaging
