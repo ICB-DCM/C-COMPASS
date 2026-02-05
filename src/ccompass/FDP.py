@@ -542,6 +542,12 @@ def start_fract_data_processing(
         window,
         progress,
     )
+    for cond_id, cond_dict in dataset.items():
+        if len(cond_dict) < 2:
+            raise ValueError(
+                f"Condition '{cond_id}' has less than 2 replicates."
+            )
+
     data_ways = {
         "class": copy.deepcopy(dataset),
         "vis": copy.deepcopy(dataset),
@@ -814,16 +820,23 @@ def FDP_exec(
             ):
                 break
 
-            (
-                data_ways,
-                std_ways,
-                protein_info,
-                conditions_trans,
-            ) = start_fract_data_processing(
-                fract_input,
-                preparams,
-                window,
-            )
+            try:
+                (
+                    data_ways,
+                    std_ways,
+                    protein_info,
+                    conditions_trans,
+                ) = start_fract_data_processing(
+                    fract_input,
+                    preparams,
+                    window,
+                )
+            except Exception as e:
+                messagebox.showerror(
+                    "Error",
+                    f"An error occurred during processing: {str(e)}",
+                )
+
             break
 
     window.close()
