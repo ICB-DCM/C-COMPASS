@@ -452,9 +452,13 @@ def combine_svm_replicate_results(
 
     # unanimous winner and probability
     svm_equal = winner_combined.apply(lambda row: row.nunique() == 1, axis=1)
-    result["SVM_winner"] = winner_combined.iloc[:, 0].where(
-        svm_equal,
-        np.nan,
+    result["SVM_winner"] = (
+        winner_combined.iloc[:, 0]
+        .where(
+            svm_equal,
+            np.nan,
+        )
+        .rename("SVM_winner")
     )
     result["SVM_prob"] = (
         prob_combined.mean(axis=1).where(svm_equal, np.nan).rename("SVM_prob")
