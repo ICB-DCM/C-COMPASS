@@ -24,6 +24,9 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "seaborn",
+    # Expected by keras-tuner, but not included through tensorflow anymore
+    #  https://github.com/tensorflow/tensorflow/releases/tag/v2.21.0
+    "tensorboard",
     "xlsxwriter",
 ]
 requires-python = ">=3.11"
