@@ -253,7 +253,7 @@ jobs:
       # * `Error: Not Found`
       # but the asset is still uploaded.
       # See also https://github.com/AButler/upload-release-assets/issues/43
-      uses: AButler/upload-release-assets@v3.0
+      uses: AButler/upload-release-assets@v4.0
       if: github.event_name == 'release' && (github.event.action == 'created' || github.event.action == 'published')
       with:
         files: "release_assets/*"
