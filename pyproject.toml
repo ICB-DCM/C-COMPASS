@@ -59,6 +59,9 @@ issue-tracker = "https://github.com/ICB-DCM/C-COMPASS/issues"
 
 [tool.setuptools_scm]
 
+[tool.setuptools_scm.tag]
+strict = true  # only consider tags with at least one dot
+
 [tool.ruff]
 line-length = 79
 lint.ignore = [
