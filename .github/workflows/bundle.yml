@@ -29,7 +29,7 @@ jobs:
         python-version: '3.13'
 
     - name: Cache pip
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.cache/pip
         key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -88,7 +88,7 @@ jobs:
         python-version: '3.13'
 
     - name: Cache pip
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~\AppData\Local\pip\Cache
         key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -150,7 +150,7 @@ jobs:
         python-version: '3.13'
 
     - name: Cache pip
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/Library/Caches/pip
         key: ${{ github.job }}-${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
