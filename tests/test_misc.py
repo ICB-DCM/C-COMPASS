@@ -9,7 +9,13 @@ from ccompass._testing.synthetic_data import (
     create_profiles,
     total_proteome,
 )
-from ccompass.core import MarkerSet, create_markerlist
+from ccompass.core import (
+    ConditionPredictionModel,
+    MarkerSet,
+    TrainingRoundModel,
+    create_markerlist,
+)
+from ccompass.MOA import stats_proteome
 
 
 def test_create_markerlist():
@@ -125,3 +131,61 @@ def test_synth_data_deterministic():
     assert_frame_equal(fractionation_df1, fractionation_df2)
     assert_frame_equal(marker_df1, marker_df2)
     assert_frame_equal(total_prot_df1, total_prot_df2)
+
+
+def test_stats_proteome_all_na_row():
+    """`stats_proteome` must not crash if a protein has no valid class
+    prediction in any replicate/round of a condition (i.e. its `CC_*`
+    columns are all NaN).
+
+    Previously raised ``ValueError: Encountered all NA values`` from
+    `DataFrame.idxmax` (mirrors the `fCC`/`fNN_winner` fix from #143, which
+    was never applied to the analogous `CC`/`NN_winner` computation).
+    """
+    # Two replicates of "Cond1", both agreeing that "P1" is class "A".
+    # "P2" has no valid prediction in either replicate (e.g. it was filtered
+    # out before NN training due to an incomplete profile), so it is only
+    # known via `fract_data`/`fract_marker`, not via any
+    # `z_full_df`/`w_full_prob_df`.
+    subcons = ["Cond1_Rep.1", "Cond1_Rep.2"]
+    class_predictions = {
+        subcon: ConditionPredictionModel(
+            condition_id=subcon,
+            classes=["A", "B"],
+            round_results={
+                "round1": TrainingRoundModel(
+                    w_full_prob_df=pd.DataFrame(
+                        {"SVM_winner": ["A"], "SVM_prob": [0.9]},
+                        index=["P1"],
+                    ),
+                    z_full_df=pd.DataFrame(
+                        {"A": [0.7], "B": [0.3]}, index=["P1"]
+                    ),
+                )
+            },
+        )
+        for subcon in subcons
+    }
+    fract_data = {
+        "class": {
+            subcon: pd.DataFrame(index=["P1", "P2"]) for subcon in subcons
+        }
+    }
+    fract_marker = {
+        subcon: pd.DataFrame({"class": ["A", "B"]}, index=["P1", "P2"])
+        for subcon in subcons
+    }
+
+    results = stats_proteome(
+        class_predictions,
+        fract_data,
+        fract_marker,
+        fract_conditions=["Cond1"],
+        reliability=50,
+    )
+
+    metrics = results["Cond1"].metrics
+    assert metrics.loc["P1", "NN_winner"] == "A"
+    assert metrics.loc["P2", "NN_winner"] == "nan"
+    assert metrics.loc["P1", "fNN_winner"] == "A"
+    assert metrics.loc["P2", "fNN_winner"] == "nan"
