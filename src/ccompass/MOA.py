@@ -275,7 +275,16 @@ def stats_proteome(
         result.metrics[cc_cols] = result.metrics[cc_cols].div(cc_sums, axis=0)
 
         ## add NN_winner:
-        max_col = result.metrics[cc_cols].idxmax(axis=1).astype(str)
+        cc_columns = result.metrics[cc_cols]
+        # compute idxmax(axis=1), but only for rows that aren't all NaN
+        #  (The behavior of DataFrame.idxmax with all-NA values,
+        #   or any-NA and skipna=False, is deprecated.)
+        max_col = pd.Series(
+            "nan",
+            index=cc_columns.index,
+        )
+        not_all_na_mask = ~cc_columns.isna().all(axis=1)
+        max_col[not_all_na_mask] = cc_columns[not_all_na_mask].idxmax(axis=1)
         result.metrics["NN_winner"] = max_col.str.replace("CC_", "")
 
         # add fCC: filter out false positives, renormalize
